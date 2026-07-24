@@ -1,0 +1,588 @@
+<title>FREEWAN 大阪北区店 管理システム モック</title>
+<style>
+:root{
+  --bg:#F7F4EE; --surface:#FFFFFF; --surface2:#F1EDE4;
+  --ink:#2B2723; --muted:#8A8177; --line:#E5DFD5;
+  --accent:#33695B; --accent-ink:#FFFFFF; --accent-soft:#E3EDE8;
+  --honey:#C1922F; --honey-soft:#F5EBD4;
+  --good:#3A7D52; --good-soft:#E2EFE6;
+  --warn:#B4741F; --warn-soft:#F6EBD6;
+  --crit:#B4453C; --crit-soft:#F7E3E1;
+  --side:#24443B; --side-ink:#D8E5DF; --side-active:#3A7263;
+  --shadow:0 1px 3px rgba(43,39,35,.08);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#191714; --surface:#221F1B; --surface2:#2A261F;
+    --ink:#EDE8E0; --muted:#9A9186; --line:#37322B;
+    --accent:#6FA893; --accent-ink:#14231E; --accent-soft:#2A3B34;
+    --honey:#D3A94E; --honey-soft:#3A3220;
+    --good:#7CB08D; --good-soft:#26382C;
+    --warn:#D3A050; --warn-soft:#3C321C;
+    --crit:#D08078; --crit-soft:#40251F;
+    --side:#141F1B; --side-ink:#A9BDB4; --side-active:#2A4A40;
+    --shadow:0 1px 3px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="light"]{
+  --bg:#F7F4EE; --surface:#FFFFFF; --surface2:#F1EDE4;
+  --ink:#2B2723; --muted:#8A8177; --line:#E5DFD5;
+  --accent:#33695B; --accent-ink:#FFFFFF; --accent-soft:#E3EDE8;
+  --honey:#C1922F; --honey-soft:#F5EBD4;
+  --good:#3A7D52; --good-soft:#E2EFE6;
+  --warn:#B4741F; --warn-soft:#F6EBD6;
+  --crit:#B4453C; --crit-soft:#F7E3E1;
+  --side:#24443B; --side-ink:#D8E5DF; --side-active:#3A7263;
+  --shadow:0 1px 3px rgba(43,39,35,.08);
+}
+:root[data-theme="dark"]{
+  --bg:#191714; --surface:#221F1B; --surface2:#2A261F;
+  --ink:#EDE8E0; --muted:#9A9186; --line:#37322B;
+  --accent:#6FA893; --accent-ink:#14231E; --accent-soft:#2A3B34;
+  --honey:#D3A94E; --honey-soft:#3A3220;
+  --good:#7CB08D; --good-soft:#26382C;
+  --warn:#D3A050; --warn-soft:#3C321C;
+  --crit:#D08078; --crit-soft:#40251F;
+  --side:#141F1B; --side-ink:#A9BDB4; --side-active:#2A4A40;
+  --shadow:0 1px 3px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic UI","Yu Gothic",Meiryo,sans-serif;
+  font-size:14px; line-height:1.6;
+}
+.app{display:flex; min-height:100vh}
+
+/* ---------- sidebar ---------- */
+.side{
+  width:236px; flex:none; background:var(--side); color:var(--side-ink);
+  display:flex; flex-direction:column; padding:20px 12px; gap:2px;
+}
+.brand{padding:4px 12px 18px; color:#fff}
+.brand .logo{font-size:20px; font-weight:700; letter-spacing:.04em}
+.brand .store{font-size:12px; opacity:.75; margin-top:2px}
+.brand .paw{color:var(--honey); margin-right:6px}
+.nav-label{font-size:10.5px; letter-spacing:.14em; opacity:.55; padding:14px 12px 4px}
+.nav button{
+  display:flex; align-items:center; gap:10px; width:100%;
+  background:none; border:0; color:inherit; font:inherit; text-align:left;
+  padding:9px 12px; border-radius:8px; cursor:pointer;
+}
+.nav button:hover{background:rgba(255,255,255,.07)}
+.nav button:focus-visible{outline:2px solid var(--honey); outline-offset:-2px}
+.nav button.on{background:var(--side-active); color:#fff; font-weight:600}
+.nav .ic{width:18px; text-align:center; flex:none}
+.side .foot{margin-top:auto; padding:12px; font-size:11px; opacity:.5}
+.mocktag{
+  margin:0 12px 8px; padding:6px 10px; border:1px dashed rgba(255,255,255,.3);
+  border-radius:8px; font-size:11px; opacity:.8;
+}
+
+/* ---------- main ---------- */
+.main{flex:1; min-width:0; padding:24px 28px 48px}
+.screen{display:none; max-width:1080px}
+.screen.on{display:block}
+.crumb{font-size:12px; color:var(--muted); margin-bottom:2px}
+h1{font-size:20px; margin:0 0 4px; font-weight:700}
+.sub{color:var(--muted); font-size:13px; margin:0 0 20px}
+h2{font-size:14.5px; margin:0 0 10px; font-weight:700}
+
+.card{background:var(--surface); border:1px solid var(--line); border-radius:12px; box-shadow:var(--shadow)}
+.card .hd{padding:12px 16px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:8px}
+.card .hd h2{margin:0}
+.card .bd{padding:16px}
+.grid{display:grid; gap:16px}
+.num{font-variant-numeric:tabular-nums}
+
+.pill{display:inline-block; padding:1px 9px; border-radius:99px; font-size:11.5px; font-weight:600; white-space:nowrap}
+.pill.good{background:var(--good-soft); color:var(--good)}
+.pill.warn{background:var(--warn-soft); color:var(--warn)}
+.pill.crit{background:var(--crit-soft); color:var(--crit)}
+.pill.acc{background:var(--accent-soft); color:var(--accent)}
+.pill.hny{background:var(--honey-soft); color:var(--honey)}
+.pill.mut{background:var(--surface2); color:var(--muted)}
+
+.src{display:inline-block; font-size:10.5px; font-weight:700; padding:0 6px; border-radius:4px; letter-spacing:.02em}
+.src.epark{background:var(--honey-soft); color:var(--honey)}
+.src.tel{background:var(--surface2); color:var(--muted)}
+.src.line{background:var(--good-soft); color:var(--good)}
+.src.walkin{background:var(--accent-soft); color:var(--accent)}
+
+table{border-collapse:collapse; width:100%; font-size:13px}
+th{font-size:11.5px; color:var(--muted); font-weight:600; text-align:left; letter-spacing:.05em}
+th,td{padding:8px 10px; border-bottom:1px solid var(--line)}
+tr:last-child td{border-bottom:0}
+td.r,th.r{text-align:right}
+
+/* ---------- dashboard ---------- */
+.kpis{grid-template-columns:repeat(4,1fr)}
+.kpi{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:14px 16px; box-shadow:var(--shadow)}
+.kpi .k{font-size:11.5px; color:var(--muted); letter-spacing:.06em}
+.kpi .v{font-size:28px; font-weight:700; line-height:1.2; margin-top:2px}
+.kpi .v small{font-size:13px; font-weight:600; color:var(--muted)}
+.kpi .d{font-size:11.5px; margin-top:2px}
+.kpi .d.up{color:var(--good)} .kpi .d.dn{color:var(--crit)}
+.dash2{grid-template-columns:1.2fr .8fr; margin-top:16px}
+.bar{display:grid; grid-template-columns:88px 1fr 34px; align-items:center; gap:10px; margin:7px 0}
+.bar .lb{font-size:12px; color:var(--muted)}
+.bar .tr{background:var(--surface2); border-radius:99px; height:10px; overflow:hidden}
+.bar .fl{display:block; height:100%; border-radius:99px; background:var(--accent)}
+.bar.b2 .fl{background:var(--honey)}
+.bar .n{font-size:12px; text-align:right}
+
+/* ---------- calendar ---------- */
+.calwrap{overflow-x:auto}
+.cal{display:grid; grid-template-columns:52px repeat(4,minmax(150px,1fr)); min-width:680px}
+.cal .h{position:sticky; top:0; background:var(--surface); font-size:12px; font-weight:700; padding:8px 6px; border-bottom:2px solid var(--line); text-align:center}
+.cal .h .role{display:block; font-size:10.5px; color:var(--muted); font-weight:600}
+.cal .t{grid-column:1; font-size:10.5px; color:var(--muted); text-align:right; padding:0 8px 0 0; border-right:1px solid var(--line); transform:translateY(-7px)}
+.cal .cell{border-bottom:1px solid var(--line); border-right:1px solid var(--line); min-height:26px; position:relative}
+.cal .cell.hourline{border-bottom-style:solid}
+.cal .cell.half{border-bottom-style:dotted}
+.ev{position:absolute; inset:2px 3px; border-radius:6px; padding:3px 7px; font-size:11px; line-height:1.35; overflow:hidden; border-left:3px solid var(--accent); background:var(--accent-soft); color:var(--ink)}
+.ev b{font-size:11.5px}
+.ev.school{border-left-color:var(--honey); background:var(--honey-soft)}
+.ev.trial{border-left-color:var(--good); background:var(--good-soft)}
+.off{position:absolute; inset:0; background:repeating-linear-gradient(-45deg,var(--surface2) 0 6px,transparent 6px 12px); color:var(--muted); font-size:11px; display:flex; align-items:center; justify-content:center; letter-spacing:.1em}
+.legend{display:flex; flex-wrap:wrap; gap:14px; font-size:12px; color:var(--muted); margin-top:10px}
+.legend i{display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; vertical-align:-1px}
+
+/* ---------- customer ---------- */
+.cust-hd{display:flex; align-items:center; gap:16px; margin-bottom:16px}
+.avatar{width:56px; height:56px; border-radius:50%; background:var(--accent); color:var(--accent-ink); display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:700; flex:none}
+.cust2{grid-template-columns:340px 1fr}
+.kv{display:grid; grid-template-columns:96px 1fr; gap:4px 10px; font-size:13px}
+.kv dt{color:var(--muted)} .kv dd{margin:0}
+.meter{background:var(--surface2); border-radius:99px; height:8px; overflow:hidden; margin:6px 0 2px}
+.meter i{display:block; height:100%; background:var(--accent); border-radius:99px}
+.tl{list-style:none; margin:0; padding:0}
+.tl li{display:grid; grid-template-columns:78px 1fr; gap:12px; padding:10px 0; border-bottom:1px solid var(--line)}
+.tl li:last-child{border-bottom:0}
+.tl .dt{font-size:12px; color:var(--muted); padding-top:2px}
+.tl .tt b{margin-right:6px}
+.tl .memo{font-size:12px; color:var(--muted); margin-top:2px}
+
+/* ---------- reminders ---------- */
+.rem{display:grid; grid-template-columns:1fr; gap:0}
+.rem .row{display:grid; grid-template-columns:44px 1fr auto auto; gap:12px; align-items:center; padding:11px 16px; border-bottom:1px solid var(--line)}
+.rem .row:last-child{border-bottom:0}
+.rid{font-size:11px; font-weight:700; color:var(--accent); background:var(--accent-soft); border-radius:6px; text-align:center; padding:2px 0}
+.rem .nm{font-weight:600}
+.rem .cond{font-size:12px; color:var(--muted)}
+.sw{position:relative; width:38px; height:22px; border-radius:99px; background:var(--surface2); border:1px solid var(--line); cursor:pointer; flex:none; padding:0}
+.sw i{position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:var(--muted); transition:.15s}
+.sw[aria-checked="true"]{background:var(--accent); border-color:var(--accent)}
+.sw[aria-checked="true"] i{left:18px; background:#fff}
+.sw:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+.follow3{grid-template-columns:repeat(3,1fr)}
+.fcol .fh{font-size:12px; font-weight:700; padding:8px 12px; border-radius:8px 8px 0 0}
+.fcol .fh small{font-weight:600; opacity:.8}
+.fcol.p1 .fh{background:var(--good-soft); color:var(--good)}
+.fcol.p2 .fh{background:var(--warn-soft); color:var(--warn)}
+.fcol.p3 .fh{background:var(--crit-soft); color:var(--crit)}
+.fcard{border:1px solid var(--line); border-top:0; border-radius:0 0 8px 8px; background:var(--surface)}
+.fcard .fi{padding:9px 12px; border-bottom:1px solid var(--line); font-size:12.5px}
+.fcard .fi:last-child{border-bottom:0}
+.fcard .fi .s{display:block; font-size:11.5px; color:var(--muted)}
+
+/* ---------- shift ---------- */
+.shift-note{font-size:12.5px; color:var(--muted); margin:0 0 12px}
+.sh td{padding:5px 4px}
+.shcell{width:100%; border:1px solid var(--line); background:var(--surface2); border-radius:7px; font:inherit; font-size:11.5px; font-weight:600; padding:7px 2px; cursor:pointer; color:var(--muted)}
+.shcell:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+.shcell.work{background:var(--accent-soft); color:var(--accent); border-color:transparent}
+.shcell.am{background:var(--honey-soft); color:var(--honey); border-color:transparent}
+.shcell.pm{background:var(--honey-soft); color:var(--honey); border-color:transparent}
+.shcell.koukyu{background:var(--surface2); color:var(--muted)}
+.shcell.yukyu{background:var(--good-soft); color:var(--good); border-color:transparent}
+.shcell.jikan{background:var(--crit-soft); color:var(--crit); border-color:transparent}
+
+/* ---------- sns ---------- */
+.snswrap{grid-template-columns:1fr 320px}
+.photos{display:grid; grid-template-columns:repeat(7,1fr); gap:8px}
+.ph{aspect-ratio:1; border-radius:8px; display:flex; align-items:flex-end; padding:5px 7px; font-size:10.5px; font-weight:700; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.4); position:relative}
+.ph .no{position:absolute; top:4px; right:6px; font-size:10px; opacity:.9}
+.splitlb{font-size:12px; font-weight:700; margin:14px 0 8px; display:flex; align-items:center; gap:8px}
+.splitlb:first-child{margin-top:0}
+.reel{border:1px dashed var(--line); border-radius:10px; padding:14px; text-align:center; color:var(--muted); font-size:12.5px}
+.btn{display:inline-block; background:var(--accent); color:var(--accent-ink); border:0; border-radius:8px; font:inherit; font-weight:700; font-size:13px; padding:9px 18px; cursor:pointer}
+.btn.ghost{background:var(--surface2); color:var(--ink)}
+.btn:focus-visible{outline:2px solid var(--honey); outline-offset:2px}
+textarea{width:100%; border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--ink); font:inherit; font-size:13px; padding:10px; resize:vertical}
+
+@media (max-width:860px){
+  .app{flex-direction:column}
+  .side{width:100%; flex-direction:row; flex-wrap:wrap; align-items:center; padding:10px 12px}
+  .brand{padding:4px 10px}
+  .nav-label,.side .foot,.mocktag{display:none}
+  .nav{display:flex; flex-wrap:wrap; gap:2px}
+  .kpis{grid-template-columns:repeat(2,1fr)}
+  .dash2,.cust2,.snswrap{grid-template-columns:1fr}
+  .follow3{grid-template-columns:1fr}
+  .main{padding:16px}
+  .photos{grid-template-columns:repeat(4,1fr)}
+}
+@media (prefers-reduced-motion: reduce){ *{transition:none !important} }
+</style>
+
+<div class="app">
+<aside class="side">
+  <div class="brand">
+    <div class="logo"><span class="paw">&#128062;</span>FREEWAN</div>
+    <div class="store">大阪北区店｜サロン＆スクール</div>
+  </div>
+  <div class="mocktag">画面モック（サンプルデータ）</div>
+  <nav class="nav" id="nav">
+    <div class="nav-label">メニュー</div>
+    <button class="on" data-s="dash"><span class="ic">&#9632;</span>ダッシュボード</button>
+    <button data-s="cal"><span class="ic">&#9633;</span>予約カレンダー</button>
+    <button data-s="cust"><span class="ic">&#9633;</span>顧客カルテ</button>
+    <button data-s="rem"><span class="ic">&#9633;</span>リマインド</button>
+    <button data-s="shift"><span class="ic">&#9633;</span>シフト入力</button>
+    <button data-s="sns"><span class="ic">&#9633;</span>SNS投稿</button>
+  </nav>
+  <div class="foot">FREEWAN 管理システム<br>モック v0.1（2026-07）</div>
+</aside>
+
+<main class="main">
+
+<!-- ================= ダッシュボード ================= -->
+<section class="screen on" id="s-dash">
+  <div class="crumb">2026年7月24日（金）</div>
+  <h1>ダッシュボード</h1>
+  <p class="sub">当月の入園・来園状況とトリマー実績のサマリー</p>
+
+  <div class="grid kpis">
+    <div class="kpi"><div class="k">当月入園数</div><div class="v num">6<small> 頭</small></div><div class="d up">先月 +2</div></div>
+    <div class="kpi"><div class="k">体験入園数</div><div class="v num">9<small> 頭</small></div><div class="d up">入園率 67%</div></div>
+    <div class="kpi"><div class="k">当月来園数</div><div class="v num">182<small> 件</small></div><div class="d up">先月同日比 +11</div></div>
+    <div class="kpi"><div class="k">振替できなかった回数</div><div class="v num">3<small> 回</small></div><div class="d dn">失効前の未消化 7回</div></div>
+  </div>
+
+  <div class="grid dash2">
+    <div class="card">
+      <div class="hd"><h2>トリマー実績（7月）</h2><span class="pill mut">トリマーのみ表示</span></div>
+      <div class="bd" style="padding-top:6px">
+        <table>
+          <tr><th>担当</th><th class="r">施術数</th><th class="r">新規</th><th class="r">既存</th><th class="r">貢献売上</th></tr>
+          <tr><td>佐藤</td><td class="r num">58</td><td class="r num">9</td><td class="r num">49</td><td class="r num">¥412,300</td></tr>
+          <tr><td>高橋</td><td class="r num">51</td><td class="r num">6</td><td class="r num">45</td><td class="r num">¥365,800</td></tr>
+          <tr><td>伊藤</td><td class="r num">44</td><td class="r num">11</td><td class="r num">33</td><td class="r num">¥318,500</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="hd"><h2>来店経路（7月）</h2></div>
+      <div class="bd">
+        <div class="bar"><span class="lb">EPARK</span><span class="tr"><i class="fl" style="width:56%"></i></span><span class="n num">96</span></div>
+        <div class="bar"><span class="lb">公式LINE</span><span class="tr"><i class="fl" style="width:24%"></i></span><span class="n num">41</span></div>
+        <div class="bar"><span class="lb">電話</span><span class="tr"><i class="fl" style="width:13%"></i></span><span class="n num">22</span></div>
+        <div class="bar"><span class="lb">EPARK TEL</span><span class="tr"><i class="fl" style="width:8%"></i></span><span class="n num">14</span></div>
+        <div class="bar b2"><span class="lb">紹介・他</span><span class="tr"><i class="fl" style="width:5%"></i></span><span class="n num">9</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <div class="hd"><h2>本日の自動リマインド</h2><span class="pill acc">12件 送信予定</span></div>
+    <div class="bd" style="padding-top:6px">
+      <table>
+        <tr><th>種別</th><th>対象</th><th>チャネル</th><th>時刻</th><th></th></tr>
+        <tr><td><span class="pill acc">前々日予約</span></td><td>7/26 予約の 5名</td><td><span class="src line">LINE</span></td><td class="num">10:00</td><td><span class="pill mut">予約済</span></td></tr>
+        <tr><td><span class="pill hny">回数券 残回数</span></td><td>2週間未来店の 3名</td><td><span class="src line">LINE</span> <span class="src tel">メール</span></td><td class="num">11:00</td><td><span class="pill mut">予約済</span></td></tr>
+        <tr><td><span class="pill good">体験3日後 体調伺い</span></td><td>7/21 体験の 2名</td><td><span class="src line">LINE</span></td><td class="num">13:00</td><td><span class="pill mut">予約済</span></td></tr>
+        <tr><td><span class="pill warn">ワクチン更新</span></td><td>対象 2名（スタッフにも通知）</td><td><span class="src line">LINE</span> <span class="src tel">メール</span></td><td class="num">15:00</td><td><span class="pill warn">要確認</span></td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 予約カレンダー ================= -->
+<section class="screen" id="s-cal">
+  <div class="crumb">予約管理</div>
+  <h1>予約カレンダー</h1>
+  <p class="sub">7月24日（金）｜シフトが自動反映され、休みの枠は予約を受け付けません。EPARK予約はメール通知から自動で取り込まれます。</p>
+
+  <div class="card">
+    <div class="bd calwrap">
+      <div class="cal" id="calgrid">
+        <div class="h"></div>
+        <div class="h">佐藤<span class="role">トリマー</span></div>
+        <div class="h">高橋<span class="role">トリマー<br><span class="pill hny">AM半休</span></span></div>
+        <div class="h">中村<span class="role">スクール<br><span class="pill mut">公休</span></span></div>
+        <div class="h">山本<span class="role">スクール</span></div>
+      </div>
+      <div class="legend">
+        <span><i style="background:var(--accent-soft);border-left:3px solid var(--accent)"></i>サロン</span>
+        <span><i style="background:var(--honey-soft);border-left:3px solid var(--honey)"></i>スクール</span>
+        <span><i style="background:var(--good-soft);border-left:3px solid var(--good)"></i>体験</span>
+        <span><i style="background:repeating-linear-gradient(-45deg,var(--surface2) 0 4px,transparent 4px 8px)"></i>シフト休</span>
+        <span>経路: <span class="src epark">EPARK</span> <span class="src tel">電話</span> <span class="src line">LINE</span></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 顧客カルテ ================= -->
+<section class="screen" id="s-cust">
+  <div class="crumb">顧客管理 / 顧客一覧 /</div>
+  <div class="cust-hd">
+    <div class="avatar">マ</div>
+    <div>
+      <h1 style="margin-bottom:0">マロン <span style="font-size:13px;color:var(--muted);font-weight:600">トイプードル・5歳・♀</span></h1>
+      <div style="font-size:12.5px;color:var(--muted)">飼い主: 田中 里奈 様｜初回来店: 2024/03（経路: EPARK）</div>
+    </div>
+    <div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
+      <span class="pill acc">スクール 月4会員</span>
+      <span class="pill hny">回数券 残3回</span>
+      <span class="pill warn">ワクチン更新 8/15期限</span>
+    </div>
+  </div>
+
+  <div class="grid cust2">
+    <div style="display:grid;gap:16px;align-content:start">
+      <div class="card">
+        <div class="hd"><h2>基本情報</h2></div>
+        <div class="bd">
+          <dl class="kv">
+            <dt>飼い主</dt><dd>田中 里奈 様</dd>
+            <dt>連絡先</dt><dd>090-XXXX-XXXX</dd>
+            <dt>LINE</dt><dd><span class="pill good">連携済み</span></dd>
+            <dt>誕生日</dt><dd>2021/02/14（犬）<span class="pill mut">自動メッセージON</span></dd>
+            <dt>来店経路</dt><dd>EPARK</dd>
+            <dt>かかりつけ</dt><dd>北区どうぶつ病院</dd>
+          </dl>
+        </div>
+      </div>
+      <div class="card">
+        <div class="hd"><h2>ワクチン</h2></div>
+        <div class="bd">
+          <dl class="kv">
+            <dt>混合</dt><dd>2025/08/15 接種 <span class="pill warn">更新まで 22日</span></dd>
+            <dt>狂犬病</dt><dd>2026/04/03 接種 <span class="pill good">有効</span></dd>
+          </dl>
+          <p style="font-size:12px;color:var(--muted);margin:8px 0 0">直近半年以内の利用者のため、更新案内の自動送信対象です（スタッフにも通知）。</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="hd"><h2>スクール利用（7月）</h2></div>
+        <div class="bd">
+          <div style="display:flex;justify-content:space-between;font-size:12.5px"><span>当月分（月4会員）</span><b class="num">3 / 4 回</b></div>
+          <div class="meter"><i style="width:75%"></i></div>
+          <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-top:8px"><span>先月からの振替分</span><b class="num">1 回（8月末まで）</b></div>
+          <div class="meter"><i style="width:0%;background:var(--honey)"></i></div>
+          <p style="font-size:12px;color:var(--muted);margin:8px 0 0">当月分を優先消化 → その後に振替分を消化。1週間来店がない場合は残回数をリマインドします。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hd"><h2>来店履歴・カルテ</h2><span class="pill mut">全 24 件</span></div>
+      <div class="bd" style="padding-top:4px">
+        <ul class="tl">
+          <li><span class="dt num">7/22 火</span><div class="tt"><b>幼稚園</b><span class="src line">LINE</span><div class="memo">園庭あそび中心。ドッグランで小型犬グループと交流、落ち着いて過ごせた。</div></div></li>
+          <li><span class="dt num">7/15 火</span><div class="tt"><b>幼稚園</b><span class="src line">LINE</span><div class="memo">お昼寝短め。おやつトレーニング「まて」成功率アップ。</div></div></li>
+          <li><span class="dt num">7/12 土</span><div class="tt"><b>カット＋シャンプー</b><span class="src epark">EPARK</span> 担当: 佐藤<div class="memo">テディベアカット。耳周り短めのご希望。皮膚の赤みなし。</div></div></li>
+          <li><span class="dt num">7/8 火</span><div class="tt"><b>幼稚園</b><span class="src line">LINE</span><div class="memo">初めての大型犬に少し緊張。徐々に慣れてきた様子。</div></div></li>
+          <li><span class="dt num">6/28 土</span><div class="tt"><b>シャンプー（回数券）</b><span class="src tel">電話</span> 担当: 高橋<div class="memo">回数券 残3回に。次回期限 8/20。</div></div></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= リマインド ================= -->
+<section class="screen" id="s-rem">
+  <div class="crumb">自動化</div>
+  <h1>リマインド設定</h1>
+  <p class="sub">条件を満たすと自動で送信されます。送信前にスタッフ確認を挟む運用も選べます。</p>
+
+  <div class="card">
+    <div class="rem" id="remrows">
+      <div class="row"><span class="rid">R1</span><div><div class="nm">予約リマインド</div><div class="cond">予約の前々日 10:00 に予約者へ送信</div></div><span class="src line">LINE</span><button class="sw" aria-checked="true" role="switch" aria-label="R1 有効"><i></i></button></div>
+      <div class="row"><span class="rid">R2</span><div><div class="nm">誕生日メッセージ</div><div class="cond">ペットの誕生日 当日 9:00</div></div><span class="src line">LINE</span><button class="sw" aria-checked="true" role="switch" aria-label="R2 有効"><i></i></button></div>
+      <div class="row"><span class="rid">R3</span><div><div class="nm">ワクチン更新案内</div><div class="cond">期限30日前・直近半年以内の利用者のみ｜スタッフにも通知</div></div><span class="src line">LINE</span><button class="sw" aria-checked="true" role="switch" aria-label="R3 有効"><i></i></button></div>
+      <div class="row"><span class="rid">R4</span><div><div class="nm">体験3日後 体調伺い</div><div class="cond">体験スクール利用の3日後・体験者全員</div></div><span class="src line">LINE</span><button class="sw" aria-checked="true" role="switch" aria-label="R4 有効"><i></i></button></div>
+      <div class="row"><span class="rid">R5</span><div><div class="nm">体験後の追客</div><div class="cond">入園未定・次回来店日未定の方のみ（下の3パターンで自動判定）</div></div><span class="src line">LINE</span><button class="sw" aria-checked="true" role="switch" aria-label="R5 有効"><i></i></button></div>
+      <div class="row"><span class="rid">R6</span><div><div class="nm">回数券 来店促し</div><div class="cond">期限2ヶ月・2週間来店なしで残回数を通知</div></div><span class="src line">LINE</span><button class="sw" aria-checked="true" role="switch" aria-label="R6 有効"><i></i></button></div>
+      <div class="row"><span class="rid">R7</span><div><div class="nm">スクール会員 来店促し</div><div class="cond">月4・月8会員が1週間来店なしで月内残回数を通知</div></div><span class="src line">LINE</span><button class="sw" aria-checked="true" role="switch" aria-label="R7 有効"><i></i></button></div>
+      <div class="row"><span class="rid">R8</span><div><div class="nm">持ち越し分の消化案内</div><div class="cond">翌月へ持ち越した方へ。当月分優先→振替分の順で消化</div></div><span class="src line">LINE</span><button class="sw" aria-checked="true" role="switch" aria-label="R8 有効"><i></i></button></div>
+    </div>
+  </div>
+
+  <h2 style="margin:22px 0 10px">体験スクール後のフォロー状況</h2>
+  <div class="grid follow3">
+    <div class="fcol p1">
+      <div class="fh">パターン1｜入園決定・次回日程あり <small>体調伺いのみ</small></div>
+      <div class="fcard">
+        <div class="fi">ソラ（柴・1歳）<span class="s">7/21 体験 → 8/1 入園・次回 7/29</span></div>
+        <div class="fi">レオ（ポメラニアン・2歳）<span class="s">7/18 体験 → 入園済・次回 7/25</span></div>
+      </div>
+    </div>
+    <div class="fcol p2">
+      <div class="fh">パターン2｜入園決定・次回日程未定 <small>体調伺い＋追客</small></div>
+      <div class="fcard">
+        <div class="fi">ハナ（チワワ・3歳）<span class="s">7/21 体験 → 入園申込済｜7/27 追客予定</span></div>
+      </div>
+    </div>
+    <div class="fcol p3">
+      <div class="fh">パターン3｜入園・次回とも未定 <small>体調伺い＋追客</small></div>
+      <div class="fcard">
+        <div class="fi">クッキー（M.ダックス・1歳）<span class="s">7/19 体験｜7/25 追客予定（1回目）</span></div>
+        <div class="fi">モモ（MIX・4歳）<span class="s">7/12 体験｜追客2回済・検討中</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= シフト入力 ================= -->
+<section class="screen" id="s-shift">
+  <div class="crumb">スタッフ管理</div>
+  <h1>シフト入力</h1>
+  <p class="shift-note">マスをクリックするだけで「出勤 → AM半休 → PM半休 → 公休 → 有休 → 時間休」の順に切り替わります（実際に触ってみてください）。入力したシフトはそのまま予約カレンダーに反映されます。</p>
+
+  <div class="card">
+    <div class="bd" style="overflow-x:auto">
+      <table class="sh" style="min-width:640px">
+        <tr><th style="width:90px">7/27週</th><th>月 27</th><th>火 28</th><th>水 29</th><th>木 30</th><th>金 31</th><th>土 1</th><th>日 2</th></tr>
+        <tr><td>佐藤</td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell koukyu">公休</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell am">AM半休</button></td></tr>
+        <tr><td>高橋</td><td><button class="shcell am">AM半休</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell yukyu">有休</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell koukyu">公休</button></td></tr>
+        <tr><td>伊藤</td><td><button class="shcell work">出勤</button></td><td><button class="shcell jikan">時間休<br>14-16</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell koukyu">公休</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td></tr>
+        <tr><td>中村</td><td><button class="shcell koukyu">公休</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell pm">PM半休</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td></tr>
+        <tr><td>山本</td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell yukyu">有休</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell koukyu">公休</button></td><td><button class="shcell work">出勤</button></td></tr>
+      </table>
+      <div class="legend" style="margin-top:12px">
+        <span><i style="background:var(--accent-soft)"></i>出勤</span>
+        <span><i style="background:var(--honey-soft)"></i>AM/PM半休</span>
+        <span><i style="background:var(--surface2)"></i>公休</span>
+        <span><i style="background:var(--good-soft)"></i>有休</span>
+        <span><i style="background:var(--crit-soft)"></i>時間休（時間指定）</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= SNS投稿 ================= -->
+<section class="screen" id="s-sns">
+  <div class="crumb">集客</div>
+  <h1>SNS投稿</h1>
+  <p class="sub">写真が11枚以上あるときは自動で2つの投稿に分割します（Instagramの1投稿10枚上限に対応）。リール動画の投稿にも対応。</p>
+
+  <div class="grid snswrap">
+    <div class="card">
+      <div class="hd"><h2>本日の写真 14枚</h2><span class="pill acc">自動で2投稿に分割</span></div>
+      <div class="bd">
+        <div class="splitlb"><span class="pill acc">投稿 1</span>10枚</div>
+        <div class="photos" id="post1"></div>
+        <div class="splitlb"><span class="pill hny">投稿 2</span>4枚</div>
+        <div class="photos" id="post2"></div>
+      </div>
+    </div>
+    <div style="display:grid;gap:16px;align-content:start">
+      <div class="card">
+        <div class="hd"><h2>キャプション</h2></div>
+        <div class="bd">
+          <textarea rows="6">今日の幼稚園のようす🐾 みんなでドッグランあそび！ ソラくんは初めてのプールに挑戦しました。#FREEWAN #犬の幼稚園 #大阪ペットサロン</textarea>
+          <p style="font-size:12px;color:var(--muted);margin:8px 0 12px">投稿2には「つづき（2/2）」が自動で追記されます。</p>
+          <button class="btn">2件まとめて予約投稿</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="hd"><h2>リール動画</h2><span class="pill good">対応</span></div>
+        <div class="bd">
+          <div class="reel">動画をドラッグ＆ドロップ<br><span style="font-size:11px">縦型（9:16）・90秒まで推奨</span></div>
+          <div style="margin-top:10px"><button class="btn ghost">リールを作成</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+</div>
+
+<script>
+// ---- タブ切替 ----
+const nav = document.getElementById('nav');
+nav.addEventListener('click', e => {
+  const b = e.target.closest('button[data-s]');
+  if (!b) return;
+  nav.querySelectorAll('button').forEach(x => { x.classList.toggle('on', x === b); x.querySelector('.ic').innerHTML = x === b ? '&#9632;' : '&#9633;'; });
+  document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === 's-' + b.dataset.s));
+});
+
+// ---- カレンダー生成（9:00-18:00 / 30分刻み） ----
+const cal = document.getElementById('calgrid');
+const SLOTS = 18, START = 9;
+const events = [
+  {col:2, s:0,  n:3, cls:'',       html:'<b>マロン</b> カット <span class="src epark">EPARK</span>'},
+  {col:2, s:4,  n:2, cls:'',       html:'<b>ココ</b> シャンプー <span class="src line">LINE</span>'},
+  {col:2, s:10, n:4, cls:'',       html:'<b>モカ</b> カット＋泡 <span class="src tel">電話</span>'},
+  {col:3, s:8,  n:3, cls:'',       html:'<b>プリン</b> カット <span class="src epark">EPARK</span>'},
+  {col:3, s:12, n:2, cls:'',       html:'<b>レオ</b> 爪切り <span class="src tel">電話</span>'},
+  {col:5, s:0,  n:16, cls:'school', html:'<b>幼稚園</b> 園児6頭（マロン・ソラ ほか）'},
+  {col:5, s:16, n:2,  cls:'trial',  html:'<b>チョコ</b> 体験入園 面談 <span class="src line">LINE</span>'},
+];
+const offs = [
+  {col:3, s:0, n:8,  label:'AM半休'},
+  {col:4, s:0, n:18, label:'公休'},
+];
+for (let r = 0; r < SLOTS; r++) {
+  const half = r % 2 === 1;
+  const t = document.createElement('div');
+  if (!half) { t.className = 't'; t.style.gridRow = String(r + 2); t.textContent = (START + r / 2) + ':00'; cal.appendChild(t); }
+  else { const sp = document.createElement('div'); sp.style.gridColumn = '1'; sp.style.gridRow = String(r + 2); sp.className = 'cell half'; sp.style.borderRight = '1px solid var(--line)'; sp.style.borderBottom = 'none'; cal.appendChild(sp); }
+  for (let c = 2; c <= 5; c++) {
+    const d = document.createElement('div');
+    d.className = 'cell ' + (half ? 'hourline' : 'half');
+    d.style.gridColumn = String(c);
+    d.style.gridRow = String(r + 2);
+    cal.appendChild(d);
+  }
+}
+offs.forEach(o => {
+  const d = document.createElement('div');
+  d.className = 'off';
+  d.style.position = 'relative'; d.style.gridColumn = String(o.col); d.style.gridRow = (o.s + 2) + ' / span ' + o.n;
+  d.textContent = o.label;
+  cal.appendChild(d);
+});
+events.forEach(ev => {
+  const d = document.createElement('div');
+  d.className = 'ev ' + ev.cls;
+  d.style.position = 'relative'; d.style.gridColumn = String(ev.col); d.style.gridRow = (ev.s + 2) + ' / span ' + ev.n;
+  d.style.margin = '2px 3px'; d.style.inset = 'auto';
+  d.innerHTML = ev.html;
+  cal.appendChild(d);
+});
+// ---- リマインドのトグル ----
+document.querySelectorAll('.sw').forEach(sw => {
+  sw.addEventListener('click', () => sw.setAttribute('aria-checked', sw.getAttribute('aria-checked') !== 'true'));
+});
+
+// ---- シフトセルの切替 ----
+const CYCLE = [['work','出勤'],['am','AM半休'],['pm','PM半休'],['koukyu','公休'],['yukyu','有休'],['jikan','時間休<br>要時間指定']];
+document.querySelectorAll('.shcell').forEach(c => {
+  c.addEventListener('click', () => {
+    const cur = CYCLE.findIndex(([k]) => c.classList.contains(k));
+    const next = CYCLE[(cur + 1) % CYCLE.length];
+    CYCLE.forEach(([k]) => c.classList.remove(k));
+    c.classList.add(next[0]);
+    c.innerHTML = next[1];
+  });
+});
+
+// ---- SNS写真プレースホルダ ----
+const dogs = ['マロン','ソラ','ハナ','レオ','ココ','モカ','プリン','クッキー','モモ','チョコ','ラテ','きなこ','ムギ','ベル'];
+const hues = [155, 42, 205, 18, 95, 265, 330, 175, 60, 230, 10, 130, 300, 190];
+function photo(i, no){
+  const d = document.createElement('div');
+  d.className = 'ph';
+  d.style.background = `linear-gradient(135deg, hsl(${hues[i]} 32% 62%), hsl(${(hues[i]+40)%360} 30% 44%))`;
+  d.innerHTML = `${dogs[i]}<span class="no num">${no}</span>`;
+  return d;
+}
+const p1 = document.getElementById('post1'), p2 = document.getElementById('post2');
+for (let i = 0; i < 14; i++) (i < 10 ? p1 : p2).appendChild(photo(i, i < 10 ? i + 1 : i - 9));
+</script>
