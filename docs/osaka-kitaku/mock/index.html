@@ -131,20 +131,38 @@ td.r,th.r{text-align:right}
 .bar.b2 .fl{background:var(--honey)}
 .bar .n{font-size:12px; text-align:right}
 
-/* ---------- calendar ---------- */
+/* ---------- calendar (横タイムライン / レストランボード型) ---------- */
 .calwrap{overflow-x:auto}
-.cal{display:grid; grid-template-columns:52px repeat(4,minmax(150px,1fr)); min-width:680px}
-.cal .h{position:sticky; top:0; background:var(--surface); font-size:12px; font-weight:700; padding:8px 6px; border-bottom:2px solid var(--line); text-align:center}
-.cal .h .role{display:block; font-size:10.5px; color:var(--muted); font-weight:600}
-.cal .t{grid-column:1; font-size:10.5px; color:var(--muted); text-align:right; padding:0 8px 0 0; border-right:1px solid var(--line); transform:translateY(-7px)}
-.cal .cell{border-bottom:1px solid var(--line); border-right:1px solid var(--line); min-height:26px; position:relative}
-.cal .cell.hourline{border-bottom-style:solid}
-.cal .cell.half{border-bottom-style:dotted}
-.ev{position:absolute; inset:2px 3px; border-radius:6px; padding:3px 7px; font-size:11px; line-height:1.35; overflow:hidden; border-left:3px solid var(--accent); background:var(--accent-soft); color:var(--ink)}
-.ev b{font-size:11.5px}
-.ev.school{border-left-color:var(--honey); background:var(--honey-soft)}
-.ev.trial{border-left-color:var(--good); background:var(--good-soft)}
-.off{position:absolute; inset:0; background:repeating-linear-gradient(-45deg,var(--surface2) 0 6px,transparent 6px 12px); color:var(--muted); font-size:11px; display:flex; align-items:center; justify-content:center; letter-spacing:.1em}
+.tgrid{min-width:1100px; user-select:none}
+.thead{display:flex; border-bottom:2px solid var(--line)}
+.thead .rlab{border-bottom:0}
+.tax{flex:1; position:relative; height:34px}
+.tax span{position:absolute; top:8px; transform:translateX(-4px); font-size:11.5px; color:var(--muted); font-weight:600}
+.trow{display:flex; border-bottom:1px solid var(--line)}
+.trow:last-child{border-bottom:0}
+.rlab{width:132px; flex:none; padding:8px 12px; border-right:1px solid var(--line); font-size:13px; font-weight:700; display:flex; flex-direction:column; justify-content:center; gap:2px}
+.rlab .role{font-size:11px; color:var(--muted); font-weight:600}
+.rbody{position:relative; flex:1; height:60px; touch-action:pan-x;
+  background-image:
+    linear-gradient(to right, var(--line) 1px, transparent 1px),
+    linear-gradient(to right, color-mix(in srgb, var(--line) 55%, transparent) 1px, transparent 1px);
+  background-size:calc(100%/9) 100%, calc(100%/18) 100%;
+}
+.rbody.drop{background-color:var(--accent-soft)}
+.tev{position:absolute; top:8px; height:44px; border-radius:8px; background:var(--accent); color:#fff;
+  padding:5px 10px 5px 12px; font-size:11.5px; line-height:1.3; overflow:hidden; white-space:nowrap;
+  box-shadow:var(--shadow); cursor:grab; touch-action:none}
+.tev b{display:block; font-size:12.5px}
+.tev .rz{position:absolute; right:5px; top:50%; transform:translateY(-50%); font-size:12px; opacity:.75}
+.tev.school{background:var(--honey)}
+.tev.trial{background:var(--good)}
+.tev.pickup{background:color-mix(in srgb, var(--accent) 55%, var(--muted))}
+.tev.lift{opacity:.35}
+.tev .src{background:rgba(255,255,255,.25); color:#fff; margin-left:4px}
+.ghost{position:fixed; z-index:50; pointer-events:none; opacity:.9; box-shadow:0 10px 24px rgba(0,0,0,.3); transform:scale(1.02); cursor:grabbing}
+.hatch{position:absolute; top:0; bottom:0; background:repeating-linear-gradient(-45deg,var(--surface2) 0 6px,transparent 6px 12px); color:var(--muted); font-size:11px; display:flex; align-items:center; justify-content:center; letter-spacing:.1em; pointer-events:none}
+.toast{position:fixed; left:50%; bottom:28px; transform:translateX(-50%) translateY(8px); background:var(--ink); color:var(--bg); padding:9px 18px; border-radius:99px; font-size:12.5px; font-weight:600; opacity:0; transition:.2s; pointer-events:none; z-index:60}
+.toast.on{opacity:1; transform:translateX(-50%)}
 .legend{display:flex; flex-wrap:wrap; gap:14px; font-size:12px; color:var(--muted); margin-top:10px}
 .legend i{display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; vertical-align:-1px}
 
@@ -302,26 +320,27 @@ textarea{width:100%; border:1px solid var(--line); border-radius:8px; background
 <section class="screen" id="s-cal">
   <div class="crumb">予約管理</div>
   <h1>予約カレンダー</h1>
-  <p class="sub">7月24日（金）｜シフトが自動反映され、休みの枠は予約を受け付けません。EPARK予約はメール通知から自動で取り込まれます。</p>
+  <p class="sub">7月24日（金）｜横軸が時間・縦が担当の表示。シフト休は自動で網掛けになります。<b>予定を長押しして下の行へずらすとコピーできます</b>（実際に試せます）。</p>
 
   <div class="card">
     <div class="bd calwrap">
-      <div class="cal" id="calgrid">
-        <div class="h"></div>
-        <div class="h">佐藤<span class="role">トリマー</span></div>
-        <div class="h">高橋<span class="role">トリマー<br><span class="pill hny">AM半休</span></span></div>
-        <div class="h">中村<span class="role">スクール<br><span class="pill mut">公休</span></span></div>
-        <div class="h">山本<span class="role">スクール</span></div>
+      <div class="tgrid">
+        <div class="thead">
+          <div class="rlab"></div>
+          <div class="tax" id="tax"></div>
+        </div>
+        <div id="tl"></div>
       </div>
       <div class="legend">
-        <span><i style="background:var(--accent-soft);border-left:3px solid var(--accent)"></i>サロン</span>
-        <span><i style="background:var(--honey-soft);border-left:3px solid var(--honey)"></i>スクール</span>
-        <span><i style="background:var(--good-soft);border-left:3px solid var(--good)"></i>体験</span>
+        <span><i style="background:var(--accent)"></i>サロン</span>
+        <span><i style="background:var(--honey)"></i>スクール</span>
+        <span><i style="background:var(--good)"></i>体験</span>
         <span><i style="background:repeating-linear-gradient(-45deg,var(--surface2) 0 4px,transparent 4px 8px)"></i>シフト休</span>
         <span>経路: <span class="src epark">EPARK</span> <span class="src tel">電話</span> <span class="src line">LINE</span></span>
       </div>
     </div>
   </div>
+  <div class="toast" id="toast" role="status"></div>
 </section>
 
 <!-- ================= 顧客カルテ ================= -->
@@ -512,50 +531,131 @@ nav.addEventListener('click', e => {
   document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === 's-' + b.dataset.s));
 });
 
-// ---- カレンダー生成（9:00-18:00 / 30分刻み） ----
-const cal = document.getElementById('calgrid');
-const SLOTS = 18, START = 9;
-const events = [
-  {col:2, s:0,  n:3, cls:'',       html:'<b>マロン</b> カット <span class="src epark">EPARK</span>'},
-  {col:2, s:4,  n:2, cls:'',       html:'<b>ココ</b> シャンプー <span class="src line">LINE</span>'},
-  {col:2, s:10, n:4, cls:'',       html:'<b>モカ</b> カット＋泡 <span class="src tel">電話</span>'},
-  {col:3, s:8,  n:3, cls:'',       html:'<b>プリン</b> カット <span class="src epark">EPARK</span>'},
-  {col:3, s:12, n:2, cls:'',       html:'<b>レオ</b> 爪切り <span class="src tel">電話</span>'},
-  {col:5, s:0,  n:16, cls:'school', html:'<b>幼稚園</b> 園児6頭（マロン・ソラ ほか）'},
-  {col:5, s:16, n:2,  cls:'trial',  html:'<b>チョコ</b> 体験入園 面談 <span class="src line">LINE</span>'},
-];
-const offs = [
-  {col:3, s:0, n:8,  label:'AM半休'},
-  {col:4, s:0, n:18, label:'公休'},
-];
-for (let r = 0; r < SLOTS; r++) {
-  const half = r % 2 === 1;
-  const t = document.createElement('div');
-  if (!half) { t.className = 't'; t.style.gridRow = String(r + 2); t.textContent = (START + r / 2) + ':00'; cal.appendChild(t); }
-  else { const sp = document.createElement('div'); sp.style.gridColumn = '1'; sp.style.gridRow = String(r + 2); sp.className = 'cell half'; sp.style.borderRight = '1px solid var(--line)'; sp.style.borderBottom = 'none'; cal.appendChild(sp); }
-  for (let c = 2; c <= 5; c++) {
-    const d = document.createElement('div');
-    d.className = 'cell ' + (half ? 'hourline' : 'half');
-    d.style.gridColumn = String(c);
-    d.style.gridRow = String(r + 2);
-    cal.appendChild(d);
-  }
+// ---- 予約カレンダー（横タイムライン 9:00-18:00） ----
+const DAY_START = 9, DAY_HOURS = 9;                 // 9:00-18:00
+const tax = document.getElementById('tax');
+for (let h = 0; h <= DAY_HOURS; h++) {
+  const s = document.createElement('span');
+  s.style.left = (h / DAY_HOURS * 100) + '%';
+  if (h === DAY_HOURS) s.style.transform = 'translateX(-100%)';
+  s.textContent = (DAY_START + h) + ':00';
+  tax.appendChild(s);
 }
-offs.forEach(o => {
-  const d = document.createElement('div');
-  d.className = 'off';
-  d.style.position = 'relative'; d.style.gridColumn = String(o.col); d.style.gridRow = (o.s + 2) + ' / span ' + o.n;
-  d.textContent = o.label;
-  cal.appendChild(d);
+const rows = [
+  {name:'送迎',  role:'5名まで'},
+  {name:'佐藤',  role:'トリマー'},
+  {name:'高橋',  role:'トリマー・AM半休', off:[9,13,'AM半休']},
+  {name:'中村',  role:'スクール・公休',   off:[9,18,'公休']},
+  {name:'山本',  role:'スクール'},
+];
+const evs = [
+  {row:0, s:9,    d:0.5, cls:'pickup', html:'<b>お迎え 3件</b>マロン・ソラ・レオ'},
+  {row:0, s:17,   d:0.5, cls:'pickup', html:'<b>お送り 3件</b>'},
+  {row:1, s:9,    d:1.5, cls:'',       html:'<b>マロン カット</b>担当:佐藤 <span class="src">EPARK</span>'},
+  {row:1, s:11,   d:1,   cls:'',       html:'<b>ココ シャンプー</b><span class="src">LINE</span>'},
+  {row:1, s:14,   d:2,   cls:'',       html:'<b>モカ カット＋泡</b><span class="src">電話</span>'},
+  {row:2, s:13,   d:1.5, cls:'',       html:'<b>プリン カット</b><span class="src">EPARK</span>'},
+  {row:2, s:15.5, d:1,   cls:'',       html:'<b>レオ 爪切り</b><span class="src">電話</span>'},
+  {row:4, s:9,    d:8,   cls:'school', html:'<b>幼稚園 園児6頭</b>マロン・ソラ ほか'},
+  {row:4, s:17,   d:1,   cls:'trial',  html:'<b>チョコ 体験</b><span class="src">LINE</span>'},
+];
+const tl = document.getElementById('tl');
+const bodies = [];
+rows.forEach(r => {
+  const tr = document.createElement('div'); tr.className = 'trow';
+  const lb = document.createElement('div'); lb.className = 'rlab';
+  lb.innerHTML = r.name + '<span class="role">' + r.role + '</span>';
+  const bd = document.createElement('div'); bd.className = 'rbody';
+  if (r.off) {
+    const h = document.createElement('div'); h.className = 'hatch';
+    h.style.left  = ((r.off[0] - DAY_START) / DAY_HOURS * 100) + '%';
+    h.style.width = ((r.off[1] - r.off[0]) / DAY_HOURS * 100) + '%';
+    h.textContent = r.off[2];
+    bd.appendChild(h);
+  }
+  tr.append(lb, bd); tl.appendChild(tr); bodies.push(bd);
 });
-events.forEach(ev => {
+function fmt(t){ const h = Math.floor(t), m = Math.round((t - h) * 60); return h + ':' + String(m).padStart(2, '0'); }
+function makeEv(e){
   const d = document.createElement('div');
-  d.className = 'ev ' + ev.cls;
-  d.style.position = 'relative'; d.style.gridColumn = String(ev.col); d.style.gridRow = (ev.s + 2) + ' / span ' + ev.n;
-  d.style.margin = '2px 3px'; d.style.inset = 'auto';
-  d.innerHTML = ev.html;
-  cal.appendChild(d);
+  d.className = 'tev ' + e.cls;
+  d.style.left  = ((e.s - DAY_START) / DAY_HOURS * 100) + '%';
+  d.style.width = (e.d / DAY_HOURS * 100) + '%';
+  d.innerHTML = e.html + '<span class="rz">&#8596;</span>';
+  d.dataset.s = e.s; d.dataset.d = e.d; d.dataset.cls = e.cls; d.dataset.html = e.html;
+  d.addEventListener('contextmenu', ev => ev.preventDefault());
+  bodies[e.row].appendChild(d);
+}
+evs.forEach(makeEv);
+
+// ---- 長押しドラッグでコピー ----
+const toast = document.getElementById('toast');
+let toastT;
+function showToast(msg){
+  toast.textContent = msg; toast.classList.add('on');
+  clearTimeout(toastT); toastT = setTimeout(() => toast.classList.remove('on'), 2600);
+}
+let press = null, drag = null;
+tl.addEventListener('pointerdown', e => {
+  const ev = e.target.closest('.tev');
+  if (!ev) return;
+  press = { ev, x: e.clientX, y: e.clientY, id: e.pointerId,
+    timer: setTimeout(() => startDrag(ev, e.clientX, e.clientY), 420) };
 });
+function startDrag(ev, x, y){
+  const r = ev.getBoundingClientRect();
+  const g = ev.cloneNode(true);
+  g.classList.add('ghost');
+  g.style.left = r.left + 'px'; g.style.top = r.top + 'px';
+  g.style.width = r.width + 'px'; g.style.removeProperty('right');
+  document.body.appendChild(g);
+  ev.classList.add('lift');
+  drag = { ev, g, dx: x - r.left, dy: y - r.top, target: null, t: parseFloat(ev.dataset.s) };
+  if (navigator.vibrate) navigator.vibrate(10);
+}
+window.addEventListener('pointermove', e => {
+  if (press && !drag) {
+    if (Math.abs(e.clientX - press.x) > 10 || Math.abs(e.clientY - press.y) > 10) { clearTimeout(press.timer); press = null; }
+    return;
+  }
+  if (!drag) return;
+  e.preventDefault();
+  drag.g.style.left = (e.clientX - drag.dx) + 'px';
+  drag.g.style.top  = (e.clientY - drag.dy) + 'px';
+  let hit = null;
+  bodies.forEach(b => {
+    const r = b.getBoundingClientRect();
+    const on = e.clientY >= r.top && e.clientY <= r.bottom;
+    b.classList.toggle('drop', on);
+    if (on) {
+      hit = b;
+      const frac = (e.clientX - drag.dx - r.left) / r.width;               // 左端基準・30分スナップ
+      drag.t = Math.min(DAY_START + DAY_HOURS - parseFloat(drag.ev.dataset.d),
+               Math.max(DAY_START, DAY_START + Math.round(frac * DAY_HOURS * 2) / 2));
+    }
+  });
+  drag.target = hit;
+}, { passive: false });
+function endDrag(commit){
+  if (press) { clearTimeout(press.timer); press = null; }
+  if (!drag) return;
+  const { ev, g, target, t } = drag;
+  const sameSpot = target === ev.parentElement && t === parseFloat(ev.dataset.s);
+  if (commit && target && !sameSpot) {
+    makeEvIn(target, { s: t, d: parseFloat(ev.dataset.d), cls: ev.dataset.cls, html: ev.dataset.html });
+    const nm = rows[bodies.indexOf(target)].name;
+    showToast('コピーしました：' + nm + ' ' + fmt(t) + '〜');
+  }
+  g.remove(); ev.classList.remove('lift');
+  bodies.forEach(b => b.classList.remove('drop'));
+  drag = null;
+}
+function makeEvIn(body, e){
+  const row = bodies.indexOf(body);
+  makeEv({ ...e, row });
+}
+window.addEventListener('pointerup', () => endDrag(true));
+window.addEventListener('pointercancel', () => endDrag(false));
 // ---- リマインドのトグル ----
 document.querySelectorAll('.sw').forEach(sw => {
   sw.addEventListener('click', () => sw.setAttribute('aria-checked', sw.getAttribute('aria-checked') !== 'true'));
