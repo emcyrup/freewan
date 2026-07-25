@@ -169,8 +169,21 @@ td.r,th.r{text-align:right}
 .tev .src{background:rgba(255,255,255,.25); color:#fff; margin-left:4px}
 .ghost{position:fixed; z-index:50; pointer-events:none; opacity:.9; box-shadow:0 10px 24px rgba(0,0,0,.3); transform:scale(1.02); cursor:grabbing}
 .hatch{position:absolute; top:0; bottom:0; background:repeating-linear-gradient(-45deg,var(--surface2) 0 6px,transparent 6px 12px); color:var(--muted); font-size:11px; display:flex; align-items:center; justify-content:center; letter-spacing:.1em; pointer-events:none}
-.toast{position:fixed; left:50%; bottom:28px; transform:translateX(-50%) translateY(8px); background:var(--ink); color:var(--bg); padding:9px 18px; border-radius:99px; font-size:12.5px; font-weight:600; opacity:0; transition:.2s; pointer-events:none; z-index:60}
-.toast.on{opacity:1; transform:translateX(-50%)}
+.toast{position:fixed; left:50%; bottom:28px; transform:translateX(-50%) translateY(8px); background:var(--ink); color:var(--bg); padding:9px 18px; border-radius:99px; font-size:12.5px; font-weight:600; opacity:0; transition:.2s; pointer-events:none; z-index:60; display:flex; align-items:center; gap:12px}
+.toast.on{opacity:1; transform:translateX(-50%); pointer-events:auto}
+.toast button{background:none; border:0; color:var(--honey); font:inherit; font-weight:700; cursor:pointer; padding:0}
+.toast button:focus-visible{outline:2px solid var(--honey); outline-offset:2px}
+.popback{position:fixed; inset:0; z-index:65}
+.pop{position:fixed; z-index:70; width:264px; background:var(--surface); border:1px solid var(--line); border-radius:12px; box-shadow:0 12px 32px rgba(0,0,0,.28); padding:14px 16px}
+.pop h3{margin:0 0 2px; font-size:14.5px}
+.pop .meta{font-size:12px; color:var(--muted); margin-bottom:4px}
+.pop .meta b{color:var(--ink)}
+.pop .acts{display:grid; gap:7px; margin-top:12px}
+.pbtn{border:1px solid var(--line); background:var(--surface); color:var(--ink); font:inherit; font-size:12.5px; font-weight:600; border-radius:8px; padding:8px 10px; cursor:pointer; text-align:center}
+.pbtn:hover{background:var(--surface2)}
+.pbtn:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+.pbtn.cancel{border-color:var(--warn); color:var(--warn)}
+.pbtn.del{border-color:transparent; background:none; color:var(--crit); font-size:12px}
 .legend{display:flex; flex-wrap:wrap; gap:14px; font-size:12px; color:var(--muted); margin-top:10px}
 .legend i{display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; vertical-align:-1px}
 
@@ -328,7 +341,7 @@ textarea{width:100%; border:1px solid var(--line); border-radius:8px; background
 <section class="screen" id="s-cal">
   <div class="crumb">予約管理</div>
   <h1>予約カレンダー</h1>
-  <p class="sub">7月24日（金）｜横軸が時間・縦が担当の表示。シフト休は自動で網掛けになります。<b>予定を長押しして下の行へずらすとコピー</b>、<b>バーの両端をスライドすると予約時間を変更</b>できます（どちらも実際に試せます・30分単位）。</p>
+  <p class="sub">7月24日（金）｜横軸が時間・縦が担当の表示。シフト休は自動で網掛けになります。<b>タップで詳細（キャンセル・削除）</b>、<b>長押しして下の行へずらすとコピー</b>、<b>両端をスライドすると時間変更</b>ができます（すべて実際に試せます・30分単位）。</p>
 
   <div class="card">
     <div class="bd calwrap">
@@ -603,6 +616,53 @@ function showToast(msg){
   toast.textContent = msg; toast.classList.add('on');
   clearTimeout(toastT); toastT = setTimeout(() => toast.classList.remove('on'), 2600);
 }
+function showUndoToast(msg, onUndo){
+  toast.textContent = '';
+  toast.append(msg);
+  const b = document.createElement('button');
+  b.textContent = '元に戻す';
+  b.addEventListener('click', () => { onUndo(); showToast('元に戻しました'); });
+  toast.appendChild(b);
+  toast.classList.add('on');
+  clearTimeout(toastT); toastT = setTimeout(() => toast.classList.remove('on'), 6000);
+}
+
+// ---- タップで予約詳細ポップアップ（キャンセル/削除） ----
+let pop = null;
+function closePop(){ if (pop) { pop.back.remove(); pop.el.remove(); pop = null; } }
+function openPop(ev, x, y){
+  closePop();
+  const row = rows[bodies.indexOf(ev.parentElement)];
+  const s = parseFloat(ev.dataset.s), d = parseFloat(ev.dataset.d);
+  const title = (ev.querySelector('b') || {}).textContent || '予約';
+  const back = document.createElement('div'); back.className = 'popback';
+  back.addEventListener('pointerdown', closePop);
+  const el = document.createElement('div'); el.className = 'pop';
+  el.innerHTML = '<h3></h3>'
+    + '<div class="meta">時間: <b>' + fmt(s) + ' 〜 ' + fmt(s + d) + '</b></div>'
+    + '<div class="meta">担当・枠: <b>' + row.name + '</b>（' + row.role + '）</div>';
+  el.querySelector('h3').textContent = title;
+  const acts = document.createElement('div'); acts.className = 'acts';
+  const mk = (cls, label, fn) => { const b = document.createElement('button'); b.className = 'pbtn ' + cls; b.textContent = label; b.addEventListener('click', fn); return b; };
+  acts.append(
+    mk('', '顧客カルテを開く', () => { closePop(); document.querySelector('#nav button[data-s="cust"]').click(); }),
+    mk('cancel', 'キャンセルとして記録', () => removeEv(ev, 'キャンセルとして記録しました（履歴に残ります）')),
+    mk('del', '完全に削除（入力ミス用）', () => removeEv(ev, '削除しました'))
+  );
+  el.appendChild(acts);
+  document.body.append(back, el);
+  const r = el.getBoundingClientRect();
+  el.style.left = Math.max(8, Math.min(x, innerWidth - r.width - 8)) + 'px';
+  el.style.top  = Math.max(8, Math.min(y + 10, innerHeight - r.height - 8)) + 'px';
+  pop = { el, back };
+}
+function removeEv(ev, msg){
+  const parent = ev.parentElement, next = ev.nextSibling;
+  ev.remove();
+  closePop();
+  showUndoToast(msg, () => parent.insertBefore(ev, next));
+}
+window.addEventListener('keydown', e => { if (e.key === 'Escape') closePop(); });
 let press = null, drag = null, rsz = null;
 tl.addEventListener('pointerdown', e => {
   const hz = e.target.closest('.hz');
@@ -706,7 +766,16 @@ function endRsz(){
   showToast('時間を変更しました：' + fmt(rsz.s) + ' 〜 ' + fmt(rsz.s + rsz.d));
   rsz = null;
 }
-window.addEventListener('pointerup', () => { endRsz(); endDrag(true); });
+window.addEventListener('pointerup', e => {
+  if (rsz) { endRsz(); return; }
+  if (press && !drag) {                        // 動かさず離した → タップで詳細
+    clearTimeout(press.timer);
+    openPop(press.ev, e.clientX, e.clientY);
+    press = null;
+    return;
+  }
+  endDrag(true);
+});
 window.addEventListener('pointercancel', () => { endRsz(); endDrag(false); });
 // ---- リマインドのトグル ----
 document.querySelectorAll('.sw').forEach(sw => {
