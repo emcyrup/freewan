@@ -154,6 +154,14 @@ td.r,th.r{text-align:right}
   box-shadow:var(--shadow); cursor:grab; touch-action:none}
 .tev b{display:block; font-size:12.5px}
 .tev .rz{position:absolute; right:5px; top:50%; transform:translateY(-50%); font-size:12px; opacity:.75}
+.hz{position:absolute; top:0; bottom:0; width:14px; cursor:ew-resize; touch-action:none}
+.hz.l{left:0; border-radius:8px 0 0 8px}
+.hz.r{right:0; border-radius:0 8px 8px 0}
+.hz::after{content:""; position:absolute; top:50%; transform:translateY(-50%); width:3px; height:16px; border-radius:2px; background:rgba(255,255,255,.55); opacity:0; transition:.12s}
+.hz.l::after{left:4px} .hz.r::after{right:4px}
+.tev:hover .hz::after, .tev.rsz .hz::after{opacity:1}
+.tev.rsz{outline:2px solid rgba(255,255,255,.6); outline-offset:-2px; cursor:ew-resize}
+.tbadge{position:absolute; top:-12px; z-index:10; background:var(--ink); color:var(--bg); font-size:11px; font-weight:700; padding:2px 8px; border-radius:6px; white-space:nowrap; pointer-events:none; box-shadow:var(--shadow)}
 .tev.school{background:var(--honey)}
 .tev.trial{background:var(--good)}
 .tev.pickup{background:color-mix(in srgb, var(--accent) 55%, var(--muted))}
@@ -320,7 +328,7 @@ textarea{width:100%; border:1px solid var(--line); border-radius:8px; background
 <section class="screen" id="s-cal">
   <div class="crumb">予約管理</div>
   <h1>予約カレンダー</h1>
-  <p class="sub">7月24日（金）｜横軸が時間・縦が担当の表示。シフト休は自動で網掛けになります。<b>予定を長押しして下の行へずらすとコピーできます</b>（実際に試せます）。</p>
+  <p class="sub">7月24日（金）｜横軸が時間・縦が担当の表示。シフト休は自動で網掛けになります。<b>予定を長押しして下の行へずらすとコピー</b>、<b>バーの両端をスライドすると予約時間を変更</b>できます（どちらも実際に試せます・30分単位）。</p>
 
   <div class="card">
     <div class="bd calwrap">
@@ -581,7 +589,7 @@ function makeEv(e){
   d.className = 'tev ' + e.cls;
   d.style.left  = ((e.s - DAY_START) / DAY_HOURS * 100) + '%';
   d.style.width = (e.d / DAY_HOURS * 100) + '%';
-  d.innerHTML = e.html + '<span class="rz">&#8596;</span>';
+  d.innerHTML = e.html + '<span class="rz">&#8596;</span><span class="hz l"></span><span class="hz r"></span>';
   d.dataset.s = e.s; d.dataset.d = e.d; d.dataset.cls = e.cls; d.dataset.html = e.html;
   d.addEventListener('contextmenu', ev => ev.preventDefault());
   bodies[e.row].appendChild(d);
@@ -595,13 +603,35 @@ function showToast(msg){
   toast.textContent = msg; toast.classList.add('on');
   clearTimeout(toastT); toastT = setTimeout(() => toast.classList.remove('on'), 2600);
 }
-let press = null, drag = null;
+let press = null, drag = null, rsz = null;
 tl.addEventListener('pointerdown', e => {
+  const hz = e.target.closest('.hz');
+  if (hz) {                                    // 両端スライドで時間変更
+    const ev = hz.closest('.tev');
+    ev.classList.add('rsz');
+    const badge = document.createElement('span');
+    badge.className = 'tbadge';
+    ev.parentElement.appendChild(badge);
+    rsz = { ev, side: hz.classList.contains('l') ? 'l' : 'r',
+            s: parseFloat(ev.dataset.s), d: parseFloat(ev.dataset.d), badge };
+    updateBadge();
+    return;
+  }
   const ev = e.target.closest('.tev');
   if (!ev) return;
   press = { ev, x: e.clientX, y: e.clientY, id: e.pointerId,
     timer: setTimeout(() => startDrag(ev, e.clientX, e.clientY), 420) };
 });
+function updateBadge(){
+  rsz.badge.textContent = fmt(rsz.s) + ' 〜 ' + fmt(rsz.s + rsz.d);
+  rsz.badge.style.left = rsz.ev.style.left;
+}
+function applyRsz(){
+  const { ev, s, d } = rsz;
+  ev.style.left  = ((s - DAY_START) / DAY_HOURS * 100) + '%';
+  ev.style.width = (d / DAY_HOURS * 100) + '%';
+  ev.dataset.s = s; ev.dataset.d = d;
+}
 function startDrag(ev, x, y){
   const r = ev.getBoundingClientRect();
   const g = ev.cloneNode(true);
@@ -614,6 +644,21 @@ function startDrag(ev, x, y){
   if (navigator.vibrate) navigator.vibrate(10);
 }
 window.addEventListener('pointermove', e => {
+  if (rsz) {
+    e.preventDefault();
+    const r = rsz.ev.parentElement.getBoundingClientRect();
+    const t = DAY_START + Math.round((e.clientX - r.left) / r.width * DAY_HOURS * 2) / 2;   // 30分スナップ
+    const end = rsz.s + rsz.d;
+    if (rsz.side === 'l') {
+      const ns = Math.min(end - 0.5, Math.max(DAY_START, t));
+      rsz.d = end - ns; rsz.s = ns;
+    } else {
+      const ne = Math.max(rsz.s + 0.5, Math.min(DAY_START + DAY_HOURS, t));
+      rsz.d = ne - rsz.s;
+    }
+    applyRsz(); updateBadge();
+    return;
+  }
   if (press && !drag) {
     if (Math.abs(e.clientX - press.x) > 10 || Math.abs(e.clientY - press.y) > 10) { clearTimeout(press.timer); press = null; }
     return;
@@ -654,8 +699,15 @@ function makeEvIn(body, e){
   const row = bodies.indexOf(body);
   makeEv({ ...e, row });
 }
-window.addEventListener('pointerup', () => endDrag(true));
-window.addEventListener('pointercancel', () => endDrag(false));
+function endRsz(){
+  if (!rsz) return;
+  rsz.ev.classList.remove('rsz');
+  rsz.badge.remove();
+  showToast('時間を変更しました：' + fmt(rsz.s) + ' 〜 ' + fmt(rsz.s + rsz.d));
+  rsz = null;
+}
+window.addEventListener('pointerup', () => { endRsz(); endDrag(true); });
+window.addEventListener('pointercancel', () => { endRsz(); endDrag(false); });
 // ---- リマインドのトグル ----
 document.querySelectorAll('.sw').forEach(sw => {
   sw.addEventListener('click', () => sw.setAttribute('aria-checked', sw.getAttribute('aria-checked') !== 'true'));
