@@ -341,7 +341,7 @@ textarea{width:100%; border:1px solid var(--line); border-radius:8px; background
 <section class="screen" id="s-cal">
   <div class="crumb">予約管理</div>
   <h1>予約カレンダー</h1>
-  <p class="sub">7月24日（金）｜横軸が時間・縦が担当の表示。シフト休は自動で網掛けになります。<b>タップで詳細（キャンセル・削除）</b>、<b>長押しして下の行へずらすとコピー</b>、<b>両端をスライドすると時間変更</b>ができます（すべて実際に試せます・30分単位）。</p>
+  <p class="sub">7月24日（金）｜横軸が時間・縦が担当の表示。シフト休は自動で網掛けになります。<b>タップで詳細（キャンセル・削除）</b>、<b>長押しして下の行へずらすとコピー（PCはそのままドラッグでOK）</b>、<b>両端をスライドすると時間変更</b>ができます（すべて実際に試せます・30分単位）。</p>
 
   <div class="card">
     <div class="bd calwrap">
@@ -679,7 +679,7 @@ tl.addEventListener('pointerdown', e => {
   }
   const ev = e.target.closest('.tev');
   if (!ev) return;
-  press = { ev, x: e.clientX, y: e.clientY, id: e.pointerId,
+  press = { ev, x: e.clientX, y: e.clientY, id: e.pointerId, type: e.pointerType,
     timer: setTimeout(() => startDrag(ev, e.clientX, e.clientY), 420) };
 });
 function updateBadge(){
@@ -720,7 +720,11 @@ window.addEventListener('pointermove', e => {
     return;
   }
   if (press && !drag) {
-    if (Math.abs(e.clientX - press.x) > 10 || Math.abs(e.clientY - press.y) > 10) { clearTimeout(press.timer); press = null; }
+    if (Math.abs(e.clientX - press.x) > 10 || Math.abs(e.clientY - press.y) > 10) {
+      clearTimeout(press.timer);
+      if (press.type === 'mouse') { startDrag(press.ev, e.clientX, e.clientY); }  // PCは長押し不要で即ドラッグ
+      else { press = null; }                                                       // タッチはスクロール優先
+    }
     return;
   }
   if (!drag) return;
