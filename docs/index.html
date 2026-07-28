@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>FREEWAN 大阪北区店 管理システム</title>
+<style>
+:root{
+  --bg:#F7F4EE; --surface:#FFFFFF; --ink:#2B2723; --muted:#8A8177;
+  --line:#E5DFD5; --accent:#33695B; --accent-ink:#fff; --honey:#C1922F;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#191714; --surface:#221F1B; --ink:#EDE8E0; --muted:#9A9186;
+         --line:#37322B; --accent:#6FA893; --accent-ink:#14231E; --honey:#D3A94E; }
+}
+*{box-sizing:border-box}
+body{margin:0; background:var(--bg); color:var(--ink); line-height:1.7;
+  font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic UI","Yu Gothic",Meiryo,sans-serif;
+  display:flex; justify-content:center; padding:48px 20px}
+.wrap{width:100%; max-width:640px}
+.paw{color:var(--honey)}
+h1{font-size:24px; margin:0 0 4px; letter-spacing:.02em}
+.lead{color:var(--muted); font-size:14px; margin:0 0 32px}
+.card{display:block; background:var(--surface); border:1px solid var(--line);
+  border-radius:12px; padding:18px 20px; margin-bottom:12px; text-decoration:none; color:inherit}
+a.card:hover{border-color:var(--accent)}
+a.card:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+.card h2{margin:0 0 4px; font-size:16px}
+.card p{margin:0; font-size:13px; color:var(--muted)}
+.badge{display:inline-block; background:var(--accent); color:var(--accent-ink);
+  font-size:11px; font-weight:700; padding:2px 9px; border-radius:99px; margin-left:8px; vertical-align:2px}
+footer{margin-top:32px; font-size:12px; color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1><span class="paw">&#128062;</span> FREEWAN 大阪北区店</h1>
+  <p class="lead">ペットサロン＆スクール 管理システム</p>
+
+  <a class="card" href="./osaka-kitaku/mock/">
+    <h2>画面モック<span class="badge">実際に操作できます</span></h2>
+    <p>ダッシュボード／予約カレンダー／顧客一覧・カルテ／リマインド／シフト入力／SNS投稿</p>
+  </a>
+
+  <a class="card" href="./osaka-kitaku/要件定義書.md">
+    <h2>要件定義書</h2>
+    <p>現状の課題、リマインド8種、集計項目、技術的な実現性、確認事項（テキスト形式）</p>
+  </a>
+
+  <a class="card" href="./osaka-kitaku/導入プロセス.md">
+    <h2>導入プロセス</h2>
+    <p>要件確定から本稼働・系列店展開までの7ステップと目安スケジュール（テキスト形式）</p>
+  </a>
+
+  <footer>サンプルデータによる検討用の資料です。実在の顧客情報は含まれていません。</footer>
+</div>
+</body>
+</html>
