@@ -169,6 +169,42 @@ td.r,th.r{text-align:right}
 .tev .src{background:rgba(255,255,255,.25); color:#fff; margin-left:4px}
 .ghost{position:fixed; z-index:50; pointer-events:none; opacity:.9; box-shadow:0 10px 24px rgba(0,0,0,.3); transform:scale(1.02); cursor:grabbing}
 .hatch{position:absolute; top:0; bottom:0; background:repeating-linear-gradient(-45deg,var(--surface2) 0 6px,transparent 6px 12px); color:var(--muted); font-size:11px; display:flex; align-items:center; justify-content:center; letter-spacing:.1em; pointer-events:none}
+/* ---------- view switcher / week / month ---------- */
+.vbar{display:flex; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap}
+.seg{display:inline-flex; background:var(--surface2); border:1px solid var(--line); border-radius:9px; padding:2px; gap:2px}
+.seg button{border:0; background:none; font:inherit; font-size:12.5px; font-weight:700; color:var(--muted); padding:6px 16px; border-radius:7px; cursor:pointer}
+.seg button.on{background:var(--surface); color:var(--accent); box-shadow:var(--shadow)}
+.seg button:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+.vrange{font-size:13px; font-weight:700}
+.vhint{font-size:12px; color:var(--muted)}
+.wk .rlab{width:96px; cursor:pointer}
+.wk .rlab:hover{background:var(--accent-soft)}
+.wk .rlab.sat{color:#3E6FA8} .wk .rlab.sun{color:var(--crit)}
+.wk .rbody{height:64px}
+.wk .tev{font-size:11px; cursor:default}
+.wk .tev b{font-size:11.5px}
+.wk .tev.laneA{top:5px; height:18px; padding:1px 8px; line-height:16px}
+.wk .tev.laneA b{display:inline; font-size:11px}
+.wk .tev.laneB{top:27px; height:32px; padding:3px 8px}
+.mgrid{display:grid; grid-template-columns:repeat(7,1fr); border:1px solid var(--line); border-radius:12px; overflow:hidden; background:var(--surface)}
+.mgrid .dow{background:var(--surface2); font-size:11.5px; font-weight:700; text-align:center; padding:7px 0; color:var(--muted); border-bottom:1px solid var(--line)}
+.mgrid .dow.sat{color:#3E6FA8} .mgrid .dow.sun{color:var(--crit)}
+.mcell{min-height:96px; border-right:1px solid var(--line); border-bottom:1px solid var(--line); padding:6px 8px; display:flex; flex-direction:column; gap:4px; background:none; border-top:0; border-left:0; font:inherit; text-align:left; cursor:pointer; color:inherit}
+.mcell:nth-child(7n+7){border-right:0}
+.mcell:hover{background:var(--accent-soft)}
+.mcell:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
+.mcell.out{background:var(--surface2); color:var(--muted); cursor:default}
+.mcell.out:hover{background:var(--surface2)}
+.mcell.today{box-shadow:inset 0 0 0 2px var(--accent)}
+.mcell .dnum{font-size:12.5px; font-weight:700; font-variant-numeric:tabular-nums}
+.mcell .dnum.sat{color:#3E6FA8} .mcell .dnum.sun{color:var(--crit)}
+.mcell .closed{font-size:11px; color:var(--muted); letter-spacing:.08em}
+.mline{display:flex; align-items:center; gap:5px; font-size:11px}
+.mline i{width:7px; height:7px; border-radius:2px; flex:none}
+.mline span{color:var(--muted)}
+.mline b{margin-left:auto; font-variant-numeric:tabular-nums}
+.msum{display:flex; gap:14px; flex-wrap:wrap; margin-top:12px; font-size:12.5px; color:var(--muted)}
+.msum b{color:var(--ink); font-variant-numeric:tabular-nums}
 .toast{position:fixed; left:50%; bottom:28px; transform:translateX(-50%) translateY(8px); background:var(--ink); color:var(--bg); padding:9px 18px; border-radius:99px; font-size:12.5px; font-weight:600; opacity:0; transition:.2s; pointer-events:none; z-index:60; display:flex; align-items:center; gap:12px}
 .toast.on{opacity:1; transform:translateX(-50%); pointer-events:auto}
 .toast button{background:none; border:0; color:var(--honey); font:inherit; font-weight:700; cursor:pointer; padding:0}
@@ -281,6 +317,11 @@ textarea{width:100%; border:1px solid var(--line); border-radius:8px; background
   .follow3{grid-template-columns:1fr}
   .main{padding:16px}
   .photos{grid-template-columns:repeat(4,1fr)}
+  .mcell{min-height:72px; padding:5px 4px; gap:3px}
+  .mline{font-size:10.5px; gap:4px}
+  .mline span{display:none}          /* 狭い画面では色ドットと件数のみ */
+  .mline b{margin-left:0}
+  .mcell .closed{font-size:10px; letter-spacing:0}
 }
 @media (prefers-reduced-motion: reduce){ *{transition:none !important} }
 </style>
@@ -302,7 +343,7 @@ textarea{width:100%; border:1px solid var(--line); border-radius:8px; background
     <button data-s="shift"><span class="ic">&#9633;</span>シフト入力</button>
     <button data-s="sns"><span class="ic">&#9633;</span>SNS投稿</button>
   </nav>
-  <div class="foot">FREEWAN 管理システム<br>モック <b>v0.6</b>（更新 2026-07-24）<br>顧客一覧・振替失効の個別管理</div>
+  <div class="foot">FREEWAN 管理システム<br>モック <b>v0.7</b>（更新 2026-07-28）<br>カレンダー 日／週／月 表示</div>
 </aside>
 
 <main class="main">
@@ -362,22 +403,52 @@ textarea{width:100%; border:1px solid var(--line); border-radius:8px; background
 <section class="screen" id="s-cal">
   <div class="crumb">予約管理</div>
   <h1>予約カレンダー</h1>
-  <p class="sub">7月24日（金）｜横軸が時間・縦が担当の表示。シフト休は自動で網掛けになります。<b>タップで詳細（キャンセル・削除）</b>、<b>長押しして下の行へずらすとコピー（PCはそのままドラッグでOK）</b>、<b>両端をスライドすると時間変更</b>ができます（すべて実際に試せます・30分単位）。</p>
+  <p class="sub" id="calsub"></p>
+
+  <div class="vbar">
+    <div class="seg" id="vseg">
+      <button data-v="day" class="on">日</button>
+      <button data-v="week">週</button>
+      <button data-v="month">月</button>
+    </div>
+    <span class="vrange" id="vrange"></span>
+  </div>
 
   <div class="card">
     <div class="bd calwrap">
-      <div class="tgrid">
-        <div class="thead">
-          <div class="rlab"></div>
-          <div class="tax" id="tax"></div>
+      <!-- 日表示 -->
+      <div id="v-day">
+        <div class="tgrid">
+          <div class="thead">
+            <div class="rlab"></div>
+            <div class="tax" id="tax"></div>
+          </div>
+          <div id="tl"></div>
         </div>
-        <div id="tl"></div>
       </div>
+
+      <!-- 週表示 -->
+      <div id="v-week" style="display:none">
+        <div class="tgrid wk">
+          <div class="thead">
+            <div class="rlab"></div>
+            <div class="tax" id="wtax"></div>
+          </div>
+          <div id="wtl"></div>
+        </div>
+      </div>
+
+      <!-- 月表示 -->
+      <div id="v-month" style="display:none">
+        <div class="mgrid" id="mgrid"></div>
+        <div class="msum" id="msum"></div>
+      </div>
+
       <div class="legend">
         <span><i style="background:var(--accent)"></i>サロン</span>
         <span><i style="background:var(--honey)"></i>スクール</span>
         <span><i style="background:var(--good)"></i>体験</span>
-        <span><i style="background:repeating-linear-gradient(-45deg,var(--surface2) 0 4px,transparent 4px 8px)"></i>シフト休</span>
+        <span><i style="background:repeating-linear-gradient(-45deg,var(--surface2) 0 4px,transparent 4px 8px)"></i>シフト休・定休</span>
         <span>経路: <span class="src epark">EPARK</span> <span class="src tel">電話</span> <span class="src line">LINE</span></span>
       </div>
     </div>
@@ -455,12 +526,12 @@ textarea{width:100%; border:1px solid var(--line); border-radius:8px; background
   <div class="card">
     <div class="bd" style="overflow-x:auto">
       <table class="sh" style="min-width:640px">
-        <tr><th style="width:90px">7/27週</th><th>月 27</th><th>火 28</th><th>水 29</th><th>木 30</th><th>金 31</th><th>土 1</th><th>日 2</th></tr>
+        <tr><th style="width:90px">7/27週</th><th>月 27</th><th>火 28</th><th>水 29<br><span style="font-weight:600">定休</span></th><th>木 30</th><th>金 31</th><th>土 1</th><th>日 2</th></tr>
         <tr><td>佐藤</td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell koukyu">公休</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell am">AM半休</button></td></tr>
-        <tr><td>高橋</td><td><button class="shcell am">AM半休</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell yukyu">有休</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell koukyu">公休</button></td></tr>
-        <tr><td>伊藤</td><td><button class="shcell work">出勤</button></td><td><button class="shcell jikan">時間休<br>14-16</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell koukyu">公休</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td></tr>
-        <tr><td>中村</td><td><button class="shcell koukyu">公休</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell pm">PM半休</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td></tr>
-        <tr><td>山本</td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell yukyu">有休</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell koukyu">公休</button></td><td><button class="shcell work">出勤</button></td></tr>
+        <tr><td>高橋</td><td><button class="shcell am">AM半休</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell koukyu">公休</button></td><td><button class="shcell yukyu">有休</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell koukyu">公休</button></td></tr>
+        <tr><td>伊藤</td><td><button class="shcell work">出勤</button></td><td><button class="shcell jikan">時間休<br>14-16</button></td><td><button class="shcell koukyu">公休</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell koukyu">公休</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td></tr>
+        <tr><td>中村</td><td><button class="shcell koukyu">公休</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell koukyu">公休</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell pm">PM半休</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td></tr>
+        <tr><td>山本</td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell koukyu">公休</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell koukyu">公休</button></td><td><button class="shcell work">出勤</button></td></tr>
       </table>
       <div class="legend" style="margin-top:12px">
         <span><i style="background:var(--accent-soft)"></i>出勤</span>
@@ -799,6 +870,142 @@ function makeEv(e){
   bodies[e.row].appendChild(d);
 }
 evs.forEach(makeEv);
+
+// ================= 週表示 =================
+const WEEK = [
+  { d:'7/20', w:'月', evs:[
+      {s:9,   dur:8,   cls:'school', t:'幼稚園 5頭'},
+      {s:10,  dur:1.5, cls:'',       t:'ベル カット'},
+      {s:13,  dur:1,   cls:'',       t:'ココ シャンプー'},
+      {s:15,  dur:2,   cls:'',       t:'モカ カット＋泡'}] },
+  { d:'7/21', w:'火', evs:[
+      {s:9,   dur:8,   cls:'school', t:'幼稚園 6頭'},
+      {s:10,  dur:1.5, cls:'trial',  t:'ソラ 体験入園'},
+      {s:13,  dur:1.5, cls:'trial',  t:'ハナ 体験入園'},
+      {s:15.5,dur:1,   cls:'',       t:'レオ 爪切り'}] },
+  { d:'7/22', w:'水', closed:true, evs:[] },
+  { d:'7/23', w:'木', evs:[
+      {s:9,   dur:8,   cls:'school', t:'幼稚園 4頭'},
+      {s:9.5, dur:2,   cls:'',       t:'プリン カット'},
+      {s:13,  dur:1.5, cls:'',       t:'ムギ シャンプー'},
+      {s:16,  dur:1,   cls:'',       t:'ラテ 爪切り'}] },
+  { d:'7/24', w:'金', today:true, evs:[
+      {s:9,   dur:8,   cls:'school', t:'幼稚園 6頭'},
+      {s:9,   dur:1.5, cls:'',       t:'マロン カット'},
+      {s:11,  dur:1,   cls:'',       t:'ココ シャンプー'},
+      {s:13,  dur:1.5, cls:'',       t:'プリン カット'},
+      {s:14,  dur:2,   cls:'',       t:'モカ カット＋泡'},
+      {s:17,  dur:1,   cls:'trial',  t:'チョコ 体験'}] },
+  { d:'7/25', w:'土', evs:[
+      {s:9,   dur:2,   cls:'',       t:'マロン カット＋シャンプー'},
+      {s:10,  dur:1.5, cls:'',       t:'ムギ シャンプー'},
+      {s:11.5,dur:2,   cls:'',       t:'チョコ シャンプー'},
+      {s:14,  dur:1.5, cls:'',       t:'レオ カット'},
+      {s:16,  dur:1.5, cls:'',       t:'きなこ シャンプー'}] },
+  { d:'7/26', w:'日', evs:[
+      {s:9,   dur:8,   cls:'school', t:'幼稚園 3頭'},
+      {s:10,  dur:1.5, cls:'',       t:'ベル カット'},
+      {s:13,  dur:2,   cls:'',       t:'ラテ カット＋シャンプー'}] },
+];
+const wtax = document.getElementById('wtax'), wtl = document.getElementById('wtl');
+for (let h = 0; h <= DAY_HOURS; h++) {
+  const s = document.createElement('span');
+  s.style.left = (h / DAY_HOURS * 100) + '%';
+  if (h === DAY_HOURS) s.style.transform = 'translateX(-100%)';
+  s.textContent = (DAY_START + h) + ':00';
+  wtax.appendChild(s);
+}
+WEEK.forEach(day => {
+  const tr = document.createElement('div'); tr.className = 'trow';
+  const lb = document.createElement('button'); lb.className = 'rlab' + (day.w === '土' ? ' sat' : day.w === '日' ? ' sun' : '');
+  lb.type = 'button';
+  lb.innerHTML = day.d + '（' + day.w + '）<span class="role">' + (day.closed ? '定休日' : day.evs.length + ' 件') + (day.today ? '・本日' : '') + '</span>';
+  lb.addEventListener('click', () => setView('day'));
+  const bd = document.createElement('div'); bd.className = 'rbody';
+  if (day.closed) {
+    const h = document.createElement('div'); h.className = 'hatch';
+    h.style.left = '0'; h.style.width = '100%'; h.textContent = '定休日';
+    bd.appendChild(h);
+  }
+  day.evs.forEach(e => {
+    const el = document.createElement('div');
+    const school = e.cls === 'school';
+    el.className = 'tev ' + e.cls + (school ? ' laneA' : ' laneB');   // 幼稚園は上段、施術は下段
+    el.style.left  = ((e.s - DAY_START) / DAY_HOURS * 100) + '%';
+    el.style.width = (e.dur / DAY_HOURS * 100) + '%';
+    el.innerHTML = school
+      ? '<b>' + e.t + '</b>　' + fmt(e.s) + '〜' + fmt(e.s + e.dur)
+      : '<b>' + e.t + '</b>' + fmt(e.s) + '〜' + fmt(e.s + e.dur);
+    el.title = day.d + ' ' + fmt(e.s) + '〜' + fmt(e.s + e.dur) + '　' + e.t;
+    bd.appendChild(el);
+  });
+  tr.append(lb, bd); wtl.appendChild(tr);
+});
+
+// ================= 月表示 =================
+// [日, サロン件数, スクール頭数, 体験件数]（0 = 定休日）
+// 水曜定休（2026年7月は 1・8・15・22・29 日）。20〜26日は週表示の内容と一致
+const MONTH = [
+  [1,0,0,0],[2,6,5,1],[3,8,6,0],[4,9,0,1],[5,5,3,0],[6,4,5,0],[7,6,6,1],
+  [8,0,0,0],[9,7,4,0],[10,8,6,1],[11,11,0,0],[12,4,3,0],[13,5,5,0],[14,6,6,2],
+  [15,0,0,0],[16,6,4,0],[17,9,6,1],[18,10,0,1],[19,3,3,0],[20,3,5,0],[21,1,6,2],
+  [22,0,0,0],[23,3,4,0],[24,4,6,1],[25,5,0,0],[26,2,3,0],[27,4,5,0],[28,6,6,1],
+  [29,0,0,0],[30,7,4,0],[31,8,6,0],
+];
+const mgrid = document.getElementById('mgrid');
+['月','火','水','木','金','土','日'].forEach((w, i) => {
+  const d = document.createElement('div');
+  d.className = 'dow' + (i === 5 ? ' sat' : i === 6 ? ' sun' : '');
+  d.textContent = w;
+  mgrid.appendChild(d);
+});
+for (let i = 0; i < 2; i++) {                       // 2026/7/1 は水曜 → 月・火は前月分
+  const c = document.createElement('div'); c.className = 'mcell out';
+  c.innerHTML = '<span class="dnum">' + (29 + i) + '</span>';
+  mgrid.appendChild(c);
+}
+MONTH.forEach(([day, salon, school, trial]) => {
+  const dow = (day + 1) % 7;                        // 0=月 … 5=土, 6=日
+  const c = document.createElement('button'); c.type = 'button';
+  c.className = 'mcell' + (day === 24 ? ' today' : '') + (salon === 0 ? ' out' : '');
+  let html = '<span class="dnum' + (dow === 5 ? ' sat' : dow === 6 ? ' sun' : '') + '">' + day + '</span>';
+  if (salon === 0) {
+    html += '<span class="closed">定休日</span>';
+  } else {
+    html += '<span class="mline"><i style="background:var(--accent)"></i><span>サロン</span><b>' + salon + '</b></span>';
+    if (school) html += '<span class="mline"><i style="background:var(--honey)"></i><span>スクール</span><b>' + school + '</b></span>';
+    if (trial)  html += '<span class="mline"><i style="background:var(--good)"></i><span>体験</span><b>' + trial + '</b></span>';
+  }
+  c.innerHTML = html;
+  if (salon) c.addEventListener('click', () => setView('day'));
+  mgrid.appendChild(c);
+});
+for (let i = 0; i < 2; i++) {                       // 7/31 は金曜 → 土・日は翌月分
+  const c = document.createElement('div'); c.className = 'mcell out';
+  c.innerHTML = '<span class="dnum">' + (1 + i) + '</span>';
+  mgrid.appendChild(c);
+}
+const mt = MONTH.reduce((a, x) => [a[0] + x[1], a[1] + x[2], a[2] + x[3]], [0, 0, 0]);
+document.getElementById('msum').innerHTML =
+  '7月合計　サロン <b>' + mt[0] + ' 件</b>　スクール延べ <b>' + mt[1] + ' 頭</b>　体験 <b>' + mt[2] + ' 件</b>　営業 <b>' + MONTH.filter(x => x[1]).length + ' 日</b>（水曜定休）';
+
+// ---- 表示切替 ----
+const VIEWS = {
+  day:   { range:'2026年7月24日（金）', sub:'横軸が時間・縦が担当の表示。シフト休は自動で網掛けになります。<b>タップで詳細（キャンセル・削除）</b>、<b>長押しして下の行へずらすとコピー（PCはそのままドラッグでOK）</b>、<b>両端をスライドすると時間変更</b>ができます（すべて実際に試せます・30分単位）。' },
+  week:  { range:'2026年7月20日（月）〜 7月26日（日）', sub:'1週間の予約を一覧で確認できます。日付をタップするとその日の詳細（日表示）に切り替わります。' },
+  month: { range:'2026年7月', sub:'日ごとの件数を俯瞰できます。日付をタップするとその日の詳細（日表示）に切り替わります。' },
+};
+function setView(v){
+  document.querySelectorAll('#vseg button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+  ['day', 'week', 'month'].forEach(x => document.getElementById('v-' + x).style.display = x === v ? '' : 'none');
+  document.getElementById('vrange').textContent = VIEWS[v].range;
+  document.getElementById('calsub').innerHTML = VIEWS[v].sub;
+}
+document.getElementById('vseg').addEventListener('click', e => {
+  const b = e.target.closest('button[data-v]');
+  if (b) setView(b.dataset.v);
+});
+setView('day');
 
 // ---- 長押しドラッグでコピー ----
 const toast = document.getElementById('toast');
