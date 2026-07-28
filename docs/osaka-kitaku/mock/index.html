@@ -296,7 +296,7 @@ textarea{width:100%; border:1px solid var(--line); border-radius:8px; background
     <div class="kpi"><div class="k">当月入園数</div><div class="v num">6<small> 頭</small></div><div class="d up">先月 +2</div></div>
     <div class="kpi"><div class="k">体験入園数</div><div class="v num">9<small> 頭</small></div><div class="d up">入園率 67%</div></div>
     <div class="kpi"><div class="k">当月来園数</div><div class="v num">182<small> 件</small></div><div class="d up">先月同日比 +11</div></div>
-    <div class="kpi"><div class="k">振替できなかった回数</div><div class="v num">3<small> 回</small></div><div class="d dn">失効前の未消化 7回</div></div>
+    <div class="kpi"><div class="k">振替できなかった回数</div><div class="v num">3<small> 回</small></div><div class="d dn">7月失効・対象 2名（顧客別に記録）</div></div>
   </div>
 
   <div class="grid dash2">
@@ -377,6 +377,7 @@ textarea{width:100%; border:1px solid var(--line); border-radius:8px; background
       <span class="pill acc">スクール 月4会員</span>
       <span class="pill hny">回数券 残3回</span>
       <span class="pill warn">ワクチン更新 8/15期限</span>
+      <span class="pill crit">振替失効 累計4回</span>
     </div>
   </div>
 
@@ -413,6 +414,18 @@ textarea{width:100%; border:1px solid var(--line); border-radius:8px; background
           <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-top:8px"><span>先月からの振替分</span><b class="num">1 回（8月末まで）</b></div>
           <div class="meter"><i style="width:0%;background:var(--honey)"></i></div>
           <p style="font-size:12px;color:var(--muted);margin:8px 0 0">当月分を優先消化 → その後に振替分を消化。1週間来店がない場合は残回数をリマインドします。</p>
+        </div>
+      </div>
+      <div class="card">
+        <div class="hd"><h2>振替できなかった回数</h2><span class="pill crit num">累計 4 回</span></div>
+        <div class="bd">
+          <table style="table-layout:fixed">
+            <tr><th style="width:78px">失効日</th><th>内訳</th><th class="r" style="width:56px;white-space:nowrap">回数</th></tr>
+            <tr><td class="num">6/30</td><td>スクール月4会員<span style="display:block;font-size:11.5px;color:var(--muted)">5月分の振替</span></td><td class="r num">1</td></tr>
+            <tr><td class="num">4/30</td><td>スクール月4会員<span style="display:block;font-size:11.5px;color:var(--muted)">3月分の振替</span></td><td class="r num">2</td></tr>
+            <tr><td class="num">2/20</td><td>回数券<span style="display:block;font-size:11.5px;color:var(--muted)">期限2ヶ月・購入 12/20</span></td><td class="r num">1</td></tr>
+          </table>
+          <p style="font-size:12px;color:var(--muted);margin:10px 0 0">当月分・振替分ともに消化されずに期限を過ぎた回数を、顧客ごとに記録します。過去12ヶ月で <b class="num">4回</b>（うち今年度 <b class="num">3回</b>）。</p>
         </div>
       </div>
     </div>
