@@ -202,6 +202,26 @@ td.r,th.r{text-align:right}
 .tl .tt b{margin-right:6px}
 .tl .memo{font-size:12px; color:var(--muted); margin-top:2px}
 
+/* ---------- customer list ---------- */
+.search{display:flex; gap:8px; align-items:center; margin-bottom:14px}
+.search input{flex:1; max-width:340px; border:1px solid var(--line); border-radius:9px; background:var(--surface); color:var(--ink); font:inherit; font-size:13px; padding:9px 12px}
+.search input:focus-visible{outline:2px solid var(--accent); outline-offset:-1px}
+.search .cnt{font-size:12.5px; color:var(--muted)}
+.owners{display:grid; grid-template-columns:repeat(auto-fill,minmax(316px,1fr)); gap:14px}
+.ocard{background:var(--surface); border:1px solid var(--line); border-radius:12px; box-shadow:var(--shadow); padding:14px 16px}
+.ocard .oh{display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; margin-bottom:2px}
+.ocard .on{font-size:14.5px; font-weight:700}
+.ocard .om{font-size:11.5px; color:var(--muted); margin-bottom:10px}
+.dogs{display:grid; gap:7px}
+.dogbtn{display:flex; align-items:center; flex-wrap:wrap; gap:6px 9px; width:100%; text-align:left; background:var(--surface2); border:1px solid transparent; border-radius:9px; font:inherit; padding:7px 10px; cursor:pointer}
+.dogbtn .dname{flex:1 1 auto; min-width:0}
+.dogbtn:hover{border-color:var(--accent); background:var(--accent-soft)}
+.dogbtn:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+.dogbtn .dav{width:30px; height:30px; border-radius:50%; background:var(--accent); color:var(--accent-ink); display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; flex:none}
+.dogbtn .dn{font-size:13px; font-weight:700; line-height:1.3}
+.dogbtn .db{display:block; font-size:11px; color:var(--muted); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.dogbtn .dtags{margin-left:auto; display:flex; gap:4px; flex-wrap:wrap; justify-content:flex-end; flex:0 0 auto}
+
 /* ---------- reminders ---------- */
 .rem{display:grid; grid-template-columns:1fr; gap:0}
 .rem .row{display:grid; grid-template-columns:44px 1fr auto auto; gap:12px; align-items:center; padding:11px 16px; border-bottom:1px solid var(--line)}
@@ -276,6 +296,7 @@ textarea{width:100%; border:1px solid var(--line); border-radius:8px; background
     <div class="nav-label">メニュー</div>
     <button class="on" data-s="dash"><span class="ic">&#9632;</span>ダッシュボード</button>
     <button data-s="cal"><span class="ic">&#9633;</span>予約カレンダー</button>
+    <button data-s="list"><span class="ic">&#9633;</span>顧客一覧</button>
     <button data-s="cust"><span class="ic">&#9633;</span>顧客カルテ</button>
     <button data-s="rem"><span class="ic">&#9633;</span>リマインド</button>
     <button data-s="shift"><span class="ic">&#9633;</span>シフト入力</button>
@@ -364,85 +385,21 @@ textarea{width:100%; border:1px solid var(--line); border-radius:8px; background
   <div class="toast" id="toast" role="status"></div>
 </section>
 
+<!-- ================= 顧客一覧 ================= -->
+<section class="screen" id="s-list">
+  <div class="crumb">顧客管理</div>
+  <h1>顧客一覧</h1>
+  <p class="sub">飼い主ごとにわんちゃんをまとめて管理します。名前をタップするとカルテが開きます。</p>
+  <div class="search">
+    <input id="q" type="search" placeholder="飼い主名・わんちゃん名・犬種で検索" aria-label="顧客を検索">
+    <span class="cnt" id="cnt"></span>
+  </div>
+  <div class="owners" id="owners"></div>
+</section>
+
 <!-- ================= 顧客カルテ ================= -->
 <section class="screen" id="s-cust">
-  <div class="crumb">顧客管理 / 顧客一覧 /</div>
-  <div class="cust-hd">
-    <div class="avatar">マ</div>
-    <div>
-      <h1 style="margin-bottom:0">マロン <span style="font-size:13px;color:var(--muted);font-weight:600">トイプードル・5歳・♀</span></h1>
-      <div style="font-size:12.5px;color:var(--muted)">飼い主: 田中 里奈 様｜初回来店: 2024/03（経路: EPARK）</div>
-    </div>
-    <div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
-      <span class="pill acc">スクール 月4会員</span>
-      <span class="pill hny">回数券 残3回</span>
-      <span class="pill warn">ワクチン更新 8/15期限</span>
-      <span class="pill crit">振替失効 累計4回</span>
-    </div>
-  </div>
-
-  <div class="grid cust2">
-    <div style="display:grid;gap:16px;align-content:start">
-      <div class="card">
-        <div class="hd"><h2>基本情報</h2></div>
-        <div class="bd">
-          <dl class="kv">
-            <dt>飼い主</dt><dd>田中 里奈 様</dd>
-            <dt>連絡先</dt><dd>090-XXXX-XXXX</dd>
-            <dt>LINE</dt><dd><span class="pill good">連携済み</span></dd>
-            <dt>誕生日</dt><dd>2021/02/14（犬）<span class="pill mut">自動メッセージON</span></dd>
-            <dt>来店経路</dt><dd>EPARK</dd>
-            <dt>かかりつけ</dt><dd>北区どうぶつ病院</dd>
-          </dl>
-        </div>
-      </div>
-      <div class="card">
-        <div class="hd"><h2>ワクチン</h2></div>
-        <div class="bd">
-          <dl class="kv">
-            <dt>混合</dt><dd>2025/08/15 接種 <span class="pill warn">更新まで 22日</span></dd>
-            <dt>狂犬病</dt><dd>2026/04/03 接種 <span class="pill good">有効</span></dd>
-          </dl>
-          <p style="font-size:12px;color:var(--muted);margin:8px 0 0">直近半年以内の利用者のため、更新案内の自動送信対象です（スタッフにも通知）。</p>
-        </div>
-      </div>
-      <div class="card">
-        <div class="hd"><h2>スクール利用（7月）</h2></div>
-        <div class="bd">
-          <div style="display:flex;justify-content:space-between;font-size:12.5px"><span>当月分（月4会員）</span><b class="num">3 / 4 回</b></div>
-          <div class="meter"><i style="width:75%"></i></div>
-          <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-top:8px"><span>先月からの振替分</span><b class="num">1 回（8月末まで）</b></div>
-          <div class="meter"><i style="width:0%;background:var(--honey)"></i></div>
-          <p style="font-size:12px;color:var(--muted);margin:8px 0 0">当月分を優先消化 → その後に振替分を消化。1週間来店がない場合は残回数をリマインドします。</p>
-        </div>
-      </div>
-      <div class="card">
-        <div class="hd"><h2>振替できなかった回数</h2><span class="pill crit num">累計 4 回</span></div>
-        <div class="bd">
-          <table style="table-layout:fixed">
-            <tr><th style="width:78px">失効日</th><th>内訳</th><th class="r" style="width:56px;white-space:nowrap">回数</th></tr>
-            <tr><td class="num">6/30</td><td>スクール月4会員<span style="display:block;font-size:11.5px;color:var(--muted)">5月分の振替</span></td><td class="r num">1</td></tr>
-            <tr><td class="num">4/30</td><td>スクール月4会員<span style="display:block;font-size:11.5px;color:var(--muted)">3月分の振替</span></td><td class="r num">2</td></tr>
-            <tr><td class="num">2/20</td><td>回数券<span style="display:block;font-size:11.5px;color:var(--muted)">期限2ヶ月・購入 12/20</span></td><td class="r num">1</td></tr>
-          </table>
-          <p style="font-size:12px;color:var(--muted);margin:10px 0 0">当月分・振替分ともに消化されずに期限を過ぎた回数を、顧客ごとに記録します。過去12ヶ月で <b class="num">4回</b>（うち今年度 <b class="num">3回</b>）。</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="hd"><h2>来店履歴・カルテ</h2><span class="pill mut">全 24 件</span></div>
-      <div class="bd" style="padding-top:4px">
-        <ul class="tl">
-          <li><span class="dt num">7/22 火</span><div class="tt"><b>幼稚園</b><span class="src line">LINE</span><div class="memo">園庭あそび中心。ドッグランで小型犬グループと交流、落ち着いて過ごせた。</div></div></li>
-          <li><span class="dt num">7/15 火</span><div class="tt"><b>幼稚園</b><span class="src line">LINE</span><div class="memo">お昼寝短め。おやつトレーニング「まて」成功率アップ。</div></div></li>
-          <li><span class="dt num">7/12 土</span><div class="tt"><b>カット＋シャンプー</b><span class="src epark">EPARK</span> 担当: 佐藤<div class="memo">テディベアカット。耳周り短めのご希望。皮膚の赤みなし。</div></div></li>
-          <li><span class="dt num">7/8 火</span><div class="tt"><b>幼稚園</b><span class="src line">LINE</span><div class="memo">初めての大型犬に少し緊張。徐々に慣れてきた様子。</div></div></li>
-          <li><span class="dt num">6/28 土</span><div class="tt"><b>シャンプー（回数券）</b><span class="src tel">電話</span> 担当: 高橋<div class="memo">回数券 残3回に。次回期限 8/20。</div></div></li>
-        </ul>
-      </div>
-    </div>
-  </div>
+  <div id="custbody"></div>
 </section>
 
 <!-- ================= リマインド ================= -->
@@ -556,14 +513,235 @@ textarea{width:100%; border:1px solid var(--line); border-radius:8px; background
 </div>
 
 <script>
+// ================= 顧客データ（ダミー） =================
+const OWNERS = [
+  { name:'田中 里奈', tel:'090-1234-5678', line:true, source:'EPARK', since:'2024/03', clinic:'北区どうぶつ病院', dogs:[
+    { n:'マロン', b:'トイプードル', age:5, sex:'♀', bd:'2021/02/14', total:24, last:'7/22',
+      plan:{label:'スクール 月4会員', quota:4, used:3, carry:1, carryLimit:'8月末まで'},
+      ticket:{left:3, exp:'8/20'},
+      vac:{ mix:'2025/08/15', mixState:['warn','更新まで 22日'], rabies:'2026/04/03' },
+      lapsed:[['6/30','スクール月4会員','5月分の振替',1],['4/30','スクール月4会員','3月分の振替',2],['2/20','回数券','期限2ヶ月・購入 12/20',1]],
+      visits:[['7/22 火','幼稚園','line','','園庭あそび中心。ドッグランで小型犬グループと交流、落ち着いて過ごせた。'],
+              ['7/15 火','幼稚園','line','','お昼寝短め。おやつトレーニング「まて」成功率アップ。'],
+              ['7/12 土','カット＋シャンプー','epark','佐藤','テディベアカット。耳周り短めのご希望。皮膚の赤みなし。'],
+              ['7/8 火','幼稚園','line','','初めての大型犬に少し緊張。徐々に慣れてきた様子。'],
+              ['6/28 土','シャンプー（回数券）','tel','高橋','回数券 残3回に。次回期限 8/20。']] },
+    { n:'ムギ', b:'柴', age:2, sex:'♂', bd:'2024/05/03', total:7, last:'7/12',
+      plan:null, ticket:{left:5, exp:'9/12'},
+      vac:{ mix:'2026/03/02', mixState:['good','有効'], rabies:'2026/04/03' },
+      lapsed:[],
+      visits:[['7/12 土','シャンプー（回数券）','epark','佐藤','マロンと同時来店。爪切りも実施。'],
+              ['6/14 土','シャンプー（回数券）','epark','伊藤','耳掃除を追加。'],
+              ['5/17 土','シャンプー＋カット','tel','佐藤','夏に向けて short に。']] }]},
+
+  { name:'山口 健太', tel:'080-2345-6789', line:true, source:'公式LINE', since:'2026/07', clinic:'梅田ペットクリニック', dogs:[
+    { n:'ソラ', b:'柴', age:1, sex:'♂', bd:'2025/06/20', total:2, last:'7/21', trial:['入園決定・次回7/29','good'],
+      plan:{label:'スクール 月8会員（8/1〜）', quota:8, used:0, carry:0},
+      ticket:null,
+      vac:{ mix:'2026/05/10', mixState:['good','有効'], rabies:'2026/05/10' },
+      lapsed:[],
+      visits:[['7/21 月','体験入園','line','中村','初めての集団。最初は緊張も、午後は他犬と遊べた。8/1入園でお申込み。'],
+              ['7/14 月','カウンセリング','line','中村','しつけのご相談。トイレトレーニング中。']] }]},
+
+  { name:'佐々木 由美', tel:'090-3456-7890', line:true, source:'EPARK', since:'2023/11', clinic:'北区どうぶつ病院', dogs:[
+    { n:'ココ', b:'チワワ', age:7, sex:'♀', bd:'2019/01/09', total:31, last:'7/24',
+      plan:null, ticket:{left:1, exp:'8/5'},
+      vac:{ mix:'2025/09/01', mixState:['warn','更新まで 39日'], rabies:'2026/04/20' },
+      lapsed:[['5/10','回数券','期限2ヶ月・購入 3/10',2]],
+      visits:[['7/24 金','シャンプー','line','佐藤','皮膚やや乾燥気味。低刺激シャンプーに変更。'],
+              ['6/20 金','シャンプー（回数券）','tel','高橋','残1回に。'],
+              ['5/23 金','カット＋シャンプー','epark','佐藤','顔まわりを丸く。']] },
+    { n:'モモ', b:'MIX', age:4, sex:'♀', bd:'2022/08/30', total:3, last:'7/12', trial:['入園・次回とも未定（追客2回済）','crit'],
+      plan:null, ticket:null,
+      vac:{ mix:'2026/02/14', mixState:['good','有効'], rabies:'2026/04/20' },
+      lapsed:[],
+      visits:[['7/12 土','体験入園','epark','中村','人見知りが強め。少人数クラスをご案内。'],
+              ['6/20 金','シャンプー','tel','伊藤','ココと同時来店。']] }]},
+
+  { name:'中島 翔太', tel:'070-4567-8901', line:true, source:'EPARK TEL', since:'2025/02', clinic:'天満どうぶつ病院', dogs:[
+    { n:'レオ', b:'ポメラニアン', age:2, sex:'♂', bd:'2024/03/18', total:12, last:'7/24', trial:['入園済・次回7/25','good'],
+      plan:{label:'スクール 月4会員', quota:4, used:4, carry:0},
+      ticket:null,
+      vac:{ mix:'2026/01/22', mixState:['good','有効'], rabies:'2026/03/15' },
+      lapsed:[['3/31','スクール月4会員','2月分の振替',1]],
+      visits:[['7/24 金','爪切り','tel','伊藤','あわせて肛門腺も。'],
+              ['7/18 金','体験入園','line','中村','入園お申込み。次回7/25。'],
+              ['7/4 金','幼稚園','line','山本','ボール遊びが得意。']] }]},
+
+  { name:'藤本 恵子', tel:'090-5678-9012', line:false, source:'紹介', since:'2024/09', clinic:'北区どうぶつ病院', dogs:[
+    { n:'ハナ', b:'チワワ', age:3, sex:'♀', bd:'2023/04/02', total:9, last:'7/21', trial:['入園決定・次回日程未定（7/27追客予定）','warn'],
+      plan:null, ticket:{left:4, exp:'9/1'},
+      vac:{ mix:'2025/07/30', mixState:['crit','期限切れ 要確認'], rabies:'2026/04/01' },
+      lapsed:[],
+      visits:[['7/21 月','体験入園','tel','中村','入園申込済。次回日程は調整中。'],
+              ['7/1 火','シャンプー（回数券）','tel','高橋','残4回。'],
+              ['6/3 火','カット','tel','佐藤','夏カット。']] },
+    { n:'きなこ', b:'豆柴', age:6, sex:'♀', bd:'2020/11/11', total:15, last:'6/10',
+      plan:null, ticket:null,
+      vac:{ mix:'2026/06/05', mixState:['good','有効'], rabies:'2026/04/01' },
+      lapsed:[['6/30','回数券','期限2ヶ月・購入 4/30',3]],
+      visits:[['6/10 水','シャンプー','tel','伊藤','回数券の期限をご案内（結果的に3回失効）。'],
+              ['4/30 水','カット＋シャンプー','tel','佐藤','回数券10回を購入。']] }]},
+
+  { name:'大西 亮', tel:'080-6789-0123', line:true, source:'EPARK', since:'2022/06', clinic:'扇町アニマルクリニック', dogs:[
+    { n:'モカ', b:'トイプードル', age:8, sex:'♀', bd:'2018/02/28', total:42, last:'7/24',
+      plan:null, ticket:{left:6, exp:'9/24'},
+      vac:{ mix:'2026/06/18', mixState:['good','有効'], rabies:'2026/05/02' },
+      lapsed:[],
+      visits:[['7/24 金','カット＋泡パック','tel','佐藤','シニアのため短時間で。休憩を挟みながら実施。'],
+              ['6/26 木','シャンプー（回数券）','tel','高橋','関節に負担のない姿勢で。'],
+              ['5/29 木','カット＋シャンプー','epark','佐藤','足まわり短め。']] }]},
+
+  { name:'小林 さやか', tel:'090-7890-1234', line:true, source:'公式LINE', since:'2026/07', clinic:'未登録', dogs:[
+    { n:'クッキー', b:'M.ダックス', age:1, sex:'♂', bd:'2025/03/07', total:1, last:'7/19', trial:['入園・次回とも未定（7/25追客予定）','crit'],
+      plan:null, ticket:null,
+      vac:{ mix:'2026/04/11', mixState:['good','有効'], rabies:'2026/04/11' },
+      lapsed:[],
+      visits:[['7/19 土','体験入園','line','中村','元気いっぱい。ご家族と入園を検討中。']] }]},
+
+  { name:'森田 直樹', tel:'080-8901-2345', line:true, source:'EPARK', since:'2023/04', clinic:'天満どうぶつ病院', dogs:[
+    { n:'プリン', b:'ヨークシャテリア', age:4, sex:'♀', bd:'2022/09/15', total:19, last:'7/24',
+      plan:null, ticket:{left:2, exp:'8/12'},
+      vac:{ mix:'2026/02/26', mixState:['good','有効'], rabies:'2026/03/30' },
+      lapsed:[['1/31','回数券','期限2ヶ月・購入 11/30',1]],
+      visits:[['7/24 金','カット','epark','高橋','リボン付け。写真の掲載OK。'],
+              ['6/28 土','シャンプー（回数券）','epark','高橋','残2回。'],
+              ['5/30 金','カット＋シャンプー','epark','高橋','']] },
+    { n:'チョコ', b:'ラブラドール', age:3, sex:'♂', bd:'2023/06/01', total:4, last:'7/24', trial:['本日 体験（17:00〜）','warn'],
+      plan:null, ticket:null,
+      vac:{ mix:'2026/05/20', mixState:['good','有効'], rabies:'2026/03/30' },
+      lapsed:[],
+      visits:[['7/24 金','体験入園 面談','line','中村','大型犬クラスをご案内予定。'],
+              ['6/14 土','シャンプー','epark','伊藤','大型犬対応。抜け毛ケア。']] }]},
+
+  { name:'岡田 美穂', tel:'090-9012-3456', line:false, source:'電話', since:'2021/10', clinic:'北区どうぶつ病院', dogs:[
+    { n:'ラテ', b:'シーズー', age:9, sex:'♀', bd:'2017/05/22', total:53, last:'6/28',
+      plan:null, ticket:{left:2, exp:'8/1'},
+      vac:{ mix:'2025/08/20', mixState:['warn','更新まで 27日'], rabies:'2026/04/12' },
+      lapsed:[['4/1','回数券','期限2ヶ月・購入 2/1',2]],
+      visits:[['6/28 土','シャンプー（回数券）','tel','伊藤','2週間以上来店なし → 来店促しリマインド送信済。'],
+              ['5/31 土','カット＋シャンプー','tel','佐藤','目まわりのケア。']] }]},
+
+  { name:'西村 大輔', tel:'070-0123-4567', line:true, source:'EPARK', since:'2025/08', clinic:'扇町アニマルクリニック', dogs:[
+    { n:'ベル', b:'M.シュナウザー', age:5, sex:'♀', bd:'2021/07/07', total:11, last:'7/20',
+      plan:{label:'スクール 月8会員', quota:8, used:5, carry:2, carryLimit:'8月末まで'},
+      ticket:null,
+      vac:{ mix:'2026/01/15', mixState:['good','有効'], rabies:'2026/04/05' },
+      lapsed:[['5/31','スクール月8会員','4月分の振替',2]],
+      visits:[['7/20 日','幼稚園','line','山本','アジリティに挑戦。'],
+              ['7/13 日','幼稚園','line','山本','他犬とのあいさつが上手に。'],
+              ['7/6 日','幼稚園','line','中村','']] }]},
+];
+// ---- 顧客一覧の描画 ----
+const ownersEl = document.getElementById('owners'), cntEl = document.getElementById('cnt'), qEl = document.getElementById('q');
+function dogTags(d){
+  const t = [];
+  if (d.plan) t.push('<span class="pill acc">' + d.plan.label.replace('スクール ', '') + '</span>');
+  if (d.ticket) t.push('<span class="pill hny">回数券 残' + d.ticket.left + '</span>');
+  if (d.vac.mixState[0] !== 'good') t.push('<span class="pill ' + d.vac.mixState[0] + '">ワクチン</span>');
+  if (d.lapsed.length) t.push('<span class="pill crit">失効' + d.lapsed.reduce((a, x) => a + x[3], 0) + '</span>');
+  return t.join('');
+}
+function renderOwners(q = ''){
+  const k = q.trim().toLowerCase();
+  ownersEl.innerHTML = '';
+  let dogCount = 0, ownerCount = 0;
+  OWNERS.forEach(o => {
+    const dogs = o.dogs.filter(d => !k || (o.name + d.n + d.b).toLowerCase().includes(k));
+    if (!dogs.length) return;
+    ownerCount++; dogCount += dogs.length;
+    const c = document.createElement('div'); c.className = 'ocard';
+    c.innerHTML = '<div class="oh"><span class="on">' + o.name + ' 様</span>'
+      + (o.dogs.length > 1 ? '<span class="pill mut">' + o.dogs.length + '頭</span>' : '')
+      + (o.line ? '<span class="pill good">LINE</span>' : '<span class="pill mut">LINE未連携</span>') + '</div>'
+      + '<div class="om">' + o.tel + '｜経路: ' + o.source + '｜初回 ' + o.since + '</div>';
+    const list = document.createElement('div'); list.className = 'dogs';
+    dogs.forEach(d => {
+      const b = document.createElement('button'); b.className = 'dogbtn';
+      b.innerHTML = '<span class="dav">' + d.n.charAt(0) + '</span>'
+        + '<span class="dname"><span class="dn">' + d.n + '</span><span class="db">' + d.b + '・' + d.age + '歳・' + d.sex + '</span></span>'
+        + '<span class="dtags">' + dogTags(d) + '</span>';
+      b.addEventListener('click', () => openCarte(d, o));
+      list.appendChild(b);
+    });
+    c.appendChild(list); ownersEl.appendChild(c);
+  });
+  cntEl.textContent = ownerCount + ' 世帯 / ' + dogCount + ' 頭';
+  if (!ownerCount) ownersEl.innerHTML = '<p class="sub">該当する顧客が見つかりません。</p>';
+}
+qEl.addEventListener('input', () => renderOwners(qEl.value));
+renderOwners();
+
+// ---- 顧客カルテの描画 ----
+const custbody = document.getElementById('custbody');
+function openCarte(d, o){
+  const lapsedTotal = d.lapsed.reduce((a, x) => a + x[3], 0);
+  const tags = [];
+  if (d.plan) tags.push('<span class="pill acc">' + d.plan.label + '</span>');
+  if (d.ticket) tags.push('<span class="pill hny">回数券 残' + d.ticket.left + '回（期限 ' + d.ticket.exp + '）</span>');
+  tags.push('<span class="pill ' + d.vac.mixState[0] + '">ワクチン ' + d.vac.mixState[1] + '</span>');
+  if (lapsedTotal) tags.push('<span class="pill crit">振替失効 累計' + lapsedTotal + '回</span>');
+  if (d.trial) tags.push('<span class="pill ' + d.trial[1] + '">体験: ' + d.trial[0] + '</span>');
+
+  const school = d.plan ? '<div class="card"><div class="hd"><h2>スクール利用（7月）</h2></div><div class="bd">'
+    + '<div style="display:flex;justify-content:space-between;font-size:12.5px"><span>当月分（' + d.plan.label.replace('スクール ', '') + '）</span><b class="num">' + d.plan.used + ' / ' + d.plan.quota + ' 回</b></div>'
+    + '<div class="meter"><i style="width:' + (d.plan.used / d.plan.quota * 100) + '%"></i></div>'
+    + (d.plan.carry ? '<div style="display:flex;justify-content:space-between;font-size:12.5px;margin-top:8px"><span>先月からの振替分</span><b class="num">' + d.plan.carry + ' 回（' + d.plan.carryLimit + '）</b></div><div class="meter"><i style="width:0%;background:var(--honey)"></i></div>' : '')
+    + '<p style="font-size:12px;color:var(--muted);margin:8px 0 0">当月分を優先消化 → その後に振替分を消化。1週間来店がない場合は残回数をリマインドします。</p></div></div>' : '';
+
+  const lapsed = '<div class="card"><div class="hd"><h2>振替できなかった回数</h2><span class="pill ' + (lapsedTotal ? 'crit' : 'good') + ' num">累計 ' + lapsedTotal + ' 回</span></div><div class="bd">'
+    + (lapsedTotal
+      ? '<table style="table-layout:fixed"><tr><th style="width:78px">失効日</th><th>内訳</th><th class="r" style="width:56px;white-space:nowrap">回数</th></tr>'
+        + d.lapsed.map(x => '<tr><td class="num">' + x[0] + '</td><td>' + x[1] + '<span style="display:block;font-size:11.5px;color:var(--muted)">' + x[2] + '</span></td><td class="r num">' + x[3] + '</td></tr>').join('')
+        + '</table><p style="font-size:12px;color:var(--muted);margin:10px 0 0">当月分・振替分ともに消化されずに期限を過ぎた回数を、顧客ごとに記録します。</p>'
+      : '<p style="font-size:12.5px;color:var(--muted);margin:0">失効した回数はありません。</p>')
+    + '</div></div>';
+
+  custbody.innerHTML =
+    '<div class="crumb"><a href="#" id="bklist" style="color:var(--accent)">顧客管理 / 顧客一覧</a> /</div>'
+    + '<div class="cust-hd"><div class="avatar">' + d.n.charAt(0) + '</div><div>'
+    + '<h1 style="margin-bottom:0">' + d.n + ' <span style="font-size:13px;color:var(--muted);font-weight:600">' + d.b + '・' + d.age + '歳・' + d.sex + '</span></h1>'
+    + '<div style="font-size:12.5px;color:var(--muted)">飼い主: ' + o.name + ' 様｜初回来店: ' + o.since + '（経路: ' + o.source + '）'
+    + (o.dogs.length > 1 ? '｜同伴: ' + o.dogs.filter(x => x !== d).map(x => x.n).join('・') : '') + '</div></div>'
+    + '<div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;max-width:520px">' + tags.join('') + '</div></div>'
+    + '<div class="grid cust2"><div style="display:grid;gap:16px;align-content:start">'
+    + '<div class="card"><div class="hd"><h2>基本情報</h2></div><div class="bd"><dl class="kv">'
+    + '<dt>飼い主</dt><dd>' + o.name + ' 様</dd>'
+    + '<dt>連絡先</dt><dd>' + o.tel + '</dd>'
+    + '<dt>LINE</dt><dd>' + (o.line ? '<span class="pill good">連携済み</span>' : '<span class="pill mut">未連携（メール送信）</span>') + '</dd>'
+    + '<dt>誕生日</dt><dd>' + d.bd + '<span class="pill mut">自動メッセージON</span></dd>'
+    + '<dt>来店経路</dt><dd>' + o.source + '</dd>'
+    + '<dt>かかりつけ</dt><dd>' + o.clinic + '</dd>'
+    + '</dl></div></div>'
+    + '<div class="card"><div class="hd"><h2>ワクチン</h2></div><div class="bd"><dl class="kv">'
+    + '<dt>混合</dt><dd>' + d.vac.mix + ' 接種 <span class="pill ' + d.vac.mixState[0] + '">' + d.vac.mixState[1] + '</span></dd>'
+    + '<dt>狂犬病</dt><dd>' + d.vac.rabies + ' 接種 <span class="pill good">有効</span></dd></dl>'
+    + '<p style="font-size:12px;color:var(--muted);margin:8px 0 0">直近半年以内の利用者は更新案内の自動送信対象です（スタッフにも通知）。</p></div></div>'
+    + school + lapsed + '</div>'
+    + '<div class="card"><div class="hd"><h2>来店履歴・カルテ</h2><span class="pill mut">全 ' + d.total + ' 件</span></div>'
+    + '<div class="bd" style="padding-top:4px"><ul class="tl">'
+    + d.visits.map(v => '<li><span class="dt num">' + v[0] + '</span><div class="tt"><b>' + v[1] + '</b>'
+        + '<span class="src ' + v[2] + '">' + ({ line:'LINE', epark:'EPARK', tel:'電話' })[v[2]] + '</span>'
+        + (v[3] ? ' 担当: ' + v[3] : '')
+        + (v[4] ? '<div class="memo">' + v[4] + '</div>' : '') + '</div></li>').join('')
+    + '</ul></div></div></div>';
+
+  document.getElementById('bklist').addEventListener('click', e => { e.preventDefault(); go('list'); });
+  go('cust');
+}
 // ---- タブ切替 ----
 const nav = document.getElementById('nav');
+function go(s){
+  nav.querySelectorAll('button').forEach(x => { const on = x.dataset.s === s; x.classList.toggle('on', on); x.querySelector('.ic').innerHTML = on ? '&#9632;' : '&#9633;'; });
+  document.querySelectorAll('.screen').forEach(sec => sec.classList.toggle('on', sec.id === 's' + '-' + s));
+  window.scrollTo(0, 0);
+}
 nav.addEventListener('click', e => {
   const b = e.target.closest('button[data-s]');
-  if (!b) return;
-  nav.querySelectorAll('button').forEach(x => { x.classList.toggle('on', x === b); x.querySelector('.ic').innerHTML = x === b ? '&#9632;' : '&#9633;'; });
-  document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === 's-' + b.dataset.s));
+  if (b) go(b.dataset.s);
 });
+openCarte(OWNERS[0].dogs[0], OWNERS[0]);   // 初期表示用にカルテを組み立て
+go('dash');
 
 // ---- 予約カレンダー（横タイムライン 9:00-18:00） ----
 const DAY_START = 9, DAY_HOURS = 9;                 // 9:00-18:00
