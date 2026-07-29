@@ -280,6 +280,7 @@ td.r,th.r{text-align:right}
 .cres{display:none; gap:8px; flex-wrap:wrap; background:var(--surface); border:1px solid var(--line);
   border-radius:12px; box-shadow:var(--shadow); padding:12px 14px; margin-bottom:18px}
 .cres.on{display:flex}
+.dsearch input{max-width:440px; font-size:14px; padding:11px 14px}
 .cres .dogbtn{flex:1 1 280px; max-width:360px}
 .cres .none{font-size:12.5px; color:var(--muted); margin:0}
 .cres .owner{display:block; font-size:11px; color:var(--muted); font-weight:600}
@@ -380,7 +381,7 @@ textarea{width:100%; border:1px solid var(--line); border-radius:8px; background
     <button data-s="shift"><span class="ic">&#9633;</span>シフト入力</button>
     <button data-s="sns"><span class="ic">&#9633;</span>SNS投稿</button>
   </nav>
-  <div class="foot">FREEWAN 管理システム<br>モック <b>v1.0</b>（更新 2026-07-28）<br>ダッシュボードにボタン設置</div>
+  <div class="foot">FREEWAN 管理システム<br>モック <b>v1.1</b>（更新 2026-07-29）<br>ダッシュボードに検索ボックス</div>
 </aside>
 
 <main class="main">
@@ -390,6 +391,12 @@ textarea{width:100%; border:1px solid var(--line); border-radius:8px; background
   <div class="crumb">2026年7月24日（金）</div>
   <h1>ダッシュボード</h1>
   <p class="sub">よく使う機能へのショートカット。当月の入園・来園状況とトリマー実績もこの画面で確認できます。</p>
+
+  <div class="search dsearch">
+    <input id="dq" type="search" placeholder="顧客名・わんちゃん名・犬種で検索してカルテを開く" aria-label="顧客・わんちゃんを検索">
+    <span class="cnt" id="dcnt"></span>
+  </div>
+  <div id="dres" class="cres"></div>
 
   <div class="quick" id="quick">
     <button class="qbtn" data-s="cal"><span class="qi">&#128197;</span><span class="qt">予約カレンダー<span class="qd">本日 12件・シフト反映</span></span></button>
@@ -795,33 +802,37 @@ function renderOwners(q = ''){
 qEl.addEventListener('input', () => renderOwners(qEl.value));
 renderOwners();
 
-// ---- カルテ内の検索 ----
-const cq = document.getElementById('cq'), cres = document.getElementById('cres'), ccnt = document.getElementById('ccnt');
-cq.addEventListener('input', () => {
-  const k = cq.value.trim().toLowerCase();
-  cres.innerHTML = '';
-  if (!k) { cres.classList.remove('on'); ccnt.textContent = ''; return; }
-  const hits = [];
-  OWNERS.forEach(o => o.dogs.forEach(d => {
-    if ((o.name + d.n + d.b).toLowerCase().includes(k)) hits.push([d, o]);
-  }));
-  ccnt.textContent = hits.length + ' 件';
-  cres.classList.add('on');
-  if (!hits.length) { cres.innerHTML = '<p class="none">該当するわんちゃんが見つかりません。</p>'; return; }
-  hits.slice(0, 12).forEach(([d, o]) => {
-    const b = document.createElement('button'); b.className = 'dogbtn';
-    b.innerHTML = '<span class="dav">' + d.n.charAt(0) + '</span>'
-      + '<span class="dname"><span class="dn">' + d.n + '</span>'
-      + '<span class="db">' + d.b + '・' + d.age + '歳・' + d.sex + '</span>'
-      + '<span class="owner">' + o.name + ' 様</span></span>'
-      + '<span class="dtags">' + dogTags(d) + '</span>';
-    b.addEventListener('click', () => {
-      openCarte(d, o);
-      cq.value = ''; cres.classList.remove('on'); ccnt.textContent = '';
+// ---- 顧客・わんちゃんの検索（ダッシュボードとカルテで共通） ----
+function bindSearch(inputId, resId, cntId){
+  const input = document.getElementById(inputId);
+  const res = document.getElementById(resId);
+  const cnt = document.getElementById(cntId);
+  const clear = () => { input.value = ''; res.classList.remove('on'); res.innerHTML = ''; cnt.textContent = ''; };
+  input.addEventListener('input', () => {
+    const k = input.value.trim().toLowerCase();
+    res.innerHTML = '';
+    if (!k) { res.classList.remove('on'); cnt.textContent = ''; return; }
+    const hits = [];
+    OWNERS.forEach(o => o.dogs.forEach(d => {
+      if ((o.name + d.n + d.b).toLowerCase().includes(k)) hits.push([d, o]);
+    }));
+    cnt.textContent = hits.length + ' 件';
+    res.classList.add('on');
+    if (!hits.length) { res.innerHTML = '<p class="none">該当するわんちゃんが見つかりません。</p>'; return; }
+    hits.slice(0, 12).forEach(([d, o]) => {
+      const b = document.createElement('button'); b.className = 'dogbtn';
+      b.innerHTML = '<span class="dav">' + d.n.charAt(0) + '</span>'
+        + '<span class="dname"><span class="dn">' + d.n + '</span>'
+        + '<span class="db">' + d.b + '・' + d.age + '歳・' + d.sex + '</span>'
+        + '<span class="owner">' + o.name + ' 様</span></span>'
+        + '<span class="dtags">' + dogTags(d) + '</span>';
+      b.addEventListener('click', () => { openCarte(d, o); clear(); });
+      res.appendChild(b);
     });
-    cres.appendChild(b);
   });
-});
+}
+bindSearch('dq', 'dres', 'dcnt');   // ダッシュボード
+bindSearch('cq', 'cres', 'ccnt');   // 顧客カルテ
 
 // ---- 顧客ごとのリマインド設定 ----
 const REMINDERS = [
