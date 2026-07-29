@@ -52,37 +52,54 @@ body{
   font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic UI","Yu Gothic",Meiryo,sans-serif;
   font-size:14px; line-height:1.6;
 }
-.app{display:flex; flex-direction:column; min-height:100vh}
+.app{display:flex; min-height:100vh}
 
-/* ---------- top header ---------- */
-.top{
-  background:var(--side); color:var(--side-ink);
-  display:flex; align-items:center; gap:10px 24px; flex-wrap:wrap;
-  padding:10px 24px; position:sticky; top:0; z-index:40;
+/* ---------- sidebar ---------- */
+.side{
+  width:212px; flex:none; background:var(--side); color:var(--side-ink);
+  display:flex; flex-direction:column; padding:18px 10px; gap:2px;
 }
-.brand{color:#fff; display:flex; align-items:baseline; gap:10px; flex-wrap:wrap}
-.brand .logo{font-size:18px; font-weight:700; letter-spacing:.04em}
-.brand .store{font-size:11.5px; opacity:.75}
-.brand .paw{color:var(--honey); margin-right:5px}
-.nav{display:flex; gap:3px; flex-wrap:wrap; margin-left:auto}
+.brand{padding:4px 12px 16px; color:#fff}
+.brand .logo{font-size:19px; font-weight:700; letter-spacing:.04em}
+.brand .store{font-size:11.5px; opacity:.75; margin-top:2px}
+.brand .paw{color:var(--honey); margin-right:6px}
+.nav-label{font-size:10.5px; letter-spacing:.14em; opacity:.55; padding:12px 12px 4px}
+.nav{display:flex; flex-direction:column; gap:2px}
 .nav button{
-  display:flex; align-items:center; gap:7px;
-  background:none; border:0; color:inherit; font:inherit; font-size:13px;
-  padding:8px 14px; border-radius:8px; cursor:pointer; white-space:nowrap;
+  display:flex; align-items:center; gap:10px; width:100%;
+  background:none; border:0; color:inherit; font:inherit; font-size:13px; text-align:left;
+  padding:9px 12px; border-radius:8px; cursor:pointer;
 }
 .nav button:hover{background:rgba(255,255,255,.08)}
 .nav button:focus-visible{outline:2px solid var(--honey); outline-offset:-2px}
 .nav button.on{background:var(--side-active); color:#fff; font-weight:700}
-.nav .ic{font-size:11px; opacity:.85}
+.nav .ic{width:16px; text-align:center; flex:none; font-size:11px; opacity:.85}
+.side .foot{margin-top:auto; padding:12px; font-size:11px; opacity:.5}
 .mocktag{
-  padding:4px 10px; border:1px dashed rgba(255,255,255,.3);
-  border-radius:99px; font-size:11px; opacity:.75; white-space:nowrap;
+  margin:0 12px 8px; padding:6px 10px; border:1px dashed rgba(255,255,255,.3);
+  border-radius:8px; font-size:11px; opacity:.8;
 }
-.pagefoot{padding:24px 28px 32px; font-size:11.5px; color:var(--muted); text-align:center}
+
+/* ---------- dashboard quick links ---------- */
+.quick{display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:24px}
+.qbtn{
+  display:flex; align-items:center; gap:12px; text-align:left; cursor:pointer;
+  background:var(--surface); border:1px solid var(--line); border-radius:12px;
+  box-shadow:var(--shadow); padding:14px 16px; font:inherit; color:inherit;
+}
+.qbtn:hover{border-color:var(--accent); background:var(--accent-soft)}
+.qbtn:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+.qbtn .qi{
+  width:38px; height:38px; border-radius:10px; flex:none; display:flex;
+  align-items:center; justify-content:center; font-size:19px;
+  background:var(--accent-soft); color:var(--accent);
+}
+.qbtn .qt{font-size:14px; font-weight:700; line-height:1.35}
+.qbtn .qd{display:block; font-size:11.5px; color:var(--muted); font-weight:600}
 
 /* ---------- main ---------- */
-.main{flex:1; min-width:0; padding:24px 28px 8px}
-.screen{display:none; max-width:1160px; margin:0 auto}
+.main{flex:1; min-width:0; padding:24px 28px 48px}
+.screen{display:none; max-width:1160px}
 .screen.on{display:block}
 .crumb{font-size:12px; color:var(--muted); margin-bottom:2px}
 h1{font-size:20px; margin:0 0 4px; font-weight:700}
@@ -318,12 +335,17 @@ td.r,th.r{text-align:right}
 textarea{width:100%; border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--ink); font:inherit; font-size:13px; padding:10px; resize:vertical}
 
 @media (max-width:860px){
-  .top{padding:10px 14px; gap:8px}
-  .brand{width:100%}
-  .mocktag{display:none}
-  .nav{margin-left:0; width:100%; overflow-x:auto; flex-wrap:nowrap; padding-bottom:2px}
-  .nav button{padding:7px 11px; font-size:12.5px}
+  .app{flex-direction:column}
+  .side{width:100%; padding:10px 12px}
+  .brand{padding:2px 4px 8px}
+  .nav-label,.side .foot,.mocktag{display:none}
+  .nav{flex-direction:row; overflow-x:auto; flex-wrap:nowrap; gap:2px; padding-bottom:2px}
+  .nav button{width:auto; padding:7px 11px; font-size:12.5px; white-space:nowrap}
   .nav .ic{display:none}
+  .quick{grid-template-columns:repeat(2,1fr); gap:8px}
+  .qbtn{padding:10px 12px; gap:9px}
+  .qbtn .qi{width:32px; height:32px; font-size:16px}
+  .qbtn .qt{font-size:12.5px}
   .kpis{grid-template-columns:repeat(2,1fr)}
   .dash2,.cust2,.snswrap{grid-template-columns:1fr}
   .follow3{grid-template-columns:1fr}
@@ -342,13 +364,14 @@ textarea{width:100%; border:1px solid var(--line); border-radius:8px; background
 </style>
 
 <div class="app">
-<header class="top">
+<aside class="side">
   <div class="brand">
-    <span class="logo"><span class="paw">&#128062;</span>FREEWAN</span>
-    <span class="store">大阪北区店｜サロン＆スクール</span>
+    <div class="logo"><span class="paw">&#128062;</span>FREEWAN</div>
+    <div class="store">大阪北区店｜サロン＆スクール</div>
   </div>
-  <span class="mocktag">画面モック（サンプルデータ）</span>
+  <div class="mocktag">画面モック（サンプルデータ）</div>
   <nav class="nav" id="nav">
+    <div class="nav-label">メニュー</div>
     <button class="on" data-s="dash"><span class="ic">&#9632;</span>ダッシュボード</button>
     <button data-s="cal"><span class="ic">&#9633;</span>予約カレンダー</button>
     <button data-s="list"><span class="ic">&#9633;</span>顧客一覧</button>
@@ -357,7 +380,8 @@ textarea{width:100%; border:1px solid var(--line); border-radius:8px; background
     <button data-s="shift"><span class="ic">&#9633;</span>シフト入力</button>
     <button data-s="sns"><span class="ic">&#9633;</span>SNS投稿</button>
   </nav>
-</header>
+  <div class="foot">FREEWAN 管理システム<br>モック <b>v1.0</b>（更新 2026-07-28）<br>ダッシュボードにボタン設置</div>
+</aside>
 
 <main class="main">
 
@@ -365,7 +389,16 @@ textarea{width:100%; border:1px solid var(--line); border-radius:8px; background
 <section class="screen on" id="s-dash">
   <div class="crumb">2026年7月24日（金）</div>
   <h1>ダッシュボード</h1>
-  <p class="sub">当月の入園・来園状況とトリマー実績のサマリー</p>
+  <p class="sub">よく使う機能へのショートカット。当月の入園・来園状況とトリマー実績もこの画面で確認できます。</p>
+
+  <div class="quick" id="quick">
+    <button class="qbtn" data-s="cal"><span class="qi">&#128197;</span><span class="qt">予約カレンダー<span class="qd">本日 12件・シフト反映</span></span></button>
+    <button class="qbtn" data-s="list"><span class="qi">&#128062;</span><span class="qt">顧客一覧<span class="qd">10世帯 / 14頭</span></span></button>
+    <button class="qbtn" data-s="cust"><span class="qi">&#128203;</span><span class="qt">顧客カルテ<span class="qd">来店履歴・ワクチン</span></span></button>
+    <button class="qbtn" data-s="rem"><span class="qi">&#128276;</span><span class="qt">リマインド<span class="qd">本日 12件 送信予定</span></span></button>
+    <button class="qbtn" data-s="shift"><span class="qi">&#128100;</span><span class="qt">シフト入力<span class="qd">来週分 未確定</span></span></button>
+    <button class="qbtn" data-s="sns"><span class="qi">&#128247;</span><span class="qt">SNS投稿<span class="qd">写真14枚 未投稿</span></span></button>
+  </div>
 
   <div class="grid kpis">
     <div class="kpi"><div class="k">当月入園数</div><div class="v num">6<small> 頭</small></div><div class="d up">先月 +2</div></div>
@@ -600,7 +633,6 @@ textarea{width:100%; border:1px solid var(--line); border-radius:8px; background
 </section>
 
 </main>
-<div class="pagefoot">FREEWAN 管理システム　モック <b>v0.9</b>（更新 2026-07-28）｜上部メニュー化・顧客別リマインド設定</div>
 </div>
 
 <script>
@@ -904,6 +936,10 @@ function go(s){
   window.scrollTo(0, 0);
 }
 nav.addEventListener('click', e => {
+  const b = e.target.closest('button[data-s]');
+  if (b) go(b.dataset.s);
+});
+document.getElementById('quick').addEventListener('click', e => {   // ダッシュボードのショートカット
   const b = e.target.closest('button[data-s]');
   if (b) go(b.dataset.s);
 });
