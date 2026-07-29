@@ -52,36 +52,37 @@ body{
   font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic UI","Yu Gothic",Meiryo,sans-serif;
   font-size:14px; line-height:1.6;
 }
-.app{display:flex; min-height:100vh}
+.app{display:flex; flex-direction:column; min-height:100vh}
 
-/* ---------- sidebar ---------- */
-.side{
-  width:236px; flex:none; background:var(--side); color:var(--side-ink);
-  display:flex; flex-direction:column; padding:20px 12px; gap:2px;
+/* ---------- top header ---------- */
+.top{
+  background:var(--side); color:var(--side-ink);
+  display:flex; align-items:center; gap:10px 24px; flex-wrap:wrap;
+  padding:10px 24px; position:sticky; top:0; z-index:40;
 }
-.brand{padding:4px 12px 18px; color:#fff}
-.brand .logo{font-size:20px; font-weight:700; letter-spacing:.04em}
-.brand .store{font-size:12px; opacity:.75; margin-top:2px}
-.brand .paw{color:var(--honey); margin-right:6px}
-.nav-label{font-size:10.5px; letter-spacing:.14em; opacity:.55; padding:14px 12px 4px}
+.brand{color:#fff; display:flex; align-items:baseline; gap:10px; flex-wrap:wrap}
+.brand .logo{font-size:18px; font-weight:700; letter-spacing:.04em}
+.brand .store{font-size:11.5px; opacity:.75}
+.brand .paw{color:var(--honey); margin-right:5px}
+.nav{display:flex; gap:3px; flex-wrap:wrap; margin-left:auto}
 .nav button{
-  display:flex; align-items:center; gap:10px; width:100%;
-  background:none; border:0; color:inherit; font:inherit; text-align:left;
-  padding:9px 12px; border-radius:8px; cursor:pointer;
+  display:flex; align-items:center; gap:7px;
+  background:none; border:0; color:inherit; font:inherit; font-size:13px;
+  padding:8px 14px; border-radius:8px; cursor:pointer; white-space:nowrap;
 }
-.nav button:hover{background:rgba(255,255,255,.07)}
+.nav button:hover{background:rgba(255,255,255,.08)}
 .nav button:focus-visible{outline:2px solid var(--honey); outline-offset:-2px}
-.nav button.on{background:var(--side-active); color:#fff; font-weight:600}
-.nav .ic{width:18px; text-align:center; flex:none}
-.side .foot{margin-top:auto; padding:12px; font-size:11px; opacity:.5}
+.nav button.on{background:var(--side-active); color:#fff; font-weight:700}
+.nav .ic{font-size:11px; opacity:.85}
 .mocktag{
-  margin:0 12px 8px; padding:6px 10px; border:1px dashed rgba(255,255,255,.3);
-  border-radius:8px; font-size:11px; opacity:.8;
+  padding:4px 10px; border:1px dashed rgba(255,255,255,.3);
+  border-radius:99px; font-size:11px; opacity:.75; white-space:nowrap;
 }
+.pagefoot{padding:24px 28px 32px; font-size:11.5px; color:var(--muted); text-align:center}
 
 /* ---------- main ---------- */
-.main{flex:1; min-width:0; padding:24px 28px 48px}
-.screen{display:none; max-width:1080px}
+.main{flex:1; min-width:0; padding:24px 28px 8px}
+.screen{display:none; max-width:1160px; margin:0 auto}
 .screen.on{display:block}
 .crumb{font-size:12px; color:var(--muted); margin-bottom:2px}
 h1{font-size:20px; margin:0 0 4px; font-weight:700}
@@ -317,11 +318,12 @@ td.r,th.r{text-align:right}
 textarea{width:100%; border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--ink); font:inherit; font-size:13px; padding:10px; resize:vertical}
 
 @media (max-width:860px){
-  .app{flex-direction:column}
-  .side{width:100%; flex-direction:row; flex-wrap:wrap; align-items:center; padding:10px 12px}
-  .brand{padding:4px 10px}
-  .nav-label,.side .foot,.mocktag{display:none}
-  .nav{display:flex; flex-wrap:wrap; gap:2px}
+  .top{padding:10px 14px; gap:8px}
+  .brand{width:100%}
+  .mocktag{display:none}
+  .nav{margin-left:0; width:100%; overflow-x:auto; flex-wrap:nowrap; padding-bottom:2px}
+  .nav button{padding:7px 11px; font-size:12.5px}
+  .nav .ic{display:none}
   .kpis{grid-template-columns:repeat(2,1fr)}
   .dash2,.cust2,.snswrap{grid-template-columns:1fr}
   .follow3{grid-template-columns:1fr}
@@ -340,14 +342,13 @@ textarea{width:100%; border:1px solid var(--line); border-radius:8px; background
 </style>
 
 <div class="app">
-<aside class="side">
+<header class="top">
   <div class="brand">
-    <div class="logo"><span class="paw">&#128062;</span>FREEWAN</div>
-    <div class="store">大阪北区店｜サロン＆スクール</div>
+    <span class="logo"><span class="paw">&#128062;</span>FREEWAN</span>
+    <span class="store">大阪北区店｜サロン＆スクール</span>
   </div>
-  <div class="mocktag">画面モック（サンプルデータ）</div>
+  <span class="mocktag">画面モック（サンプルデータ）</span>
   <nav class="nav" id="nav">
-    <div class="nav-label">メニュー</div>
     <button class="on" data-s="dash"><span class="ic">&#9632;</span>ダッシュボード</button>
     <button data-s="cal"><span class="ic">&#9633;</span>予約カレンダー</button>
     <button data-s="list"><span class="ic">&#9633;</span>顧客一覧</button>
@@ -356,8 +357,7 @@ textarea{width:100%; border:1px solid var(--line); border-radius:8px; background
     <button data-s="shift"><span class="ic">&#9633;</span>シフト入力</button>
     <button data-s="sns"><span class="ic">&#9633;</span>SNS投稿</button>
   </nav>
-  <div class="foot">FREEWAN 管理システム<br>モック <b>v0.8</b>（更新 2026-07-28）<br>顧客一覧の横1段化・カルテ内検索</div>
-</aside>
+</header>
 
 <main class="main">
 
@@ -495,7 +495,7 @@ textarea{width:100%; border:1px solid var(--line); border-radius:8px; background
 <section class="screen" id="s-rem">
   <div class="crumb">自動化</div>
   <h1>リマインド設定</h1>
-  <p class="sub">条件を満たすと自動で送信されます。送信前にスタッフ確認を挟む運用も選べます。</p>
+  <p class="sub">こちらは<b>店舗全体の設定</b>です。条件を満たすと自動で送信されます（送信前にスタッフ確認を挟む運用も選べます）。<b>顧客ごとのON/OFFは各カルテの「この子へのリマインド設定」</b>で個別に変更できます。</p>
 
   <div class="card">
     <div class="rem" id="remrows">
@@ -600,6 +600,7 @@ textarea{width:100%; border:1px solid var(--line); border-radius:8px; background
 </section>
 
 </main>
+<div class="pagefoot">FREEWAN 管理システム　モック <b>v0.9</b>（更新 2026-07-28）｜上部メニュー化・顧客別リマインド設定</div>
 </div>
 
 <script>
@@ -790,6 +791,52 @@ cq.addEventListener('input', () => {
   });
 });
 
+// ---- 顧客ごとのリマインド設定 ----
+const REMINDERS = [
+  { id:'R1', n:'予約リマインド',       c:'予約の前々日',             need:() => true },
+  { id:'R2', n:'誕生日メッセージ',     c:'誕生日 当日',              need:() => true },
+  { id:'R3', n:'ワクチン更新案内',     c:'期限30日前',               need:() => true },
+  { id:'R4', n:'体験後の体調伺い',     c:'体験の3日後',              need:d => !!d.trial },
+  { id:'R5', n:'体験後の追客',         c:'入園・次回が未定の場合',   need:d => !!d.trial },
+  { id:'R6', n:'回数券 来店促し',      c:'2週間 来店なし＋残回数',   need:d => !!d.ticket },
+  { id:'R7', n:'スクール 残回数案内',  c:'1週間 来店なし',           need:d => !!d.plan },
+  { id:'R8', n:'持ち越し分の消化案内', c:'翌月へ持ち越し時',         need:d => !!(d.plan && d.plan.carry) },
+];
+const custRem = {};                       // 犬ごとの個別設定（未設定＝店舗設定に従う）
+custRem['きなこ'] = { R2:false };          // 例: 誕生日メッセージを辞退
+custRem['ラテ']   = { R6:false };          // 例: 回数券の来店促しを辞退
+function remCard(d, o){
+  const rows = REMINDERS.filter(r => r.need(d)).map(r => {
+    const ov = custRem[d.n] && custRem[d.n][r.id] !== undefined;
+    const on = ov ? custRem[d.n][r.id] : true;
+    return '<div class="row"><span class="rid">' + r.id + '</span>'
+      + '<div><div class="nm">' + r.n + (ov ? ' <span class="pill hny">個別設定</span>' : '') + '</div>'
+      + '<div class="cond">' + r.c + '</div></div>'
+      + '<span class="src ' + (o.line ? 'line' : 'tel') + '">' + (o.line ? 'LINE' : 'メール') + '</span>'
+      + '<button class="sw crem" data-dog="' + d.n + '" data-id="' + r.id + '" role="switch" aria-checked="' + on + '" aria-label="' + r.n + '"><i></i></button></div>';
+  }).join('');
+  const off = REMINDERS.filter(r => !r.need(d)).map(r => r.n).join('・');
+  return '<div class="card"><div class="hd"><h2>この子へのリマインド設定</h2><span class="pill mut">店舗設定を引き継ぎ</span></div>'
+    + '<div class="rem">' + rows + '</div>'
+    + '<div class="bd" style="border-top:1px solid var(--line)"><p style="font-size:12px;color:var(--muted);margin:0">'
+    + '個別にOFFにすると、店舗全体の設定にかかわらずこの子だけ送信を止められます（お断りのご要望などに使用）。'
+    + (off ? '<br>現在の対象外: ' + off + '（条件を満たすと自動で表示されます）' : '')
+    + '<br>送信先: ' + o.name + ' 様' + (o.line ? '（LINE連携済み）' : '（LINE未連携のためメール送信）')
+    + '</p></div></div>';
+}
+document.addEventListener('click', e => {
+  const sw = e.target.closest('.sw.crem');
+  if (!sw) return;
+  const on = sw.getAttribute('aria-checked') !== 'true';
+  sw.setAttribute('aria-checked', on);
+  const dog = sw.dataset.dog;
+  custRem[dog] = custRem[dog] || {};
+  custRem[dog][sw.dataset.id] = on;
+  const nm = sw.closest('.row').querySelector('.nm');
+  if (!nm.querySelector('.pill')) nm.insertAdjacentHTML('beforeend', ' <span class="pill hny">個別設定</span>');
+  showToast(dog + 'の「' + nm.textContent.replace('個別設定', '').trim() + '」を' + (on ? 'ON' : 'OFF') + 'にしました');
+});
+
 // ---- 顧客カルテの描画 ----
 const custbody = document.getElementById('custbody');
 function openCarte(d, o){
@@ -836,13 +883,15 @@ function openCarte(d, o){
     + '<dt>狂犬病</dt><dd>' + d.vac.rabies + ' 接種 <span class="pill good">有効</span></dd></dl>'
     + '<p style="font-size:12px;color:var(--muted);margin:8px 0 0">直近半年以内の利用者は更新案内の自動送信対象です（スタッフにも通知）。</p></div></div>'
     + school + lapsed + '</div>'
+    + '<div style="display:grid;gap:16px;align-content:start">'
+    + remCard(d, o)
     + '<div class="card"><div class="hd"><h2>来店履歴・カルテ</h2><span class="pill mut">全 ' + d.total + ' 件</span></div>'
     + '<div class="bd" style="padding-top:4px"><ul class="tl">'
     + d.visits.map(v => '<li><span class="dt num">' + v[0] + '</span><div class="tt"><b>' + v[1] + '</b>'
         + '<span class="src ' + v[2] + '">' + ({ line:'LINE', epark:'EPARK', tel:'電話' })[v[2]] + '</span>'
         + (v[3] ? ' 担当: ' + v[3] : '')
         + (v[4] ? '<div class="memo">' + v[4] + '</div>' : '') + '</div></li>').join('')
-    + '</ul></div></div></div>';
+    + '</ul></div></div></div></div>';
 
   document.getElementById('bklist').addEventListener('click', e => { e.preventDefault(); go('list'); });
   go('cust');
@@ -1227,7 +1276,7 @@ window.addEventListener('pointerup', e => {
 });
 window.addEventListener('pointercancel', () => { endRsz(); endDrag(false); });
 // ---- リマインドのトグル ----
-document.querySelectorAll('.sw').forEach(sw => {
+document.querySelectorAll('#s-rem .sw').forEach(sw => {   // 店舗全体の設定のみ（カルテ側は個別ハンドラ）
   sw.addEventListener('click', () => sw.setAttribute('aria-checked', sw.getAttribute('aria-checked') !== 'true'));
 });
 
