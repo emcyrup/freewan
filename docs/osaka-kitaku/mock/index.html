@@ -9,6 +9,7 @@
   --warn:#B4741F; --warn-soft:#F6EBD6;
   --crit:#B4453C; --crit-soft:#F7E3E1;
   --side:#24443B; --side-ink:#D8E5DF; --side-active:#3A7263;
+  --early:#3E6FA8; --late:#7B58A8;
   --shadow:0 1px 3px rgba(43,39,35,.08);
 }
 @media (prefers-color-scheme: dark){
@@ -21,6 +22,7 @@
     --warn:#D3A050; --warn-soft:#3C321C;
     --crit:#D08078; --crit-soft:#40251F;
     --side:#141F1B; --side-ink:#A9BDB4; --side-active:#2A4A40;
+    --early:#7FA6D2; --late:#A98BD6;
     --shadow:0 1px 3px rgba(0,0,0,.4);
   }
 }
@@ -33,6 +35,7 @@
   --warn:#B4741F; --warn-soft:#F6EBD6;
   --crit:#B4453C; --crit-soft:#F7E3E1;
   --side:#24443B; --side-ink:#D8E5DF; --side-active:#3A7263;
+  --early:#3E6FA8; --late:#7B58A8;
   --shadow:0 1px 3px rgba(43,39,35,.08);
 }
 :root[data-theme="dark"]{
@@ -44,6 +47,7 @@
   --warn:#D3A050; --warn-soft:#3C321C;
   --crit:#D08078; --crit-soft:#40251F;
   --side:#141F1B; --side-ink:#A9BDB4; --side-active:#2A4A40;
+  --early:#7FA6D2; --late:#A98BD6;
   --shadow:0 1px 3px rgba(0,0,0,.4);
 }
 *{box-sizing:border-box}
@@ -136,6 +140,29 @@ td.r,th.r{text-align:right}
 /* ---------- dashboard ---------- */
 .kpis{grid-template-columns:repeat(4,1fr)}
 .kpi{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:14px 16px; box-shadow:var(--shadow)}
+button.kpi{font:inherit; color:inherit; text-align:left; width:100%; cursor:pointer}
+button.kpi:hover{border-color:var(--accent); background:var(--accent-soft)}
+button.kpi:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+.mback{position:fixed; inset:0; z-index:80; background:rgba(20,18,15,.45); display:flex; align-items:center; justify-content:center; padding:20px}
+.mwin{background:var(--surface); border:1px solid var(--line); border-radius:14px; box-shadow:0 18px 48px rgba(0,0,0,.3);
+  width:540px; max-width:100%; max-height:80vh; display:flex; flex-direction:column}
+.mwin .mhd{display:flex; align-items:center; gap:10px; padding:14px 18px; border-bottom:1px solid var(--line)}
+.mwin .mhd h2{margin:0; font-size:15px}
+.mwin .mx{margin-left:auto; background:none; border:0; font-size:16px; color:var(--muted); cursor:pointer; padding:4px}
+.mwin .mx:focus-visible{outline:2px solid var(--accent); border-radius:4px}
+.tri-rows{overflow:auto}
+.trow2{display:grid; grid-template-columns:52px 1fr auto; gap:12px; align-items:center;
+  width:100%; padding:11px 18px; border:0; border-bottom:1px solid var(--line);
+  background:none; font:inherit; color:inherit; text-align:left}
+.trow2:last-child{border-bottom:0}
+button.trow2{cursor:pointer}
+button.trow2:hover{background:var(--accent-soft)}
+button.trow2:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
+.trow2 .td2{font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums}
+.trow2 .tn b{font-size:13.5px; margin-right:6px}
+.trow2 .tn span{font-size:11.5px; color:var(--muted)}
+.trow2 .tn .ow{display:block}
+.mwin .mft{padding:10px 18px; border-top:1px solid var(--line); font-size:11.5px; color:var(--muted)}
 .kpi .k{font-size:11.5px; color:var(--muted); letter-spacing:.06em}
 .kpi .v{font-size:28px; font-weight:700; line-height:1.2; margin-top:2px}
 .kpi .v small{font-size:13px; font-weight:600; color:var(--muted)}
@@ -164,7 +191,7 @@ td.r,th.r{text-align:right}
   background-image:
     linear-gradient(to right, var(--line) 1px, transparent 1px),
     linear-gradient(to right, color-mix(in srgb, var(--line) 55%, transparent) 1px, transparent 1px);
-  background-size:calc(100%/9) 100%, calc(100%/18) 100%;
+  background-size:calc(100%/15) 100%, calc(100%/30) 100%;
 }
 .rbody.drop{background-color:var(--accent-soft)}
 .tev{position:absolute; top:8px; height:44px; border-radius:8px; background:var(--accent); color:#fff;
@@ -183,6 +210,15 @@ td.r,th.r{text-align:right}
 .tev.school{background:var(--honey)}
 .tev.trial{background:var(--good)}
 .tev.pickup{background:color-mix(in srgb, var(--accent) 55%, var(--muted))}
+.tev.early{background:var(--early)}
+.tev.late{background:var(--late)}
+.tev.both{background:linear-gradient(100deg, var(--early) 30%, var(--late) 70%)}
+.ncx{position:absolute; top:0; bottom:0; right:0; display:flex; align-items:center; justify-content:center;
+  background:repeating-linear-gradient(-45deg, rgba(255,255,255,.4) 0 4px, transparent 4px 8px);
+  border-left:2px dashed rgba(255,255,255,.85); font-size:9px; font-weight:700; color:#fff; letter-spacing:.02em}
+.star{background:none; border:0; cursor:pointer; font:inherit; font-size:13px; opacity:.4; padding:0 2px; line-height:1}
+.star.on{opacity:1}
+.star:focus-visible{outline:2px solid var(--accent); outline-offset:1px; border-radius:4px}
 .tev.lift{opacity:.35}
 .tev .src{background:rgba(255,255,255,.25); color:#fff; margin-left:4px}
 .ghost{position:fixed; z-index:50; pointer-events:none; opacity:.9; box-shadow:0 10px 24px rgba(0,0,0,.3); transform:scale(1.02); cursor:grabbing}
@@ -381,7 +417,7 @@ textarea{width:100%; border:1px solid var(--line); border-radius:8px; background
     <button data-s="shift"><span class="ic">&#9633;</span>シフト入力</button>
     <button data-s="sns"><span class="ic">&#9633;</span>SNS投稿</button>
   </nav>
-  <div class="foot">FREEWAN 管理システム<br>モック <b>v1.1</b>（更新 2026-07-29）<br>ダッシュボードに検索ボックス</div>
+  <div class="foot">FREEWAN 管理システム<br>モック <b>v1.2</b>（更新 2026-07-29）<br>7:00-22:00表示・時間帯色分け・新人⭐</div>
 </aside>
 
 <main class="main">
@@ -409,7 +445,7 @@ textarea{width:100%; border:1px solid var(--line); border-radius:8px; background
 
   <div class="grid kpis">
     <div class="kpi"><div class="k">当月入園数</div><div class="v num">6<small> 頭</small></div><div class="d up">先月 +2</div></div>
-    <div class="kpi"><div class="k">体験入園数</div><div class="v num">9<small> 頭</small></div><div class="d up">入園率 67%</div></div>
+    <button class="kpi" id="kpiTrial"><div class="k">体験入園数</div><div class="v num">9<small> 頭</small></div><div class="d up">入園率 67%・タップで一覧</div></button>
     <div class="kpi"><div class="k">当月来園数</div><div class="v num">182<small> 件</small></div><div class="d up">先月同日比 +11</div></div>
     <div class="kpi"><div class="k">振替できなかった回数</div><div class="v num">3<small> 回</small></div><div class="d dn">7月失効・対象 2名（顧客別に記録）</div></div>
   </div>
@@ -501,12 +537,15 @@ textarea{width:100%; border:1px solid var(--line); border-radius:8px; background
         <span><i style="background:var(--accent)"></i>サロン</span>
         <span><i style="background:var(--honey)"></i>スクール</span>
         <span><i style="background:var(--good)"></i>体験</span>
+        <span><i style="background:var(--early)"></i>9:00以前</span>
+        <span><i style="background:var(--late)"></i>18:00以降</span>
+        <span><i style="background:linear-gradient(100deg,var(--early),var(--late))"></i>両方にまたがる</span>
+        <span><i style="background:var(--accent);position:relative;overflow:hidden"><i style="position:absolute;inset:0;background:repeating-linear-gradient(-45deg,rgba(255,255,255,.5) 0 3px,transparent 3px 6px);margin:0"></i></i>新規 +30分枠</span>
         <span><i style="background:repeating-linear-gradient(-45deg,var(--surface2) 0 4px,transparent 4px 8px)"></i>シフト休・定休</span>
-        <span>経路: <span class="src epark">EPARK</span> <span class="src tel">電話</span> <span class="src line">LINE</span></span>
+        <span>&#11088; 新人スタッフ</span>
       </div>
     </div>
   </div>
-  <div class="toast" id="toast" role="status"></div>
 </section>
 
 <!-- ================= 顧客一覧 ================= -->
@@ -579,17 +618,17 @@ textarea{width:100%; border:1px solid var(--line); border-radius:8px; background
 <section class="screen" id="s-shift">
   <div class="crumb">スタッフ管理</div>
   <h1>シフト入力</h1>
-  <p class="shift-note">マスをクリックするだけで「出勤 → AM半休 → PM半休 → 公休 → 有休 → 時間休」の順に切り替わります（実際に触ってみてください）。入力したシフトはそのまま予約カレンダーに反映されます。</p>
+  <p class="shift-note">マスをクリックするだけで「出勤 → AM半休 → PM半休 → 公休 → 有休 → 時間休」の順に切り替わります（実際に触ってみてください）。入力したシフトはそのまま予約カレンダーに反映されます。名前の横の☆をタップすると<b>新人マーク&#11088;</b>を付与でき、カレンダーにも反映されます。</p>
 
   <div class="card">
     <div class="bd" style="overflow-x:auto">
       <table class="sh" style="min-width:640px">
         <tr><th style="width:90px">7/27週</th><th>月 27</th><th>火 28</th><th>水 29<br><span style="font-weight:600">定休</span></th><th>木 30</th><th>金 31</th><th>土 1</th><th>日 2</th></tr>
-        <tr><td>佐藤</td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell koukyu">公休</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell am">AM半休</button></td></tr>
-        <tr><td>高橋</td><td><button class="shcell am">AM半休</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell koukyu">公休</button></td><td><button class="shcell yukyu">有休</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell koukyu">公休</button></td></tr>
-        <tr><td>伊藤</td><td><button class="shcell work">出勤</button></td><td><button class="shcell jikan">時間休<br>14-16</button></td><td><button class="shcell koukyu">公休</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell koukyu">公休</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td></tr>
-        <tr><td>中村</td><td><button class="shcell koukyu">公休</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell koukyu">公休</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell pm">PM半休</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td></tr>
-        <tr><td>山本</td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell koukyu">公休</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell koukyu">公休</button></td><td><button class="shcell work">出勤</button></td></tr>
+        <tr><td style="white-space:nowrap">佐藤<button class="star" data-star="佐藤" aria-label="佐藤の新人マーク">&#9734;</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell koukyu">公休</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell am">AM半休</button></td></tr>
+        <tr><td style="white-space:nowrap">高橋<button class="star" data-star="高橋" aria-label="高橋の新人マーク">&#9734;</button></td><td><button class="shcell am">AM半休</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell koukyu">公休</button></td><td><button class="shcell yukyu">有休</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell koukyu">公休</button></td></tr>
+        <tr><td style="white-space:nowrap">伊藤<button class="star" data-star="伊藤" aria-label="伊藤の新人マーク">&#9734;</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell jikan">時間休<br>14-16</button></td><td><button class="shcell koukyu">公休</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell koukyu">公休</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td></tr>
+        <tr><td style="white-space:nowrap">中村<button class="star" data-star="中村" aria-label="中村の新人マーク">&#9734;</button></td><td><button class="shcell koukyu">公休</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell koukyu">公休</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell pm">PM半休</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td></tr>
+        <tr><td style="white-space:nowrap">山本<button class="star" data-star="山本" aria-label="山本の新人マーク">&#9734;</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell koukyu">公休</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell koukyu">公休</button></td><td><button class="shcell work">出勤</button></td></tr>
       </table>
       <div class="legend" style="margin-top:12px">
         <span><i style="background:var(--accent-soft)"></i>出勤</span>
@@ -640,6 +679,7 @@ textarea{width:100%; border:1px solid var(--line); border-radius:8px; background
 </section>
 
 </main>
+<div class="toast" id="toast" role="status"></div>
 </div>
 
 <script>
@@ -957,8 +997,15 @@ document.getElementById('quick').addEventListener('click', e => {   // ダッシ
 openCarte(OWNERS[0].dogs[0], OWNERS[0]);   // 初期表示用にカルテを組み立て
 go('dash');
 
-// ---- 予約カレンダー（横タイムライン 9:00-18:00） ----
-const DAY_START = 9, DAY_HOURS = 9;                 // 9:00-18:00
+// ---- 予約カレンダー（横タイムライン 7:00-22:00） ----
+const DAY_START = 7, DAY_HOURS = 15;                // 7:00-22:00
+const CORE_OPEN = 9, CORE_CLOSE = 18;               // 通常営業時間
+function periodCls(s, e){                            // 時間帯による色分け
+  if (s < CORE_OPEN && e > CORE_CLOSE) return 'both';
+  if (s < CORE_OPEN) return 'early';
+  if (e > CORE_CLOSE) return 'late';
+  return '';
+}
 const tax = document.getElementById('tax');
 for (let h = 0; h <= DAY_HOURS; h++) {
   const s = document.createElement('span');
@@ -969,28 +1016,35 @@ for (let h = 0; h <= DAY_HOURS; h++) {
 }
 const rows = [
   {name:'送迎',  role:'5名まで'},
-  {name:'佐藤',  role:'トリマー'},
-  {name:'高橋',  role:'トリマー・AM半休', off:[9,13,'AM半休']},
-  {name:'中村',  role:'スクール・公休',   off:[9,18,'公休']},
-  {name:'山本',  role:'スクール'},
+  {name:'佐藤',  role:'トリマー', st:true},
+  {name:'高橋',  role:'トリマー・AM半休', st:true, off:[7,13,'AM半休']},
+  {name:'中村',  role:'スクール・公休',   st:true, off:[7,22,'公休']},
+  {name:'山本',  role:'スクール', st:true},
+  {name:'預かり', role:'デイケア'},
 ];
 const evs = [
-  {row:0, s:9,    d:0.5, cls:'pickup', html:'<b>お迎え 3件</b>マロン・ソラ・レオ'},
-  {row:0, s:17,   d:0.5, cls:'pickup', html:'<b>お送り 3件</b>'},
-  {row:1, s:9,    d:1.5, cls:'',       html:'<b>マロン カット</b>担当:佐藤 <span class="src">EPARK</span>'},
+  {row:0, s:8,    d:1,   cls:'pickup', html:'<b>お迎え 3件</b>マロン・ソラ・レオ'},
+  {row:0, s:17.5, d:1,   cls:'pickup', html:'<b>お送り 3件</b>'},
+  {row:1, s:7.5,  d:1.5, cls:'',       html:'<b>ラテ 早朝シャンプー</b><span class="src">電話</span>'},
+  {row:1, s:9,    d:1.5, cls:'',       html:'<b>マロン カット</b><span class="src">EPARK</span>'},
   {row:1, s:11,   d:1,   cls:'',       html:'<b>ココ シャンプー</b><span class="src">LINE</span>'},
+  {row:1, s:12,   d:1.5, cls:'', nc:1, html:'<b>ルナ カット</b>新規 <span class="src">EPARK</span>'},
   {row:1, s:14,   d:2,   cls:'',       html:'<b>モカ カット＋泡</b><span class="src">電話</span>'},
   {row:2, s:13,   d:1.5, cls:'',       html:'<b>プリン カット</b><span class="src">EPARK</span>'},
   {row:2, s:15.5, d:1,   cls:'',       html:'<b>レオ 爪切り</b><span class="src">電話</span>'},
+  {row:2, s:18.5, d:1.5, cls:'',       html:'<b>ベル ナイトカット</b><span class="src">LINE</span>'},
   {row:4, s:9,    d:8,   cls:'school', html:'<b>幼稚園 園児6頭</b>マロン・ソラ ほか'},
   {row:4, s:17,   d:1,   cls:'trial',  html:'<b>チョコ 体験</b><span class="src">LINE</span>'},
+  {row:5, s:8,    d:11,  cls:'',       html:'<b>ラッキー 一時預かり</b>8:00〜19:00 <span class="src">電話</span>'},
 ];
 const tl = document.getElementById('tl');
 const bodies = [];
 rows.forEach(r => {
   const tr = document.createElement('div'); tr.className = 'trow';
   const lb = document.createElement('div'); lb.className = 'rlab';
-  lb.innerHTML = r.name + '<span class="role">' + r.role + '</span>';
+  lb.innerHTML = '<span style="display:flex;align-items:center;gap:2px">' + r.name
+    + (r.st ? '<button class="star" data-star="' + r.name + '" aria-label="' + r.name + 'の新人マーク">&#9734;</button>' : '')
+    + '</span><span class="role">' + r.role + '</span>';
   const bd = document.createElement('div'); bd.className = 'rbody';
   if (r.off) {
     const h = document.createElement('div'); h.className = 'hatch';
@@ -1004,11 +1058,16 @@ rows.forEach(r => {
 function fmt(t){ const h = Math.floor(t), m = Math.round((t - h) * 60); return h + ':' + String(m).padStart(2, '0'); }
 function makeEv(e){
   const d = document.createElement('div');
-  d.className = 'tev ' + e.cls;
+  const pc = periodCls(e.s, e.s + e.d);
+  const ext = e.nc ? 0.5 : 0;                        // 新規顧客は+30分の準備枠
+  d.className = 'tev ' + e.cls + (pc ? ' ' + pc : '');
   d.style.left  = ((e.s - DAY_START) / DAY_HOURS * 100) + '%';
-  d.style.width = (e.d / DAY_HOURS * 100) + '%';
-  d.innerHTML = e.html + '<span class="rz">&#8596;</span><span class="hz l"></span><span class="hz r"></span>';
-  d.dataset.s = e.s; d.dataset.d = e.d; d.dataset.cls = e.cls; d.dataset.html = e.html;
+  d.style.width = ((e.d + ext) / DAY_HOURS * 100) + '%';
+  d.innerHTML = e.html
+    + (e.nc ? '<span class="ncx" style="width:' + (0.5 / (e.d + 0.5) * 100) + '%">＋30</span>' : '')
+    + '<span class="rz">&#8596;</span><span class="hz l"></span><span class="hz r"></span>';
+  if (e.nc) d.title = '新規のお客様のため +30分の枠を自動確保（' + fmt(e.s) + '〜' + fmt(e.s + e.d + 0.5) + '）';
+  d.dataset.s = e.s; d.dataset.d = e.d; d.dataset.cls = e.cls; d.dataset.html = e.html; d.dataset.nc = e.nc ? '1' : '0';
   d.addEventListener('contextmenu', ev => ev.preventDefault());
   bodies[e.row].appendChild(d);
 }
@@ -1034,11 +1093,13 @@ const WEEK = [
       {s:16,  dur:1,   cls:'',       t:'ラテ 爪切り'}] },
   { d:'7/24', w:'金', today:true, evs:[
       {s:9,   dur:8,   cls:'school', t:'幼稚園 6頭'},
+      {s:7.5, dur:1.5, cls:'',       t:'ラテ 早朝シャンプー'},
       {s:9,   dur:1.5, cls:'',       t:'マロン カット'},
       {s:11,  dur:1,   cls:'',       t:'ココ シャンプー'},
       {s:13,  dur:1.5, cls:'',       t:'プリン カット'},
       {s:14,  dur:2,   cls:'',       t:'モカ カット＋泡'},
-      {s:17,  dur:1,   cls:'trial',  t:'チョコ 体験'}] },
+      {s:17,  dur:1,   cls:'trial',  t:'チョコ 体験'},
+      {s:18.5,dur:1.5, cls:'',       t:'ベル ナイトカット'}] },
   { d:'7/25', w:'土', evs:[
       {s:9,   dur:2,   cls:'',       t:'マロン カット＋シャンプー'},
       {s:10,  dur:1.5, cls:'',       t:'ムギ シャンプー'},
@@ -1073,7 +1134,8 @@ WEEK.forEach(day => {
   day.evs.forEach(e => {
     const el = document.createElement('div');
     const school = e.cls === 'school';
-    el.className = 'tev ' + e.cls + (school ? ' laneA' : ' laneB');   // 幼稚園は上段、施術は下段
+    const pc = periodCls(e.s, e.s + e.dur);
+    el.className = 'tev ' + e.cls + (pc ? ' ' + pc : '') + (school ? ' laneA' : ' laneB');   // 幼稚園は上段、施術は下段
     el.style.left  = ((e.s - DAY_START) / DAY_HOURS * 100) + '%';
     el.style.width = (e.dur / DAY_HOURS * 100) + '%';
     el.innerHTML = school
@@ -1134,7 +1196,7 @@ document.getElementById('msum').innerHTML =
 
 // ---- 表示切替 ----
 const VIEWS = {
-  day:   { range:'2026年7月24日（金）', sub:'横軸が時間・縦が担当の表示。シフト休は自動で網掛けになります。<b>タップで詳細（キャンセル・削除）</b>、<b>長押しして下の行へずらすとコピー（PCはそのままドラッグでOK）</b>、<b>両端をスライドすると時間変更</b>ができます（すべて実際に試せます・30分単位）。' },
+  day:   { range:'2026年7月24日（金）7:00〜22:00', sub:'横軸が時間（7:00〜22:00）・縦が担当の表示。<b>9:00以前の予定は青、18:00以降は紫、両方にまたがる預かりはグラデーション</b>で色分けされます。<b>新規のお客様は自動で+30分の枠（斜線）を確保</b>。スタッフ名の☆で新人マーク&#11088;を付与。タップで詳細、長押し（PCはドラッグ）でコピー、両端スライドで時間変更ができます（30分単位）。' },
   week:  { range:'2026年7月20日（月）〜 7月26日（日）', sub:'1週間の予約を一覧で確認できます。日付をタップするとその日の詳細（日表示）に切り替わります。' },
   month: { range:'2026年7月', sub:'日ごとの件数を俯瞰できます。日付をタップするとその日の詳細（日表示）に切り替わります。' },
 };
@@ -1149,6 +1211,69 @@ document.getElementById('vseg').addEventListener('click', e => {
   if (b) setView(b.dataset.v);
 });
 setView('day');
+
+// ---- 新人スタッフの⭐マーク（カレンダー・シフトで共通） ----
+const ROOKIE = new Set(['伊藤', '山本']);
+function updateStars(){
+  document.querySelectorAll('.star').forEach(b => {
+    const on = ROOKIE.has(b.dataset.star);
+    b.innerHTML = on ? '&#11088;' : '&#9734;';
+    b.classList.toggle('on', on);
+    b.setAttribute('aria-pressed', on);
+  });
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('.star');
+  if (!b) return;
+  const name = b.dataset.star;
+  if (ROOKIE.has(name)) { ROOKIE.delete(name); showToast(name + 'の新人マークを外しました'); }
+  else { ROOKIE.add(name); showToast(name + 'に新人マーク⭐を付けました'); }
+  updateStars();
+});
+updateStars();
+
+// ---- 体験入園の一覧モーダル（ダッシュボードのKPIから） ----
+const TRIALS = [
+  ['7/24', 'チョコ',   'ラブラドール',  '本日 体験（17:00〜）', 'warn'],
+  ['7/21', 'ソラ',     '柴',            '入園決定・次回7/29',   'good'],
+  ['7/21', 'ハナ',     'チワワ',        '入園決定・日程未定',   'warn'],
+  ['7/19', 'クッキー', 'M.ダックス',    '追客中（7/25予定）',   'crit'],
+  ['7/18', 'レオ',     'ポメラニアン',  '入園済・通園中',       'good'],
+  ['7/12', 'モモ',     'MIX',           '追客2回済・検討中',    'crit'],
+  ['7/10', 'リク',     'コーギー',      '入園決定・8月開始',    'good'],
+  ['7/5',  'ハチ',     '柴',            '入園見送り',           'mut'],
+  ['7/2',  'メイ',     'トイプードル',  '入園済・通園中',       'good'],
+];
+let tmodal = null;
+function closeTrialModal(){ if (tmodal) { tmodal.remove(); tmodal = null; } }
+document.getElementById('kpiTrial').addEventListener('click', () => {
+  closeTrialModal();
+  const back = document.createElement('div'); back.className = 'mback';
+  back.addEventListener('click', e => { if (e.target === back) closeTrialModal(); });
+  const win = document.createElement('div'); win.className = 'mwin';
+  win.innerHTML = '<div class="mhd"><h2>7月の体験入園（' + TRIALS.length + '頭）</h2>'
+    + '<button class="mx" aria-label="閉じる">&#10005;</button></div>';
+  win.querySelector('.mx').addEventListener('click', closeTrialModal);
+  const list = document.createElement('div'); list.className = 'tri-rows';
+  TRIALS.forEach(([dt, name, breed, status, cls]) => {
+    let owner = null, dog = null;
+    OWNERS.forEach(o => o.dogs.forEach(d => { if (d.n === name) { owner = o; dog = d; } }));
+    const row = document.createElement(dog ? 'button' : 'div');
+    row.className = 'trow2';
+    row.innerHTML = '<span class="td2 num">' + dt + '</span>'
+      + '<span class="tn"><b>' + name + '</b><span>' + breed + '</span>'
+      + (owner ? '<span class="ow">' + owner.name + ' 様</span>' : '<span class="ow">（カルテ未登録）</span>') + '</span>'
+      + '<span class="pill ' + cls + '">' + status + '</span>';
+    if (dog) row.addEventListener('click', () => { closeTrialModal(); openCarte(dog, owner); });
+    list.appendChild(row);
+  });
+  win.appendChild(list);
+  win.insertAdjacentHTML('beforeend', '<div class="mft">名前をタップするとカルテが開きます。入園率 67%（9頭中6頭が入園・入園予定）</div>');
+  back.appendChild(win);
+  document.body.appendChild(back);
+  tmodal = back;
+});
+window.addEventListener('keydown', e => { if (e.key === 'Escape') closeTrialModal(); });
 
 // ---- 長押しドラッグでコピー ----
 const toast = document.getElementById('toast');
@@ -1229,9 +1354,13 @@ function updateBadge(){
 }
 function applyRsz(){
   const { ev, s, d } = rsz;
+  const ext = ev.dataset.nc === '1' ? 0.5 : 0;
   ev.style.left  = ((s - DAY_START) / DAY_HOURS * 100) + '%';
-  ev.style.width = (d / DAY_HOURS * 100) + '%';
+  ev.style.width = ((d + ext) / DAY_HOURS * 100) + '%';
   ev.dataset.s = s; ev.dataset.d = d;
+  ev.classList.remove('early', 'late', 'both');       // 時間帯の色分けを再判定
+  const pc = periodCls(s, s + d);
+  if (pc) ev.classList.add(pc);
 }
 function startDrag(ev, x, y){
   const r = ev.getBoundingClientRect();
@@ -1292,7 +1421,7 @@ function endDrag(commit){
   const { ev, g, target, t } = drag;
   const sameSpot = target === ev.parentElement && t === parseFloat(ev.dataset.s);
   if (commit && target && !sameSpot) {
-    makeEvIn(target, { s: t, d: parseFloat(ev.dataset.d), cls: ev.dataset.cls, html: ev.dataset.html });
+    makeEvIn(target, { s: t, d: parseFloat(ev.dataset.d), cls: ev.dataset.cls, html: ev.dataset.html, nc: ev.dataset.nc === '1' ? 1 : 0 });
     const nm = rows[bodies.indexOf(target)].name;
     showToast('コピーしました：' + nm + ' ' + fmt(t) + '〜');
   }
