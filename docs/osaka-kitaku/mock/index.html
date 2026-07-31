@@ -1,5 +1,13 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="format-detection" content="telephone=no">
+<meta name="robots" content="noindex, nofollow">
 <title>FREEWAN 大阪北区店 管理システム モック</title>
 <style>
+button{font:inherit; color:inherit}
 :root{
   --bg:#F7F4EE; --surface:#FFFFFF; --surface2:#F1EDE4;
   --ink:#2B2723; --muted:#8A8177; --line:#E5DFD5;
@@ -403,6 +411,7 @@ textarea{width:100%; border:1px solid var(--line); border-radius:8px; background
   .qbtn .qt{font-size:12.5px}
   .kpis{grid-template-columns:repeat(2,1fr)}
   .dash2,.cust2,.snswrap,.shift2{grid-template-columns:1fr}
+  .card .bd{overflow-x:auto}          /* 幅を超える表はカード内でスクロール */
   .follow3{grid-template-columns:1fr}
   .main{padding:16px}
   .photos{grid-template-columns:repeat(4,1fr)}
@@ -417,6 +426,8 @@ textarea{width:100%; border:1px solid var(--line); border-radius:8px; background
 }
 @media (prefers-reduced-motion: reduce){ *{transition:none !important} }
 </style>
+</head>
+<body>
 
 <div class="app">
 <aside class="side">
@@ -435,7 +446,7 @@ textarea{width:100%; border:1px solid var(--line); border-radius:8px; background
     <button data-s="shift"><span class="ic">&#9633;</span>シフト入力</button>
     <button data-s="sns"><span class="ic">&#9633;</span>SNS投稿</button>
   </nav>
-  <div class="foot">FREEWAN 管理システム<br>モック <b>v1.3</b>（更新 2026-07-29）<br>LINE botからのシフト変更申請</div>
+  <div class="foot">FREEWAN 管理システム<br>モック <b>v1.3.1</b>（更新 2026-07-29）<br>スマホ表示の修正</div>
 </aside>
 
 <main class="main">
@@ -1564,3 +1575,5 @@ function photo(i, no){
 const p1 = document.getElementById('post1'), p2 = document.getElementById('post2');
 for (let i = 0; i < 14; i++) (i < 10 ? p1 : p2).appendChild(photo(i, i < 10 ? i + 1 : i - 9));
 </script>
+</body>
+</html>
