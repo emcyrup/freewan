@@ -38,7 +38,7 @@ GCP に VM を1台立て、`docs/new-store.md` の手順で構築中。
 | 4 | `.env` を作る | **完了**（LINE 本物の値に差し替え済み） |
 | 5 | 起動して HTTPS を確認・管理画面が開く | **完了** |
 | 6 | LINE チャネル・LIFF を作り Webhook を設定 | **ほぼ完了**（2026-08-13 check-line.js 全項目OK: Bot応答・Webhook検証200・LIFF設定済み。残: リッチメニュー登録と、スタッフ用 LINE グループに Bot を招待） |
-| 7 | 初期データ投入（メニュー・コース・スタッフ・既存顧客） | **未**（FREEWAN 用の投入データは `scripts/store-data/` に用意済み） |
+| 7 | 初期データ投入（メニュー・コース・スタッフ・既存顧客） | **進行中**（2026-08-13 メニュー9件・スクール会員コース2件を投入済み。残: スタッフ登録と LINE 連携、既存顧客台帳、`.env` の `STORE_*`） |
 | 8 | 自動デプロイを2台目に対応させる | **完了**（2026-08-13 疎通確認済み。main への push で自動反映される） |
 
 ### Step 6 の残り
@@ -50,17 +50,10 @@ GCP に VM を1台立て、`docs/new-store.md` の手順で構築中。
    `docs/switch-account.md` の手順で（**同一プロバイダー内**でないと友だちの紐付けが切れる点に注意）
 4. 通数は無料枠 200通/月。live 切り替え前に想定通数を試算してプランを上げる
 
-### Step 7 でやること
+### Step 7 の残り
 
-```bash
-# FREEWAN 用の内容は scripts/store-data/ に用意済み（コードの編集は不要になった）
-docker compose exec app node scripts/seed-menus.js --file=scripts/store-data/freewan.menus.json
-docker compose exec app node scripts/seed-plans.js --file=scripts/store-data/freewan.plans.json
-```
-
-- メニューの所要時間はモック段階の仮値。ヒアリング後に JSON を直して再実行する
-  （同名はスキップされるので何度でも安全）
-
+- メニュー・コースは投入済み（所要時間はモック段階の仮値。ヒアリング後に
+  `scripts/store-data/freewan.menus.json` を直して再実行。同名はスキップされるので何度でも安全）
 - スタッフを管理画面から登録し、LINE 連携する（`docs/shift-requests.md`）
 - **既存顧客台帳（氏名・電話番号）の投入が最重要。** LIFF 登録時の突合率に直結する
 - `STORE_*` の残り（営業時間・定休日・住所・電話・サブタイトル）を `.env` に追記する。
