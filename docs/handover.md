@@ -71,7 +71,8 @@ docker compose exec app node scripts/seed-plans.js --file=scripts/store-data/fre
 ci.yml は複数台対応済み。`DEPLOY_TARGETS`（`user@host` の改行区切り）で全店舗へ配る。
 残作業（リポジトリの Settings → Secrets and variables → Actions）:
 
-1. 1台目と同じ deploy_key の**公開鍵を2台目の** `~/.ssh/authorized_keys` に追加
+1. 1台目と同じ deploy_key の**公開鍵を2台目にも登録**（GCP なので `authorized_keys` 直接追記ではなく
+   **インスタンスのメタデータ**に追加する。手順と注意は docs/deploy.md「GCP では〜」参照）
 2. Secret `DEPLOY_TARGETS` に2台ぶんの `user@host` を改行区切りで登録
    （設定後は旧 `VM_HOST` / `VM_USER` は使われないので消してよい）
 3. main に何かをマージし、両店舗へ配られることを Actions のログで確認
