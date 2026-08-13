@@ -1,0 +1,24 @@
+{
+  "_comment": "EPARK の予約 CSV 用マッピング（仮）。実際のエクスポート CSV のヘッダ行に合わせて columns の右側の値を修正する。文字コードが UTF-8 の場合は encoding を utf-8 に変える",
+  "encoding": "shift_jis",
+  "externalIdPrefix": "epark-",
+  "columns": {
+    "external_id": "予約番号",
+    "customer_name": "氏名",
+    "phone": "電話番号",
+    "reserved_date": "予約日",
+    "reserved_time": "予約時間",
+    "menu": "メニュー",
+    "staff_name": "担当者",
+    "status": "ステータス"
+  },
+  "statusMap": {
+    "予約確定": "confirmed",
+    "確定": "confirmed",
+    "来店済み": "visited",
+    "来店": "visited",
+    "キャンセル": "cancelled",
+    "無断キャンセル": "no_show"
+  },
+  "defaultStatus": "confirmed"
+}

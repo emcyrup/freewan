@@ -1,0 +1,4 @@
+[
+  { "name": "スクール 月4会員", "monthlyQuota": 4, "carryOverMonths": 1, "sortOrder": 1 },
+  { "name": "スクール 月8会員", "monthlyQuota": 8, "carryOverMonths": 1, "sortOrder": 2 }
+]

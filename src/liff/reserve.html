@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ご予約</title>
+  <style>
+    :root { --accent: #06c755; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
+      margin: 0; padding: 16px; background: #f7f7f7; color: #222;
+      /* 日本語が語中で改行されないようにする */
+      word-break: keep-all; overflow-wrap: break-word;
+    }
+    .card { background: #fff; border-radius: 12px; padding: 20px; max-width: 480px; margin: 0 auto; }
+    h1 { font-size: 1.1rem; margin: 0 0 12px; }
+    p.note { font-size: 0.8rem; color: #666; margin-top: 0; line-height: 1.6; }
+    label { display: block; font-size: 0.85rem; font-weight: 600; margin: 14px 0 4px; }
+    .required::after { content: " *"; color: #d00; }
+    select, input[type="datetime-local"], textarea {
+      width: 100%; padding: 10px; font-size: 1rem; font-family: inherit;
+      border: 1px solid #ccc; border-radius: 8px; background: #fff;
+    }
+    textarea { min-height: 72px; resize: vertical; }
+    button {
+      width: 100%; margin-top: 20px; padding: 12px; font-size: 1rem; font-weight: 700;
+      color: #fff; background: var(--accent); border: none; border-radius: 8px;
+    }
+    button:disabled { background: #aaa; }
+    #status { margin-top: 12px; font-size: 0.9rem; text-align: center; line-height: 1.6; }
+    #status.error { color: #d00; }
+    #status.ok { color: var(--accent); }
+    #loading { text-align: center; color: #666; font-size: 0.9rem; padding: 24px 0; }
+    .hidden { display: none; }
+    .link { color: var(--accent); font-weight: 700; text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>ご予約</h1>
+    <div id="loading">読み込み中…</div>
+
+    <div id="unregistered" class="hidden">
+      <p class="note">
+        ご予約の前に、お客様情報のご登録をお願いいたします。<br />
+        登録後、このページからご予約いただけます。
+      </p>
+      <a id="register-link" class="link" href="./index.html">お客様情報を登録する</a>
+    </div>
+
+    <form id="form" class="hidden">
+      <p class="note">
+        ご希望の日時をお知らせください。<span id="greeting"></span><br />
+        <strong>送信時点ではまだ確定ではありません。</strong>店舗で確認のうえ、確定のご連絡をLINEでお送りします。
+      </p>
+
+      <label class="required" for="menu">メニュー</label>
+      <select id="menu" required></select>
+
+      <label class="required" for="datetime">ご希望日時</label>
+      <input type="datetime-local" id="datetime" required />
+
+      <label for="staff">ご指名（任意）</label>
+      <select id="staff"><option value="">指名なし</option></select>
+
+      <label for="note">ご要望（任意）</label>
+      <textarea id="note" maxlength="500" placeholder="例）前回と同じ長さでお願いします"></textarea>
+
+      <button type="submit" id="submit">この内容でリクエストする</button>
+      <div id="status"></div>
+    </form>
+  </div>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <script src="./reserve.js"></script>
+</body>
+</html>

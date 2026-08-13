@@ -1,0 +1,90 @@
+# CI/CD: 全ブランチでテスト実行、main へのプッシュで VM へ自動デプロイ。
+#
+# デプロイの有効化手順（docs/deploy.md にも記載）:
+#   1. VM に GitHub Actions 用の SSH 鍵を用意し、公開鍵を ~/.ssh/authorized_keys に追加
+#      （複数台に配る場合は、同じ鍵ペアの公開鍵を全サーバーに追加する）
+#   2. リポジトリの Settings → Secrets and variables → Actions に登録:
+#        Secrets:   VM_SSH_KEY（秘密鍵の中身）
+#                   DEPLOY_TARGETS（user@host を改行区切りで全店舗ぶん。例:
+#                     someuser@store1.example.com
+#                     iwako105@freewan999999.duckdns.org
+#                   ）
+#                   ※ 旧構成の VM_HOST / VM_USER も引き続き使える。
+#                     DEPLOY_TARGETS が未設定なら VM_USER@VM_HOST の1台に配る
+#        Variables: DEPLOY_ENABLED = true
+#   DEPLOY_ENABLED を設定するまでデプロイジョブはスキップされる（テストだけ動く）
+name: ci
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+  deploy:
+    # main が更新されたときだけ、テスト成功を条件に各店舗の VM へ反映する
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && vars.DEPLOY_ENABLED == 'true'
+    needs: test
+    runs-on: ubuntu-latest
+    concurrency: deploy-vm   # 同時デプロイを防ぐ
+    steps:
+      - name: Deploy to VMs via SSH
+        run: |
+          mkdir -p ~/.ssh
+          # CR（Windows 改行）を除去し、末尾に改行を保証する
+          printf '%s\n' "${{ secrets.VM_SSH_KEY }}" | tr -d '\r' > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          # 秘密鍵として読めるかを SSH 前に検証し、原因を明確にする
+          if ! ssh-keygen -y -f ~/.ssh/deploy_key > /dev/null; then
+            echo "::error::VM_SSH_KEY が秘密鍵として読めません。deploy_key（秘密鍵）の全文を -----BEGIN/END----- 行込みで Secret に登録してください（.pub は公開鍵なので不可）"
+            exit 1
+          fi
+          # 配布先の一覧。DEPLOY_TARGETS（user@host を改行区切り）が無ければ従来の1台構成
+          TARGETS="${{ secrets.DEPLOY_TARGETS }}"
+          if [ -z "$TARGETS" ]; then
+            TARGETS="${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}"
+          fi
+          # 1台の失敗で他店舗への配布を止めない。失敗した店舗だけ最後にまとめて報告する
+          FAILED=""
+          while IFS= read -r target; do
+            target="$(printf '%s' "$target" | tr -d ' \r')"
+            [ -z "$target" ] && continue
+            case "$target" in
+              *@*) ;;
+              *) echo "::error::DEPLOY_TARGETS の形式が不正です（user@host）: $target"; FAILED="$FAILED $target"; continue ;;
+            esac
+            host="${target#*@}"
+            echo "::group::deploy: $host"
+            ssh-keyscan -H "$host" >> ~/.ssh/known_hosts 2>/dev/null
+            if ssh -i ~/.ssh/deploy_key "$target" '
+              set -e
+              cd cocotte-vert
+              git fetch origin main
+              git checkout main
+              git pull --ff-only origin main
+              docker compose --profile standalone up -d --build
+              sleep 5
+              curl -sf http://127.0.0.1:3000/health
+            '; then
+              echo "OK: $host"
+            else
+              echo "::error::デプロイ失敗: $host（他のサーバーへの配布は続行）"
+              FAILED="$FAILED $host"
+            fi
+            echo "::endgroup::"
+          done < <(printf '%s\n' "$TARGETS")
+          if [ -n "$FAILED" ]; then
+            echo "::error::失敗したサーバー:$FAILED"
+            exit 1
+          fi

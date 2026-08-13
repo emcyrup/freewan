@@ -1,0 +1,4 @@
+# DOMAIN は docker-compose.yml が .env から渡す
+{$DOMAIN} {
+	reverse_proxy app:3000
+}

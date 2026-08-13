@@ -1,0 +1,70 @@
+# 本番構成: アプリ + PostgreSQL。使い方は docs/deploy.md を参照。
+#
+# 既存の Nginx があるサーバー（既存 EC2 など）:
+#   docker compose up -d --build
+#   → アプリは 127.0.0.1:3000 にだけ公開されるので、Nginx から proxy_pass する
+#
+# リバースプロキシが何もない新規サーバー:
+#   .env に DOMAIN を設定し、
+#   docker compose --profile standalone up -d --build
+#   → Caddy が 80/443 を受けて HTTPS を自動化する
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      TZ: Asia/Tokyo
+      # DB はこの compose 内のものを使う（.env の DATABASE_URL より優先される）
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD を .env に設定してください}@db:5432/cocotte_vert
+    # 起動前にマイグレーションを適用する
+    command: sh -c "node scripts/migrate.js && node src/index.js"
+    volumes:
+      # Instagram 投稿用の写真置き場。再ビルドで消えないよう永続化する
+      - snsdata:/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      # ホストの Nginx からだけ届くよう、ループバックにのみ束縛する
+      - "127.0.0.1:3000:3000"
+
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      POSTGRES_DB: cocotte_vert
+      TZ: Asia/Tokyo
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d cocotte_vert"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Let's Encrypt の証明書取得・更新を自動で行うリバースプロキシ。
+  # 既存 Nginx があるサーバーでは起動しないこと（80/443 が衝突する）
+  caddy:
+    image: caddy:2
+    profiles: ["standalone"]
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      # standalone プロファイル利用時は .env の DOMAIN が必須
+      DOMAIN: "${DOMAIN:-}"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+
+volumes:
+  dbdata:
+  snsdata:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,21 @@
+{
+  "name": "cocotte-vert",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "LINE リマインド配信システム",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node --env-file-if-missing=.env src/index.js",
+    "migrate": "node --env-file-if-missing=.env scripts/migrate.js",
+    "test": "node --test \"test/**/*.test.js\""
+  },
+  "dependencies": {
+    "@line/bot-sdk": "^9.5.0",
+    "express": "^4.21.0",
+    "node-cron": "^4.6.0",
+    "pg": "^8.13.0"
+  }
+}
