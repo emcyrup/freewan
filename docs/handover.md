@@ -35,20 +35,20 @@ GCP に VM を1台立て、`docs/new-store.md` の手順で構築中。
 | 1 | VM を用意（固定 IP・ポート80/443 開放） | **完了** |
 | 2 | ドメインを DNS で VM に向ける（DuckDNS） | **完了** |
 | 3 | Docker とコードを入れる | **完了** |
-| 4 | `.env` を作る | **完了**（LINE の値は仮の可能性あり。下記参照） |
+| 4 | `.env` を作る | **完了**（LINE 本物の値に差し替え済み） |
 | 5 | 起動して HTTPS を確認・管理画面が開く | **完了** |
-| 6 | LINE チャネル・LIFF を作り Webhook を設定 | **進行中**（チャネル作成・`.env` 反映済み。Webhook 設定と検証・リッチメニューが残） |
+| 6 | LINE チャネル・LIFF を作り Webhook を設定 | **ほぼ完了**（2026-08-13 check-line.js 全項目OK: Bot応答・Webhook検証200・LIFF設定済み。残: リッチメニュー登録と、スタッフ用 LINE グループに Bot を招待） |
 | 7 | 初期データ投入（メニュー・コース・スタッフ・既存顧客） | **未**（FREEWAN 用の投入データは `scripts/store-data/` に用意済み） |
 | 8 | 自動デプロイを2台目に対応させる | **完了**（2026-08-13 疎通確認済み。main への push で自動反映される） |
 
-### Step 6 でやること
+### Step 6 の残り
 
-1. LINE Developers で Messaging API チャネルと LIFF アプリを作る
-2. `.env` の `LINE_CHANNEL_ACCESS_TOKEN` / `LINE_CHANNEL_SECRET` / `LIFF_ID` を本物に差し替える
-   - **インフラ確認のために仮の値（`dummy`）を入れている場合がある。必ず確認する**
-3. `docker compose --profile standalone up -d` で反映
-4. LINE 側の Webhook URL に `https://<ドメイン>/webhook` を設定し、検証を通す
-5. リッチメニュー登録（`scripts/setup-richmenu.js`。画像 2500×843px が要る）
+1. リッチメニュー登録（`scripts/setup-richmenu.js`。画像 2500×843px が要る）
+2. スタッフ用 LINE グループを作り Bot を招待する（`STAFF_NOTIFY_CHANNEL=line` のため、
+   招待するまでスタッフ通知の届き先が無い。招待すると通知先グループが自動設定される）
+3. 現在のチャネルは表示名「freewanテスト」。本番の公式アカウントに切り替える際は
+   `docs/switch-account.md` の手順で（**同一プロバイダー内**でないと友だちの紐付けが切れる点に注意）
+4. 通数は無料枠 200通/月。live 切り替え前に想定通数を試算してプランを上げる
 
 ### Step 7 でやること
 
