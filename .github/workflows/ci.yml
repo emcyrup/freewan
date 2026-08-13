@@ -69,7 +69,8 @@ jobs:
             ssh-keyscan -H "$host" >> ~/.ssh/known_hosts 2>/dev/null
             if ssh -i ~/.ssh/deploy_key "$target" '
               set -e
-              cd cocotte-vert
+              # 配置先はホーム直下の freewan（旧名 cocotte-vert のままのサーバーにも対応）
+              cd ~/freewan 2>/dev/null || cd ~/cocotte-vert
               git fetch origin main
               git checkout main
               git pull --ff-only origin main

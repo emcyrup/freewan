@@ -6,6 +6,24 @@
 サーバーのホスト名・IP・認証情報は**このファイルに書かない**（リポジトリは公開設定のため）。
 引き継ぎ時に別途伝える。
 
+> **リポジトリの移管（2026-08）**: FREE WAN 店（2店舗目）のアプリは
+> **emcyrup/freewan で管理する**ことになった。デプロイの Secrets もこのリポジトリに置く。
+> cocotte-vert（1号店）は元リポジトリのまま。汎用的な修正は upstream 経由で相互に取り込む
+> （README の手順参照）。
+>
+> これに伴うサーバー側の切り替え（1回だけ・データは消えない）:
+>
+> ```bash
+> cd ~/cocotte-vert
+> git remote set-url origin https://github.com/emcyrup/freewan.git
+> git fetch origin && git checkout main && git reset --hard origin/main
+> docker compose --profile standalone up -d --build
+> ```
+>
+> ディレクトリ名は `cocotte-vert` のままでよい（CI は freewan / cocotte-vert 両対応）。
+> Docker のボリューム名はディレクトリ名から決まるため、**ディレクトリを rename しないこと**
+> （rename すると新しい空の DB で起動してしまう）。
+
 ---
 
 ## 1. 2店舗目のサーバー構築
