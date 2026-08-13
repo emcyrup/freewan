@@ -242,6 +242,14 @@ button.trow2:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
 .abtn{border:1px solid var(--accent); background:var(--accent); color:var(--accent-ink); font:inherit; font-size:12px; font-weight:700; border-radius:7px; padding:5px 12px; cursor:pointer}
 .abtn.ng{background:none; border-color:var(--line); color:var(--muted)}
 .abtn:focus-visible{outline:2px solid var(--honey); outline-offset:1px}
+/* ---------- お礼メッセージ（写真付き） ---------- */
+.thxg{display:grid; grid-template-columns:repeat(6,1fr); gap:8px}
+.thxg .ph{cursor:pointer}
+.thxg .ph.sel{outline:3px solid var(--accent); outline-offset:-3px}
+.thxg .ph .ck{position:absolute; top:4px; left:5px; width:18px; height:18px; border-radius:50%;
+  background:var(--accent); color:#fff; font-size:11px; font-weight:700;
+  display:none; align-items:center; justify-content:center}
+.thxg .ph.sel .ck{display:flex}
 .star{background:none; border:0; cursor:pointer; font:inherit; font-size:13px; opacity:.4; padding:0 2px; line-height:1}
 .star.on{opacity:1}
 .star:focus-visible{outline:2px solid var(--accent); outline-offset:1px; border-radius:4px}
@@ -446,7 +454,7 @@ textarea{width:100%; border:1px solid var(--line); border-radius:8px; background
     <button data-s="shift"><span class="ic">&#9633;</span>シフト入力</button>
     <button data-s="sns"><span class="ic">&#9633;</span>SNS投稿</button>
   </nav>
-  <div class="foot">FREEWAN 管理システム<br>モック <b>v1.3.1</b>（更新 2026-07-29）<br>スマホ表示の修正</div>
+  <div class="foot">FREEWAN 管理システム<br>モック <b>v1.4</b>（更新 2026-08-08）<br>R9 お礼メッセージ（写真付き）</div>
 </aside>
 
 <main class="main">
@@ -615,6 +623,7 @@ textarea{width:100%; border:1px solid var(--line); border-radius:8px; background
       <div class="row"><span class="rid">R6</span><div><div class="nm">回数券 来店促し</div><div class="cond">期限2ヶ月・2週間来店なしで残回数を通知</div></div><span class="src line">LINE</span><button class="sw" aria-checked="true" role="switch" aria-label="R6 有効"><i></i></button></div>
       <div class="row"><span class="rid">R7</span><div><div class="nm">スクール会員 来店促し</div><div class="cond">月4・月8会員が1週間来店なしで月内残回数を通知</div></div><span class="src line">LINE</span><button class="sw" aria-checked="true" role="switch" aria-label="R7 有効"><i></i></button></div>
       <div class="row"><span class="rid">R8</span><div><div class="nm">持ち越し分の消化案内</div><div class="cond">翌月へ持ち越した方へ。当月分優先→振替分の順で消化</div></div><span class="src line">LINE</span><button class="sw" aria-checked="true" role="switch" aria-label="R8 有効"><i></i></button></div>
+      <div class="row"><span class="rid">R9</span><div><div class="nm">来店お礼（写真付き）</div><div class="cond">来店当日 19:00・当日の写真を添えて送信（1通に写真4枚まで・カルテから手動送信も可）</div></div><span class="src line">LINE</span><button class="sw" aria-checked="true" role="switch" aria-label="R9 有効"><i></i></button></div>
     </div>
   </div>
 
@@ -937,6 +946,7 @@ const REMINDERS = [
   { id:'R6', n:'回数券 来店促し',      c:'2週間 来店なし＋残回数',   need:d => !!d.ticket },
   { id:'R7', n:'スクール 残回数案内',  c:'1週間 来店なし',           need:d => !!d.plan },
   { id:'R8', n:'持ち越し分の消化案内', c:'翌月へ持ち越し時',         need:d => !!(d.plan && d.plan.carry) },
+  { id:'R9', n:'来店お礼（写真付き）', c:'来店当日 19:00',           need:() => true },
 ];
 const custRem = {};                       // 犬ごとの個別設定（未設定＝店舗設定に従う）
 custRem['きなこ'] = { R2:false };          // 例: 誕生日メッセージを辞退
@@ -972,6 +982,47 @@ document.addEventListener('click', e => {
   if (!nm.querySelector('.pill')) nm.insertAdjacentHTML('beforeend', ' <span class="pill hny">個別設定</span>');
   showToast(dog + 'の「' + nm.textContent.replace('個別設定', '').trim() + '」を' + (on ? 'ON' : 'OFF') + 'にしました');
 });
+
+// ---- お礼メッセージ（写真付き）カード ----
+const THX_SHOTS = ['カット後', '正面', 'よこ顔', 'あそび中', 'お昼寝', 'おやつ'];
+const THX_HUES = [155, 42, 205, 18, 95, 265];
+function thanksCard(d, o){
+  return '<div class="card"><div class="hd"><h2>お礼メッセージ（写真付き）</h2><span class="pill acc">R9</span>'
+    + (o.line ? '<span class="pill good">LINE送信</span>' : '<span class="pill mut">メール送信（LINE未連携）</span>') + '</div>'
+    + '<div class="bd">'
+    + '<p style="font-size:12px;color:var(--muted);margin:0 0 8px">本日の写真から添付する画像を選択（LINEは1通につき4枚まで・課金は1通分）</p>'
+    + '<div class="thxg" id="thxg"></div>'
+    + '<textarea id="thxmsg" rows="3" style="margin-top:10px">' + d.n + 'ちゃん、本日はご来店ありがとうございました🐾 とてもおりこうさんでした。本日のお写真をお送りします。またのご来店をお待ちしております！</textarea>'
+    + '<div style="display:flex;align-items:center;gap:12px;margin-top:10px;flex-wrap:wrap">'
+    + '<button class="btn" id="thxsend">' + (o.line ? 'LINEで送信' : 'メールで送信') + '</button>'
+    + '<span style="font-size:12px;color:var(--muted)" id="thxcnt">写真 選択中 0枚</span></div>'
+    + '<p style="font-size:11.5px;color:var(--muted);margin:10px 0 0">毎日19:00の自動送信（R9）とは別に、この画面からいつでも手動送信できます。送信内容はカルテの履歴に残ります。</p>'
+    + '</div></div>';
+}
+function wireThanks(d, o){
+  const g = document.getElementById('thxg');
+  THX_SHOTS.forEach((label, i) => {
+    const ph = document.createElement('div');
+    ph.className = 'ph';
+    ph.style.background = 'linear-gradient(135deg, hsl(' + THX_HUES[i] + ' 32% 62%), hsl(' + ((THX_HUES[i] + 40) % 360) + ' 30% 44%))';
+    ph.innerHTML = d.n + ' ' + label + '<span class="ck"></span>';
+    ph.addEventListener('click', () => {
+      const cnt = g.querySelectorAll('.ph.sel').length;
+      if (!ph.classList.contains('sel') && cnt >= 4) { showToast('1通で送れる写真は4枚までです'); return; }
+      ph.classList.toggle('sel');
+      const sels = [...g.querySelectorAll('.ph.sel')];
+      sels.forEach((s, n) => s.querySelector('.ck').textContent = n + 1);
+      document.getElementById('thxcnt').textContent = '写真 選択中 ' + sels.length + '枚';
+    });
+    g.appendChild(ph);
+  });
+  document.getElementById('thxsend').addEventListener('click', () => {
+    const n = document.querySelectorAll('#thxg .ph.sel').length;
+    showToast(o.name + ' 様へお礼メッセージ' + (n ? 'と写真' + n + '枚' : '') + 'を' + (o.line ? 'LINE' : 'メール') + 'で送信しました（カルテに記録）');
+    document.querySelectorAll('#thxg .ph.sel').forEach(p => p.classList.remove('sel'));
+    document.getElementById('thxcnt').textContent = '写真 選択中 0枚';
+  });
+}
 
 // ---- 顧客カルテの描画 ----
 const custbody = document.getElementById('custbody');
@@ -1020,6 +1071,7 @@ function openCarte(d, o){
     + '<p style="font-size:12px;color:var(--muted);margin:8px 0 0">直近半年以内の利用者は更新案内の自動送信対象です（スタッフにも通知）。</p></div></div>'
     + school + lapsed + '</div>'
     + '<div style="display:grid;gap:16px;align-content:start">'
+    + thanksCard(d, o)
     + remCard(d, o)
     + '<div class="card"><div class="hd"><h2>来店履歴・カルテ</h2><span class="pill mut">全 ' + d.total + ' 件</span></div>'
     + '<div class="bd" style="padding-top:4px"><ul class="tl">'
@@ -1030,6 +1082,7 @@ function openCarte(d, o){
     + '</ul></div></div></div></div>';
 
   document.getElementById('bklist').addEventListener('click', e => { e.preventDefault(); go('list'); });
+  wireThanks(d, o);
   go('cust');
 }
 // ---- タブ切替 ----
