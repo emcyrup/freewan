@@ -19,9 +19,9 @@ GCP に VM を1台立て、`docs/new-store.md` の手順で構築中。
 | 3 | Docker とコードを入れる | **完了** |
 | 4 | `.env` を作る | **完了**（LINE の値は仮の可能性あり。下記参照） |
 | 5 | 起動して HTTPS を確認・管理画面が開く | **完了** |
-| 6 | LINE チャネル・LIFF を作り Webhook を設定 | **未** |
-| 7 | 初期データ投入（メニュー・コース・スタッフ・既存顧客） | **未** |
-| 8 | 自動デプロイを2台目に対応させる | **未** |
+| 6 | LINE チャネル・LIFF を作り Webhook を設定 | **未**（人がコンソールで行う作業） |
+| 7 | 初期データ投入（メニュー・コース・スタッフ・既存顧客） | **未**（FREEWAN 用の投入データは `scripts/store-data/` に用意済み） |
+| 8 | 自動デプロイを2台目に対応させる | **コード対応済み**。Secrets の登録待ち（下記） |
 
 ### Step 6 でやること
 
@@ -35,22 +35,33 @@ GCP に VM を1台立て、`docs/new-store.md` の手順で構築中。
 ### Step 7 でやること
 
 ```bash
-docker compose exec app node scripts/seed-menus.js   # コース名は店舗に合わせて要編集
-docker compose exec app node scripts/seed-plans.js   # 保育コース 月4回 / 月8回
+# FREEWAN 用の内容は scripts/store-data/ に用意済み（コードの編集は不要になった）
+docker compose exec app node scripts/seed-menus.js --file=scripts/store-data/freewan.menus.json
+docker compose exec app node scripts/seed-plans.js --file=scripts/store-data/freewan.plans.json
 ```
+
+- メニューの所要時間はモック段階の仮値。ヒアリング後に JSON を直して再実行する
+  （同名はスキップされるので何度でも安全）
 
 - スタッフを管理画面から登録し、LINE 連携する（`docs/shift-requests.md`）
 - **既存顧客台帳（氏名・電話番号）の投入が最重要。** LIFF 登録時の突合率に直結する
 - `STORE_*` の残り（営業時間・定休日・住所・電話・サブタイトル）を `.env` に追記する。
   未設定だと現行店舗の既定値が出る
 
-### Step 8 でやること
+### Step 8 でやること（残りは Secrets 登録のみ）
 
-`.github/workflows/ci.yml` のデプロイ先が `secrets.VM_HOST` の**1台だけ**。
-2台目は自動デプロイの対象外なので、複数台へ配れるようにする必要がある。
+ci.yml は複数台対応済み。`DEPLOY_TARGETS`（`user@host` の改行区切り）で全店舗へ配る。
+残作業（リポジトリの Settings → Secrets and variables → Actions）:
+
+1. 1台目と同じ deploy_key の**公開鍵を2台目の** `~/.ssh/authorized_keys` に追加
+2. Secret `DEPLOY_TARGETS` に2台ぶんの `user@host` を改行区切りで登録
+   （設定後は旧 `VM_HOST` / `VM_USER` は使われないので消してよい）
+3. main に何かをマージし、両店舗へ配られることを Actions のログで確認
+   （1台の失敗で他店舗は止まらず、最後にまとめて失敗報告される）
 
 **店舗ごとにコードを分岐させないこと。** 差分は `.env` に寄せる方針で作ってある
-（`src/store.js` と配信日数の設定）。どうしても吸収できない差が出たら、まず設定化を検討する。
+（`src/store.js` と配信日数の設定）。メニュー・定額コースの初期データも
+`scripts/store-data/` の JSON に寄せた。どうしても吸収できない差が出たら、まず設定化を検討する。
 
 ---
 

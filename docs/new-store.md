@@ -108,11 +108,13 @@ docker compose exec app node scripts/setup-richmenu.js --image=/app/menu.png
 ### 5. 初期データ
 
 ```bash
-# メニュー（scripts/seed-menus.js はここっとベールのコース名。店舗に合わせて書き換える）
-docker compose exec app node scripts/seed-menus.js
-# 定額コース（保育コース 月4回 / 月8回）
-docker compose exec app node scripts/seed-plans.js
+# メニュー・定額コース。店舗ごとの内容は scripts/store-data/ の JSON を渡す
+# （コードの書き換えは不要。引数なしならここっとベールの既定値が入る）
+docker compose exec app node scripts/seed-menus.js --file=scripts/store-data/freewan.menus.json
+docker compose exec app node scripts/seed-plans.js --file=scripts/store-data/freewan.plans.json
 ```
+
+新しい店舗の JSON は `scripts/store-data/README.md` の形式で追加する。
 
 - スタッフを管理画面から登録し、LINE と連携する（[shift-requests.md](shift-requests.md)）
 - **既存顧客台帳（氏名・電話番号）を投入する。** LIFF 登録時の突合率に直結するので、

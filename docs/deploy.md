@@ -194,10 +194,19 @@ Settings → Secrets and variables → Actions:
 
 | 種別 | 名前 | 値 |
 |---|---|---|
-| Secret | `VM_HOST` | VM の IP またはドメイン |
-| Secret | `VM_USER` | SSH ユーザー名（例: `iwako105`） |
-| Secret | `VM_SSH_KEY` | `deploy_key`（秘密鍵ファイル）の中身全文 |
+| Secret | `DEPLOY_TARGETS` | 配布先を `user@host` の改行区切りで全店舗ぶん |
+| Secret | `VM_SSH_KEY` | `deploy_key`（秘密鍵ファイル）の中身全文。**全サーバー共通の鍵ペア**を使い、公開鍵を各サーバーの `authorized_keys` に追加する |
 | Variable | `DEPLOY_ENABLED` | `true` |
+
+`DEPLOY_TARGETS` の例（2店舗）:
+
+```
+someuser@store1.example.com
+iwako105@freewan999999.duckdns.org
+```
+
+旧構成の `VM_HOST` / `VM_USER`（1台）も引き続き動く。`DEPLOY_TARGETS` を設定した場合はそちらが優先される。
+1台のデプロイが失敗しても他の店舗への配布は続行し、最後にまとめて失敗として報告される。
 
 `DEPLOY_ENABLED` を設定するまでデプロイはスキップされる（テストのみ実行）。
 
