@@ -575,8 +575,8 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
 <div class="app">
 <aside class="side">
   <div class="brand">
-    <div class="logo"><span class="mark">&#127807;</span>ここっとベール</div>
-    <div class="store">Dog Salon・Pet Hotel｜予約・顧客・自動配信</div>
+    <div class="logo"><span class="mark">&#128062;</span>FREE WAN</div>
+    <div class="store">Pet Salon &amp; School｜予約・顧客・自動配信</div>
   </div>
   <div class="mocktag">画面モック（サンプルデータ）</div>
   <nav class="nav" id="nav">
@@ -714,8 +714,8 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
         <span><i style="background:var(--accent)"></i>トリミング</span>
         <span><i style="background:var(--honey)"></i>保育・お預かり</span>
         <span><i style="background:var(--good)"></i>初めてのわんちゃん</span>
-        <span><i style="background:var(--early)"></i>10:00以前</span>
-        <span><i style="background:var(--late)"></i>19:00以降</span>
+        <span><i style="background:var(--early)"></i>&#11088; 10:00前にくる子</span>
+        <span><i style="background:var(--late)"></i>&#11088; 18:00以降に帰る子</span>
         <span><i style="background:linear-gradient(100deg,var(--early),var(--late))"></i>両方にまたがる</span>
         <span><i style="background:var(--accent);position:relative;overflow:hidden"><i style="position:absolute;inset:0;background:repeating-linear-gradient(-45deg,rgba(255,255,255,.5) 0 3px,transparent 3px 6px);margin:0"></i></i>新規 +30分枠</span>
         <span><i style="background:repeating-linear-gradient(-45deg,var(--surface2) 0 4px,transparent 4px 8px)"></i>シフト休・定休</span>
@@ -842,15 +842,9 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
           </div>
           <table style="margin-top:12px">
             <tr><th>お預かり</th><th class="r">料金</th></tr>
-            <tr><td>宿泊 レギュラーコース<span style="display:block;font-size:11.5px;color:var(--muted)">2頭同室 5,225円</span></td><td class="r num">1泊2日 3,850円</td></tr>
-            <tr><td>宿泊 保育コース</td><td class="r num">1泊2日 4,950円</td></tr>
-            <tr><td>一時預かり<span style="display:block;font-size:11.5px;color:var(--muted)">対応時間 10:00〜19:00</span></td><td class="r num">550円</td></tr>
-            <tr><td>ワンず写メ日記<span style="display:block;font-size:11.5px;color:var(--muted)">写真or動画はおまかせ</span></td><td class="r num">1日2通 330円</td></tr>
+            <tr><td>一時預かり<span style="display:block;font-size:11.5px;color:var(--muted)">対応時間 10:00〜18:00</span></td><td class="r num">550円</td></tr>
           </table>
-          <p class="hint" style="margin:10px 0 0">4泊目以降は10%OFF。2頭同室をご希望の場合は2頭目が半額（中型ゲージのみ）。<br>
-          チェックイン・チェックアウトは営業時間内（前後30分 9:30〜19:30 までは無料で受付）。<br>
-          アーリーチェックイン 9:00〜9:30／レイトチェックアウト 19:30〜20:00 は各＋550円。<br>
-          <b>定休日（木曜）もお預かりの受付は 10:00〜17:00 で対応。</b></p>
+          <p class="hint" style="margin:10px 0 0">料金は犬種・毛量により変わります。詳細はご来店時にご案内します。</p>
         </div>
       </div>
       <div class="card">
@@ -1345,7 +1339,7 @@ const FAMILIES = [
       ticket:null,
       patch:{ date:'2026/01/15', state:['good','有効'], allergy:'2026/04/05' },
       lapsed:[['5/31','保育コース 月8回','4月分の繰越',2]],
-      visits:[['7/20 日','宿泊（レギュラーコース）','line','山本','1泊2日。ワンず写メ日記をご利用。'],
+      visits:[['7/20 日','保育コース','line','山本','アジリティに挑戦。'],
               ['7/13 日','保育コース','line','山本','他の子とのあいさつが上手に。'],
               ['7/6 日','保育コース','line','中村','']] }]},
 ];
@@ -1874,7 +1868,7 @@ window.addEventListener('hashchange', () => {
 
 // ---- 予約カレンダー（横タイムライン 7:00-22:00） ----
 const DAY_START = 8, DAY_HOURS = 13;                // 8:00-21:00
-const CORE_OPEN = 10, CORE_CLOSE = 19;              // 通常営業（一時預かりの対応時間に合わせる）
+const CORE_OPEN = 10, CORE_CLOSE = 18;              // 10:00前に来る子・18:00以降に帰る子を目立たせる基準
 function periodCls(s, e){                            // 時間帯による色分け
   if (s < CORE_OPEN && e > CORE_CLOSE) return 'both';
   if (s < CORE_OPEN) return 'early';
@@ -1895,21 +1889,21 @@ const rows = [
   {name:'高橋',    role:'トリマー・AM半休', st:true, off:[8,13,'AM半休']},
   {name:'中村',    role:'保育担当・公休',   st:true, off:[8,21,'公休']},
   {name:'山本',    role:'保育担当', st:true},
-  {name:'ホテル',  role:'宿泊・一時預かり'},
+  {name:'預かり',  role:'一時預かり'},
 ];
 const evs = [
   {row:0, s:9,    d:1,   cls:'pickup', html:'<b>お迎え 3件</b>マロン・ソラ・レオ'},
   {row:0, s:17.5, d:1,   cls:'pickup', html:'<b>お送り 3件</b>'},
-  {row:1, s:9,    d:1.5, cls:'',       html:'<b>ラテ シャンプー</b>早朝枠 <span class="src">電話</span>'},
-  {row:1, s:10.5, d:2,   cls:'',       html:'<b>マロン シャンプー＆カット</b><span class="src">EPARK</span>'},
-  {row:1, s:13,   d:1,   cls:'',       html:'<b>ココ シャンプー</b><span class="src">LINE</span>'},
+  {row:1, s:9,    d:1.5, cls:'',  pet:'ラテ',   html:'<b>ラテ シャンプー</b>早朝枠 <span class="src">電話</span>'},
+  {row:1, s:10.5, d:2,   cls:'',  pet:'マロン', html:'<b>マロン シャンプー＆カット</b><span class="src">EPARK</span>'},
+  {row:1, s:13,   d:1,   cls:'',  pet:'ココ',   html:'<b>ココ シャンプー</b><span class="src">LINE</span>'},
   {row:1, s:14.5, d:2,   cls:'', nc:1, html:'<b>ルナ シャンプー＆カット</b>初回 <span class="src">EPARK</span>'},
-  {row:1, s:17,   d:1,   cls:'trial',  html:'<b>チョコ 初回相談</b><span class="src">LINE</span>'},
-  {row:2, s:13,   d:2,   cls:'',       html:'<b>プリン シャンプー＆カット</b><span class="src">EPARK</span>'},
-  {row:2, s:15.5, d:0.5, cls:'',       html:'<b>レオ 爪切り・耳掃除</b><span class="src">電話</span>'},
-  {row:2, s:19,   d:1.5, cls:'',       html:'<b>ベル 夜間のお迎え対応</b><span class="src">LINE</span>'},
+  {row:1, s:17,   d:1,   cls:'trial', pet:'チョコ', html:'<b>チョコ 初回相談</b><span class="src">LINE</span>'},
+  {row:2, s:13,   d:2,   cls:'',  pet:'プリン', html:'<b>プリン シャンプー＆カット</b><span class="src">EPARK</span>'},
+  {row:2, s:15.5, d:0.5, cls:'',  pet:'レオ',   html:'<b>レオ 爪切り・耳掃除</b><span class="src">電話</span>'},
+  {row:2, s:18,   d:1,   cls:'',  pet:'ベル',   html:'<b>ベル 夕方お迎え対応</b><span class="src">LINE</span>'},
   {row:4, s:10,   d:8,   cls:'school', html:'<b>保育コース 6頭</b>マロン・ソラ ほか'},
-  {row:5, s:8,    d:11,  cls:'',       html:'<b>ベル 宿泊（レギュラー）</b>1泊2日・ワンず写メ日記あり <span class="src">LINE</span>'},
+  {row:5, s:9,    d:9.5, cls:'',  pet:'ベル', html:'<b>ベル 一時預かり</b>9:00〜18:30 <span class="src">LINE</span>'},
 ];
 const tl = document.getElementById('tl');
 const bodies = [];
@@ -1937,11 +1931,14 @@ function makeEv(e){
   d.className = 'tev ' + e.cls + (pc ? ' ' + pc : '');
   d.style.left  = ((e.s - DAY_START) / DAY_HOURS * 100) + '%';
   d.style.width = ((e.d + ext) / DAY_HOURS * 100) + '%';
-  d.innerHTML = e.html
+  // 10:00前にくる子・18:00以降に帰る子は、色分けに加えて名前に⭐を付けて一目で分かるようにする
+  const marked = pc && e.cls !== 'pickup' ? e.html.replace('<b>', '<b>&#11088; ') : e.html;
+  d.innerHTML = marked
     + (e.nc ? '<span class="ncx" style="width:' + (0.5 / (e.d + 0.5) * 100) + '%">＋30</span>' : '')
     + '<span class="rz">&#8596;</span><span class="hz l"></span><span class="hz r"></span>';
   if (e.nc) d.title = '初めてのわんちゃんのため +30分の枠を自動確保（' + fmt(e.s) + '〜' + fmt(e.s + e.d + 0.5) + '）';
   d.dataset.s = e.s; d.dataset.d = e.d; d.dataset.cls = e.cls; d.dataset.html = e.html; d.dataset.nc = e.nc ? '1' : '0';
+  if (e.pet) d.dataset.pet = e.pet;
   d.addEventListener('contextmenu', ev => ev.preventDefault());
   bodies[e.row].appendChild(d);
 }
@@ -2749,22 +2746,41 @@ function showUndoToast(msg, onUndo){
 // ---- タップで予約詳細ポップアップ（キャンセル/削除） ----
 let pop = null;
 function closePop(){ if (pop) { pop.back.remove(); pop.el.remove(); pop = null; } }
+function findFamilyPet(petName){
+  if (!petName) return null;
+  for (const f of FAMILIES) {
+    const m = (f.members || []).find((x) => x.n === petName);
+    if (m) return [m, f];
+  }
+  return null;
+}
 function openPop(ev, x, y){
   closePop();
   const row = rows[bodies.indexOf(ev.parentElement)];
   const s = parseFloat(ev.dataset.s), d = parseFloat(ev.dataset.d);
   const title = (ev.querySelector('b') || {}).textContent || '予約';
+  const pc = periodCls(s, s + d);
+  const timeNote = pc === 'early' ? '（⭐ 10:00前にくる子）'
+    : pc === 'late' ? '（⭐ 18:00以降に帰る子）'
+    : pc === 'both' ? '（⭐ 10:00前にきて18:00以降に帰る子）' : '';
   const back = document.createElement('div'); back.className = 'popback';
   back.addEventListener('pointerdown', closePop);
   const el = document.createElement('div'); el.className = 'pop';
   el.innerHTML = '<h3></h3>'
-    + '<div class="meta">時間: <b>' + fmt(s) + ' 〜 ' + fmt(s + d) + '</b></div>'
+    + '<div class="meta">時間: <b>' + fmt(s) + ' 〜 ' + fmt(s + d) + '</b>' + timeNote + '</div>'
+    + (ev.dataset.pet ? '<div class="meta">わんちゃん: <b>' + ev.dataset.pet + '</b></div>' : '')
     + '<div class="meta">担当・枠: <b>' + row.name + '</b>（' + row.role + '）</div>';
   el.querySelector('h3').textContent = title;
   const acts = document.createElement('div'); acts.className = 'acts';
   const mk = (cls, label, fn) => { const b = document.createElement('button'); b.className = 'pbtn ' + cls; b.textContent = label; b.addEventListener('click', fn); return b; };
   acts.append(
-    mk('', 'ペットカルテを開く', () => { closePop(); document.querySelector('#nav button[data-s="cust"]').click(); }),
+    mk('', 'ペットカルテを開く', () => {
+      closePop();
+      const hit = findFamilyPet(ev.dataset.pet);
+      // 名簿にいる子はその子のカルテを直接開く。いない子（新規など）は一覧へ
+      if (hit) openCarte(hit[0], hit[1]);
+      else document.querySelector('#nav button[data-s="cust"]').click();
+    }),
     mk('cancel', 'キャンセルとして記録', () => removeEv(ev, 'キャンセルとして記録しました（履歴に残ります）')),
     mk('del', '完全に削除（入力ミス用）', () => removeEv(ev, '削除しました'))
   );
@@ -3311,7 +3327,7 @@ const RESV = [
   { id:104, at:'7/24(金) 17:00', name:'チョコ',   menu:'初回カウンセリング',       staff:'中村', status:'confirmed', note:'大型犬ですが対応可能でしょうか。' },
   { id:105, at:'7/25(土) 10:00', name:'ムギ',     menu:'シャンプーコース',         staff:'佐藤', status:'confirmed', note:'', ok:true },
   { id:106, at:'7/25(土) 12:30', name:'レオ',     menu:'シャンプー＆カットコース', staff:'高橋', status:'confirmed', note:'' },
-  { id:107, at:'7/28(火) 13:00', name:'ベル',     menu:'宿泊（レギュラーコース）', staff:'山本', status:'confirmed', note:'ワンず写メ日記をお願いします。' },
+  { id:107, at:'7/28(火) 13:00', name:'ベル',     menu:'一時預かり', staff:'山本', status:'confirmed', note:'お迎えは18時半ごろになります。' },
   { id:108, at:'7/22(火) 10:00', name:'マロン',   menu:'保育コース',               staff:'山本', status:'visited',  note:'' },
   { id:109, at:'7/21(月) 13:00', name:'ハナ',     menu:'保育コース（体験）',       staff:'中村', status:'visited',  note:'' },
   { id:110, at:'7/20(月) 15:00', name:'きなこ',   menu:'シャンプーコース',         staff:'伊藤', status:'cancelled', note:'' },
@@ -3432,9 +3448,8 @@ const MENUS = [
   { name:'爪切り・耳掃除', min:15, active:true },
   { name:'保育コース', min:480, active:true },
   { name:'一時預かり', min:60, active:true },
-  { name:'宿泊（レギュラーコース）', min:null, active:true },
-  { name:'宿泊（保育コース）', min:null, active:true },
-  { name:'ワンず写メ日記（オプション）', min:null, active:true },
+  { name:'体験入園', min:90, active:true },
+  { name:'送迎', min:30, active:true },
   { name:'夏季限定 クールシャンプー', min:60, active:false },
 ];
 const mnlist = document.getElementById('mnlist');

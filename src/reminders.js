@@ -4,12 +4,16 @@
 // 既存環境を移行しても挙動は変わらない。
 import { SETTING_KEYS } from './settings.js';
 
-// 画面の R番号と日次ジョブ名の対応。画面・API・ジョブで同じ並びを使う
+// 画面の R番号と日次ジョブ名の対応。画面・API・ジョブで同じ並びを使う。
+// R1〜R4 は実装順の歴史的な番号。R6・R7 は北区店の要件書（docs/osaka-kitaku/要件定義書.md）の
+// 番号に合わせてある（要件と画面で番号がずれると打ち合わせで混乱するため）。
 export const REMINDER_JOBS = [
   { key: 'preReminder', id: 'R1', label: '前々日確認' },
   { key: 'afterVisit', id: 'R2', label: '来店7日後フォロー' },
   { key: 'dormant', id: 'R3', label: '休眠フォロー' },
   { key: 'birthday', id: 'R4', label: '誕生日メッセージ' },
+  { key: 'ticketNudge', id: 'R6', label: '回数券の来店促し' },
+  { key: 'planNudge', id: 'R7', label: 'コース残回数のご案内' },
 ];
 
 const KEYS = REMINDER_JOBS.map((j) => j.key);

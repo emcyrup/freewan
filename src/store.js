@@ -43,7 +43,7 @@ export function loadStoreProfile(env = process.env) {
 
   return {
     name: env.STORE_NAME || 'ここっとベール',
-    tagline: env.STORE_TAGLINE || 'Dog Salon・Pet Hotel｜予約・顧客・自動配信',
+    tagline: env.STORE_TAGLINE || '予約・顧客・自動配信',
     // サイドバーのロゴ。絵文字1文字を想定（画像を持たせると差し替えが重くなるため）
     logo: env.STORE_LOGO || '🌿',
     openTime,

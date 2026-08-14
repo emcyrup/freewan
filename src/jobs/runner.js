@@ -10,6 +10,8 @@ const JOB_LABELS = {
   afterVisit: '来店フォロー',
   dormant: '休眠フォロー',
   birthday: '誕生日',
+  ticketNudge: '回数券促し',
+  planNudge: 'コース残数',
 };
 
 // まとめ通知の1行。0 の項目は省いて読みやすくする

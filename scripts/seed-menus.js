@@ -16,8 +16,6 @@ export const DEMO_MENUS = [
   { name: '爪切り・耳掃除', durationMinutes: 15 },
   { name: '保育コース', durationMinutes: 480 },
   { name: '一時預かり', durationMinutes: 60 },
-  { name: '宿泊（レギュラーコース）', durationMinutes: null },
-  { name: '宿泊（保育コース）', durationMinutes: null },
 ];
 
 export async function seedMenus(pool, menus = DEMO_MENUS) {

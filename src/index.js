@@ -18,6 +18,8 @@ import { createJobRunner } from './jobs/runner.js';
 import { createPreReminderJob } from './jobs/preReminder.js';
 import { createAfterVisitJob } from './jobs/afterVisit.js';
 import { createDormantJob } from './jobs/dormant.js';
+import { createTicketNudgeJob } from './jobs/ticketNudge.js';
+import { createPlanNudgeJob } from './jobs/planNudge.js';
 import { createBirthdayJob } from './jobs/birthday.js';
 import { createFollowupClassifier } from './ai/classifyFollowup.js';
 import { createShiftRequestParser } from './ai/parseShiftRequest.js';
@@ -365,6 +367,8 @@ runner.scheduleDaily(
       pool, lineClient, dailyLimit: config.dormantDailyLimit, dormantDays: config.dormantDays,
     }),
     birthday: createBirthdayJob({ pool, lineClient, couponUrl: config.birthdayCouponUrl }),
+    ticketNudge: createTicketNudgeJob({ pool, lineClient, idleDays: config.ticketNudgeIdleDays }),
+    planNudge: createPlanNudgeJob({ pool, lineClient, idleDays: config.planNudgeIdleDays }),
   },
   {
     lineClient,
