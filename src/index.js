@@ -21,6 +21,9 @@ import { createAfterVisitJob } from './jobs/afterVisit.js';
 import { createDormantJob } from './jobs/dormant.js';
 import { createTicketNudgeJob } from './jobs/ticketNudge.js';
 import { createPlanNudgeJob } from './jobs/planNudge.js';
+import { createCarryNudgeJob } from './jobs/carryNudge.js';
+import { createVaccineJob } from './jobs/vaccine.js';
+import { createThanksJob } from './jobs/thanks.js';
 import { createBirthdayJob } from './jobs/birthday.js';
 import { createFollowupClassifier } from './ai/classifyFollowup.js';
 import { createShiftRequestParser } from './ai/parseShiftRequest.js';
@@ -60,7 +63,7 @@ const classifier = createFollowupClassifier({ apiKey: config.anthropicApiKey });
 // シフト変更申請（スタッフが公式LINE へ自由記述で送る）
 const shiftParser = createShiftRequestParser({ apiKey: config.anthropicApiKey });
 const shiftService = createShiftService({ pool, lineClient, slack, settings, config });
-// 回数券・保育コースの回数管理（残回数は元帳の合計から導く）
+// 回数券・ペットスクールの回数管理（残回数は元帳の合計から導く）
 const planService = createPlanService({ pool });
 
 const app = express();
@@ -246,6 +249,17 @@ const adminGuard = basicAuth({ user: config.adminUser, password: config.adminPas
 // 旧管理画面（/admin/）はモック側の画面に統合した。ブックマーク・LINE内の旧リンク互換のためリダイレクトを残す
 app.get('/admin/customers.html', (_req, res) => res.redirect('/mock/#list'));
 app.get(['/admin', '/admin/index.html'], (_req, res) => res.redirect('/mock/#resv'));
+// 来店写真（R9 来店お礼）。SNS 投稿と同じく、LINE クライアントが公開 URL から
+// 直接取得するため認証なしで配信する。推測不能なランダムファイル名が実質のアクセス制御
+const thanksDataDir = path.join(process.cwd(), 'data', 'thanks');
+try {
+  mkdirSync(thanksDataDir, { recursive: true });
+} catch (err) {
+  // 写真置き場が作れなくても LINE 配信まで道連れにしない（お礼配信だけ落とす）
+  console.error(`[thanks] 写真ディレクトリを作成できません: ${err.message}`);
+}
+app.use('/thanks-media', express.static(thanksDataDir, { maxAge: '7d', immutable: true }));
+
 app.use(
   '/api/admin',
   adminGuard,
@@ -259,6 +273,7 @@ app.use(
     customerReminders,
     planService,
     approvalQueue,
+    thanksDataDir,
   })
 );
 
@@ -352,7 +367,7 @@ cron.schedule('30 0 1 * *', async () => {
     console.log(`[plans] 月次付与 加入${result.enrolled}件 / 付与${result.granted}件`);
   } catch (err) {
     console.error(`[plans] 月次付与に失敗: ${err.message}`);
-    await slack.notifyError('保育コースの月次付与に失敗', err);
+    await slack.notifyError('ペットスクールの月次付与に失敗', err);
   }
 }, { timezone: 'Asia/Tokyo' });
 
@@ -378,6 +393,11 @@ runner.scheduleDaily(
     birthday: createBirthdayJob({ pool, lineClient, couponUrl: config.birthdayCouponUrl }),
     ticketNudge: createTicketNudgeJob({ pool, lineClient, idleDays: config.ticketNudgeIdleDays }),
     planNudge: createPlanNudgeJob({ pool, lineClient, idleDays: config.planNudgeIdleDays }),
+    carryNudge: createCarryNudgeJob({ pool, lineClient }),
+    vaccine: createVaccineJob({
+      pool, lineClient, slack,
+      remindDays: config.vaccineRemindDays, activeDays: config.vaccineActiveDays,
+    }),
   },
   {
     lineClient,
@@ -385,6 +405,12 @@ runner.scheduleDaily(
     quotaWarnRemaining: config.quotaWarnRemaining,
   }
 );
+
+// 来店お礼（R9）は当日の来店に対して営業終了後の 19:00 JST に送る。
+// 10:00 の日次まとめに入れると「今日の来店」への礼が翌日になるため別枠。
+// 夕方の配信であり、深夜・早朝の送信禁止（CLAUDE.md）には反しない
+const thanksJob = createThanksJob({ pool, lineClient, publicBaseUrl: config.publicBaseUrl });
+cron.schedule('0 19 * * *', () => runner.runJob('thanks', thanksJob), { timezone: 'Asia/Tokyo' });
 
 app.listen(config.port, () => {
   console.log(`[boot] port=${config.port} SEND_MODE=${config.sendMode}`);

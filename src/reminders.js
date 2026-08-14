@@ -5,15 +5,20 @@
 import { SETTING_KEYS } from './settings.js';
 
 // 画面の R番号と日次ジョブ名の対応。画面・API・ジョブで同じ並びを使う。
-// R1〜R4 は実装順の歴史的な番号。R6・R7 は北区店の要件書（docs/osaka-kitaku/要件定義書.md）の
-// 番号に合わせてある（要件と画面で番号がずれると打ち合わせで混乱するため）。
+// R番号は北区店の要件書（docs/osaka-kitaku/要件定義書.md）に合わせてある
+// （要件と画面で番号がずれると打ち合わせで混乱するため）。R5 は未実装で欠番。
+// key は DB（message_logs・customer_reminder_settings）の保存キーなので、
+// 実装順の歴史的な名前のまま変えない（変えると既存データと不整合になる）。
 export const REMINDER_JOBS = [
   { key: 'preReminder', id: 'R1', label: '前々日確認' },
-  { key: 'afterVisit', id: 'R2', label: '来店7日後フォロー' },
-  { key: 'dormant', id: 'R3', label: '休眠フォロー' },
-  { key: 'birthday', id: 'R4', label: '誕生日メッセージ' },
+  { key: 'birthday', id: 'R2', label: '誕生日メッセージ' },
+  { key: 'vaccine', id: 'R3', label: 'ワクチン更新案内' },
+  { key: 'afterVisit', id: 'R4', label: '来店7日後フォロー' },
   { key: 'ticketNudge', id: 'R6', label: '回数券の来店促し' },
   { key: 'planNudge', id: 'R7', label: 'コース残回数のご案内' },
+  { key: 'carryNudge', id: 'R8', label: '繰越分の消化案内' },
+  { key: 'thanks', id: 'R9', label: '来店お礼（写真付き）' },
+  { key: 'dormant', id: 'R10', label: '休眠フォロー' },
 ];
 
 const KEYS = REMINDER_JOBS.map((j) => j.key);

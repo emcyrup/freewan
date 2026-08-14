@@ -5,7 +5,10 @@
 const jobArg = process.argv.find((a) => a.startsWith('--job='));
 const dryRun = process.argv.includes('--dry-run');
 
-const JOB_NAMES = ['preReminder', 'afterVisit', 'dormant', 'birthday', 'ticketNudge', 'planNudge'];
+const JOB_NAMES = [
+  'preReminder', 'afterVisit', 'dormant', 'birthday',
+  'ticketNudge', 'planNudge', 'carryNudge', 'vaccine', 'thanks',
+];
 
 const jobName = jobArg?.slice('--job='.length);
 if (!jobName || !JOB_NAMES.includes(jobName)) {
@@ -33,6 +36,9 @@ const { createDormantJob } = await import('../src/jobs/dormant.js');
 const { createBirthdayJob } = await import('../src/jobs/birthday.js');
 const { createTicketNudgeJob } = await import('../src/jobs/ticketNudge.js');
 const { createPlanNudgeJob } = await import('../src/jobs/planNudge.js');
+const { createCarryNudgeJob } = await import('../src/jobs/carryNudge.js');
+const { createVaccineJob } = await import('../src/jobs/vaccine.js');
+const { createThanksJob } = await import('../src/jobs/thanks.js');
 
 const config = loadConfig();
 console.log(`[run-job] job=${jobName} SEND_MODE=${config.sendMode}`);
@@ -61,6 +67,12 @@ const jobs = {
   birthday: createBirthdayJob({ pool, lineClient, couponUrl: config.birthdayCouponUrl }),
   ticketNudge: createTicketNudgeJob({ pool, lineClient, idleDays: config.ticketNudgeIdleDays }),
   planNudge: createPlanNudgeJob({ pool, lineClient, idleDays: config.planNudgeIdleDays }),
+  carryNudge: createCarryNudgeJob({ pool, lineClient }),
+  vaccine: createVaccineJob({
+    pool, lineClient, slack,
+    remindDays: config.vaccineRemindDays, activeDays: config.vaccineActiveDays,
+  }),
+  thanks: createThanksJob({ pool, lineClient, publicBaseUrl: config.publicBaseUrl }),
 };
 
 const summary = await runner.runJob(jobName, jobs[jobName]);

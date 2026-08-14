@@ -71,6 +71,8 @@ export function loadConfig(env = process.env) {
   const dormantDays = days('DORMANT_DAYS', 90);
   const ticketNudgeIdleDays = days('TICKET_NUDGE_IDLE_DAYS', 14);
   const planNudgeIdleDays = days('PLAN_NUDGE_IDLE_DAYS', 7);
+  const vaccineRemindDays = days('VACCINE_REMIND_DAYS', 30);
+  const vaccineActiveDays = days('VACCINE_ACTIVE_DAYS', 180);
 
   const liffId = env.LIFF_ID || null;
 
@@ -99,6 +101,8 @@ export function loadConfig(env = process.env) {
     dormantDays,
     ticketNudgeIdleDays,
     planNudgeIdleDays,
+    vaccineRemindDays,
+    vaccineActiveDays,
     birthdayCouponUrl: env.BIRTHDAY_COUPON_URL || null,
     // 未設定なら管理画面・取り込み API はそれぞれ無効（503）になる
     adminUser: env.ADMIN_USER || null,

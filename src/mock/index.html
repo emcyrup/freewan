@@ -302,6 +302,18 @@ button.trow2:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
 .pop .meta{font-size:12px; color:var(--muted); margin-bottom:4px}
 .pop .meta b{color:var(--ink)}
 .pop .acts{display:grid; gap:7px; margin-top:12px}
+/* 帯に複数の子が入っているときの一覧。左の色帯で早い時間の子・遅くまでいる子を区別する */
+.pop .ppets{display:grid; gap:5px; margin-top:6px; max-height:230px; overflow-y:auto}
+.ppet{display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%;
+  border:1px solid var(--line); border-left:4px solid var(--line); background:var(--surface);
+  color:var(--ink); font:inherit; font-size:12.5px; border-radius:8px; padding:7px 10px;
+  cursor:pointer; text-align:left}
+.ppet:hover{background:var(--surface2)}
+.ppet:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+.ppet.early{border-left-color:var(--early)}
+.ppet.late{border-left-color:var(--late)}
+.ppet.both{border-left-color:var(--late)}
+.ppet .pnote{font-size:11px; color:var(--muted); font-weight:600; white-space:nowrap}
 .pbtn{border:1px solid var(--line); background:var(--surface); color:var(--ink); font:inherit; font-size:12.5px; font-weight:600; border-radius:8px; padding:8px 10px; cursor:pointer; text-align:center}
 .pbtn:hover{background:var(--surface2)}
 .pbtn:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
@@ -659,7 +671,8 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
         <tr><td><span class="pill good">来店7日後フォロー</span></td><td id="dash-r2">7/17 ご来店の 2頭</td><td><span class="src line">LINE</span></td><td class="num">10:00</td><td><span class="pill good">実装済</span></td></tr>
         <tr><td><span class="pill acc">休眠フォロー</span></td><td id="dash-r3">最終来店から90日の 3頭</td><td><span class="src line">LINE</span></td><td class="num">10:00</td><td><span class="pill good">実装済</span></td></tr>
         <tr><td><span class="pill hny">誕生日メッセージ</span></td><td id="dash-r4">本日お誕生日の 1頭</td><td><span class="src line">LINE</span></td><td class="num">10:00</td><td><span class="pill good">実装済</span></td></tr>
-        <tr><td><span class="pill warn">ワクチン更新</span></td><td id="dash-r5">期限が近い 2頭（スタッフにも通知）</td><td><span class="src line">LINE</span></td><td class="num">15:00</td><td><span class="pill mut">構想</span></td></tr>
+        <tr><td><span class="pill warn">ワクチン更新</span></td><td id="dash-r5">期限が近い 2頭（スタッフにも通知）</td><td><span class="src line">LINE</span></td><td class="num">10:00</td><td><span class="pill good">実装済</span></td></tr>
+        <tr><td><span class="pill acc">来店お礼（写真付き）</span></td><td id="dash-r9">本日ご来店で写真を登録した 3頭</td><td><span class="src line">LINE</span></td><td class="num">19:00</td><td><span class="pill good">実装済</span></td></tr>
       </table>
     </div>
   </div>
@@ -712,7 +725,7 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
 
       <div class="legend">
         <span><i style="background:var(--accent)"></i>トリミング</span>
-        <span><i style="background:var(--honey)"></i>保育・お預かり</span>
+        <span><i style="background:var(--honey)"></i>ペットスクール</span>
         <span><i style="background:var(--good)"></i>初めてのわんちゃん</span>
         <span><i style="background:var(--early)"></i>&#11088; 10:00前にくる子</span>
         <span><i style="background:var(--late)"></i>&#11088; 18:00以降に帰る子</span>
@@ -840,10 +853,6 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
               <tr><td>ミックス犬・その他</td><td class="r num" colspan="2" style="text-align:left;color:var(--muted);font-size:12px">近いサイズ・毛量の犬種の料金</td></tr>
             </table>
           </div>
-          <table style="margin-top:12px">
-            <tr><th>お預かり</th><th class="r">料金</th></tr>
-            <tr><td>一時預かり<span style="display:block;font-size:11.5px;color:var(--muted)">対応時間 10:00〜18:00</span></td><td class="r num">550円</td></tr>
-          </table>
           <p class="hint" style="margin:10px 0 0">料金は犬種・毛量により変わります。詳細はご来店時にご案内します。</p>
         </div>
       </div>
@@ -931,13 +940,15 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
     </div>
     <div class="rem" id="remrows">
       <div class="row" data-job="preReminder"><span class="rid">R1</span><div><div class="nm">前々日確認 <span class="pill good">実装済</span></div><div class="cond">ご予約の2日前 10:00｜「伺います / 変更したい」のボタン付き</div></div><span class="src line">LINE</span><button class="sw" aria-checked="true" role="switch" aria-label="R1 有効"><i></i></button></div>
-      <div class="row" data-job="afterVisit"><span class="rid">R2</span><div><div class="nm">来店7日後フォロー <span class="pill good">実装済</span></div><div class="cond">ご来店の7日後 10:00｜自由入力の返信は自動で内容を判定しスタッフへ通知</div></div><span class="src line">LINE</span><button class="sw" aria-checked="true" role="switch" aria-label="R2 有効"><i></i></button></div>
-      <div class="row" data-job="dormant"><span class="rid">R3</span><div><div class="nm">休眠フォロー <span class="pill good">実装済</span></div><div class="cond">最終来店から90日 10:00｜同じ方へは90日に1回まで・配信停止の導線つき</div></div><span class="src line">LINE</span><button class="sw" aria-checked="true" role="switch" aria-label="R3 有効"><i></i></button></div>
-      <div class="row" data-job="birthday"><span class="rid">R4</span><div><div class="nm">誕生日メッセージ <span class="pill good">実装済</span></div><div class="cond">お誕生日 当日 10:00｜クーポンを添付（2/29 生まれは平年 2/28）</div></div><span class="src line">LINE</span><button class="sw" aria-checked="true" role="switch" aria-label="R4 有効"><i></i></button></div>
+      <div class="row" data-job="birthday"><span class="rid">R2</span><div><div class="nm">誕生日メッセージ <span class="pill good">実装済</span></div><div class="cond">お誕生日 当日 10:00｜クーポンを添付（2/29 生まれは平年 2/28）</div></div><span class="src line">LINE</span><button class="sw" aria-checked="true" role="switch" aria-label="R2 有効"><i></i></button></div>
+      <div class="row" data-job="vaccine"><span class="rid">R3</span><div><div class="nm">ワクチン更新案内 <span class="pill good">実装済</span></div><div class="cond">期限30日前・直近半年以内にご利用の方のみ｜スタッフにも一覧を通知</div></div><span class="src line">LINE</span><button class="sw" aria-checked="true" role="switch" aria-label="R3 有効"><i></i></button></div>
+      <div class="row" data-job="afterVisit"><span class="rid">R4</span><div><div class="nm">来店7日後フォロー <span class="pill good">実装済</span></div><div class="cond">ご来店の7日後 10:00｜自由入力の返信は自動で内容を判定しスタッフへ通知</div></div><span class="src line">LINE</span><button class="sw" aria-checked="true" role="switch" aria-label="R4 有効"><i></i></button></div>
       <div class="row"><span class="rid">R5</span><div><div class="nm">初回ご来店後の追客 <span class="pill mut">構想</span></div><div class="cond">次回のご予約が未定の方のみ（下の3パターンで自動判定）</div></div><span class="src line">LINE</span><button class="sw" aria-checked="true" role="switch" aria-label="R5 有効"><i></i></button></div>
       <div class="row" data-job="ticketNudge"><span class="rid">R6</span><div><div class="nm">回数券の来店促し <span class="pill good">実装済</span></div><div class="cond">2週間ご来店なし＋残回数ありで通知</div></div><span class="src line">LINE</span><button class="sw" aria-checked="true" role="switch" aria-label="R6 有効"><i></i></button></div>
-      <div class="row" data-job="planNudge"><span class="rid">R7</span><div><div class="nm">コース残回数のご案内 <span class="pill good">実装済</span></div><div class="cond">月4回・月8回の保育コースで1週間ご来店なしのとき月内残回数を通知</div></div><span class="src line">LINE</span><button class="sw" aria-checked="true" role="switch" aria-label="R7 有効"><i></i></button></div>
-      <div class="row"><span class="rid">R8</span><div><div class="nm">ワクチン更新のご案内 <span class="pill mut">構想</span></div><div class="cond">期限30日前・直近半年以内にご利用の方のみ｜スタッフにも通知</div></div><span class="src line">LINE</span><button class="sw" aria-checked="true" role="switch" aria-label="R8 有効"><i></i></button></div>
+      <div class="row" data-job="planNudge"><span class="rid">R7</span><div><div class="nm">コース残回数のご案内 <span class="pill good">実装済</span></div><div class="cond">月4回・月8回のペットスクールで1週間ご来店なしのとき月内残回数を通知</div></div><span class="src line">LINE</span><button class="sw" aria-checked="true" role="switch" aria-label="R7 有効"><i></i></button></div>
+      <div class="row" data-job="carryNudge"><span class="rid">R8</span><div><div class="nm">繰越分の消化案内 <span class="pill good">実装済</span></div><div class="cond">当月中に失効する繰越分がある方へ月替わりに通知（同じ月に1回まで）</div></div><span class="src line">LINE</span><button class="sw" aria-checked="true" role="switch" aria-label="R8 有効"><i></i></button></div>
+      <div class="row" data-job="thanks"><span class="rid">R9</span><div><div class="nm">来店お礼（写真付き） <span class="pill good">実装済</span></div><div class="cond">来店当日 19:00｜カルテで写真を付けた来店だけに本日のお写真を添えて送信</div></div><span class="src line">LINE</span><button class="sw" aria-checked="true" role="switch" aria-label="R9 有効"><i></i></button></div>
+      <div class="row" data-job="dormant"><span class="rid">R10</span><div><div class="nm">休眠フォロー <span class="pill good">実装済</span></div><div class="cond">最終来店から90日 10:00｜同じ方へは90日に1回まで・配信停止の導線つき</div></div><span class="src line">LINE</span><button class="sw" aria-checked="true" role="switch" aria-label="R10 有効"><i></i></button></div>
     </div>
   </div>
 
@@ -1068,10 +1079,10 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
         <div class="chat">
           <span class="tstamp">今日 21:47</span>
           <div class="bub staff"><span class="who">高橋</span>8/1(土) 有休お願いします。子どもの行事のため</div>
-          <div class="bub bot"><span class="who">ここっとベール bot</span>シフト変更を受け付けました。<br><b>高橋さん：8/1(土) 有休</b><br>店長の承認後にシフト表・予約カレンダーへ反映されます。</div>
+          <div class="bub bot"><span class="who">公式LINE bot</span>シフト変更を受け付けました。<br><b>高橋さん：8/1(土) 有休</b><br>店長の承認後にシフト表・予約カレンダーへ反映されます。</div>
           <span class="tstamp">今日 22:03</span>
           <div class="bub staff"><span class="who">山本</span>7/31 10時から12時まで時間休もらえますか</div>
-          <div class="bub bot"><span class="who">ここっとベール bot</span>シフト変更を受け付けました。<br><b>山本さん：7/31(金) 時間休 10:00〜12:00</b><br>承認待ちです。</div>
+          <div class="bub bot"><span class="who">公式LINE bot</span>シフト変更を受け付けました。<br><b>山本さん：7/31(金) 時間休 10:00〜12:00</b><br>承認待ちです。</div>
         </div>
         <p style="font-size:12px;color:var(--muted);margin:10px 0 0">スタッフが普段の公式LINEにメッセージを送るだけで申請できます（スタッフのLINEアカウントは事前登録で識別。顧客には通常のメニューが表示されます）。</p>
       </div>
@@ -1112,7 +1123,7 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
       <div class="card">
         <div class="hd"><h2>キャプション</h2></div>
         <div class="bd">
-          <textarea rows="6" id="snscap">今日の保育コースのようす🐾 みんなでボール遊び！ ソラくんは初めてのシャンプーもがんばりました。#ここっとベール #犬のようちえん #トリミングサロン</textarea>
+          <textarea rows="6" id="snscap">今日のペットスクールのようす🐾 みんなでボール遊び！ ソラくんは初めてのシャンプーもがんばりました。#犬のようちえん #ペットサロン #トリミング</textarea>
           <p style="font-size:12px;color:var(--muted);margin:8px 0 12px">2投稿に分かれる場合、投稿2には「つづき（2/2）」が自動で追記されます。</p>
           <button class="btn block" id="sns-now" type="button">今すぐ投稿</button>
           <div class="frow" style="margin-top:8px">
@@ -1137,7 +1148,7 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
         <div class="hd"><h2>リール動画</h2><span class="pill mut">構想</span></div>
         <div class="bd reelbd">
           <div class="reel">動画をドラッグ＆ドロップ<br><span style="font-size:11px">縦型（9:16）・90秒まで推奨</span></div>
-          <textarea rows="3" placeholder="リールのキャプション（例: 今日の保育のようす🐾 #ここっとベール）"></textarea>
+          <textarea rows="3" placeholder="リールのキャプション（例: 今日のスクールのようす🐾 #フリーワン）"></textarea>
           <button class="btn block" type="button" onclick="showToast('リール投稿は構想段階です（写真投稿のみ実装済み）')">リールを作成して予約投稿</button>
         </div>
       </div>
@@ -1228,14 +1239,14 @@ function dogSub(d) {
 const FAMILIES = [
   { name:'田中 里奈', tel:'090-1234-5678', line:true, source:'EPARK', since:'2024/03', stylist:'北区どうぶつ病院', members:[
     { n:'マロン', menu:'トイプードル', age:5, sex:'♀', bd:'2021/02/14', total:24, last:'7/22',
-      plan:{label:'保育コース 月4回', quota:4, used:3, carry:1, carryLimit:'8月末まで'},
+      plan:{label:'ペットスクール 月4回', quota:4, used:3, carry:1, carryLimit:'8月末まで'},
       ticket:{left:3, exp:'8/20'},
       patch:{ date:'2025/08/15', state:['warn','更新まで 22日'], allergy:'2026/04/03' },
-      lapsed:[['6/30','保育コース 月4回','5月分の繰越',1],['4/30','保育コース 月4回','3月分の繰越',2],['2/20','回数券','期限2ヶ月・購入 12/20',1]],
-      visits:[['7/22 火','保育コース','line','山本','他のわんちゃんとの距離が縮まり、落ち着いて過ごせた。'],
-              ['7/15 火','保育コース','line','山本','お昼寝短め。「まて」の成功率が上がってきた。'],
+      lapsed:[['6/30','ペットスクール 月4回','5月分の繰越',1],['4/30','ペットスクール 月4回','3月分の繰越',2],['2/20','回数券','期限2ヶ月・購入 12/20',1]],
+      visits:[['7/22 火','ペットスクール','line','山本','他のわんちゃんとの距離が縮まり、落ち着いて過ごせた。'],
+              ['7/15 火','ペットスクール','line','山本','お昼寝短め。「まて」の成功率が上がってきた。'],
               ['7/12 土','シャンプー＆カットコース','epark','佐藤','テディベアカット。耳周り短めのご希望。皮膚の赤みなし。'],
-              ['7/8 火','保育コース','line','中村',''],
+              ['7/8 火','ペットスクール','line','中村',''],
               ['6/28 土','シャンプーコース（回数券）','tel','高橋','回数券 残3回に。次回期限 8/20。']] },
     { n:'ムギ', menu:'柴', age:2, sex:'♂', bd:'2024/05/03', total:7, last:'7/12',
       plan:null, ticket:{left:5, exp:'9/12'},
@@ -1247,11 +1258,11 @@ const FAMILIES = [
 
   { name:'山口 健太', tel:'080-2345-6789', line:true, source:'公式LINE', since:'2026/07', stylist:'梅田ペットクリニック', members:[
     { n:'ソラ', menu:'柴', age:1, sex:'♂', bd:'2025/06/20', total:2, last:'7/21', first:['次回 7/29 ご予約済','good'],
-      plan:{label:'保育コース 月8回（8/1〜）', quota:8, used:0, carry:0},
+      plan:{label:'ペットスクール 月8回（8/1〜）', quota:8, used:0, carry:0},
       ticket:null,
       patch:{ date:'2026/05/10', state:['good','有効'], allergy:'2026/05/10' },
       lapsed:[],
-      visits:[['7/21 月','保育コース（体験）','line','中村','初めての集団。最初は緊張も、午後は他の子と遊べた。8/1から通うことに。'],
+      visits:[['7/21 月','ペットスクール（体験）','line','中村','初めての集団。最初は緊張も、午後は他の子と遊べた。8/1から通うことに。'],
               ['7/14 月','カウンセリング','line','中村','しつけのご相談。トイレトレーニング中。']] }]},
 
   { name:'佐々木 由美', tel:'090-3456-7890', line:true, source:'EPARK', since:'2023/11', stylist:'北区どうぶつ病院', members:[
@@ -1266,25 +1277,25 @@ const FAMILIES = [
       plan:null, ticket:null,
       patch:{ date:'2026/02/14', state:['good','有効'], allergy:'2026/04/20' },
       lapsed:[],
-      visits:[['7/12 土','保育コース（体験）','epark','中村','人見知りが強め。少人数の日をご案内。'],
+      visits:[['7/12 土','ペットスクール（体験）','epark','中村','人見知りが強め。少人数の日をご案内。'],
               ['6/20 金','シャンプーコース','tel','伊藤','ココと同時来店。']] }]},
 
   { name:'中島 翔太', tel:'070-4567-8901', line:true, source:'EPARK TEL', since:'2025/02', stylist:'天満どうぶつ病院', members:[
     { n:'レオ', menu:'ポメラニアン', age:2, sex:'♂', bd:'2024/03/18', total:12, last:'7/24', first:['通い始め・次回 7/25','good'],
-      plan:{label:'保育コース 月4回', quota:4, used:4, carry:0},
+      plan:{label:'ペットスクール 月4回', quota:4, used:4, carry:0},
       ticket:null,
       patch:{ date:'2026/01/22', state:['good','有効'], allergy:'2026/03/15' },
-      lapsed:[['3/31','保育コース 月4回','2月分の繰越',1]],
+      lapsed:[['3/31','ペットスクール 月4回','2月分の繰越',1]],
       visits:[['7/24 金','爪切り・耳掃除','tel','伊藤','あわせて肛門腺も。'],
-              ['7/18 金','保育コース（体験）','line','中村','次回 7/25 ご予約。'],
-              ['7/4 金','保育コース','line','山本','ボール遊びが得意。']] }]},
+              ['7/18 金','ペットスクール（体験）','line','中村','次回 7/25 ご予約。'],
+              ['7/4 金','ペットスクール','line','山本','ボール遊びが得意。']] }]},
 
   { name:'藤本 恵子', tel:'090-5678-9012', line:false, source:'紹介', since:'2024/09', stylist:'北区どうぶつ病院', members:[
     { n:'ハナ', menu:'チワワ', age:3, sex:'♀', bd:'2023/04/02', total:9, last:'7/21', first:['再来意向あり・日程未定（7/27 追客予定）','warn'],
       plan:null, ticket:{left:4, exp:'9/1'},
       patch:{ date:'2025/07/30', state:['crit','期限切れ 要確認'], allergy:'2026/04/01' },
       lapsed:[],
-      visits:[['7/21 月','保育コース（体験）','tel','中村','次回の日程は調整中。ワクチンの更新をご案内。'],
+      visits:[['7/21 月','ペットスクール（体験）','tel','中村','次回の日程は調整中。ワクチンの更新をご案内。'],
               ['7/1 火','シャンプーコース（回数券）','tel','高橋','残4回。'],
               ['6/3 火','シャンプー＆カットコース','tel','佐藤','夏に向けて短めに。']] },
     { n:'きなこ', menu:'豆柴', age:6, sex:'♀', bd:'2020/11/11', total:15, last:'6/10',
@@ -1308,7 +1319,7 @@ const FAMILIES = [
       plan:null, ticket:null,
       patch:{ date:'2026/04/11', state:['good','有効'], allergy:'2026/04/11' },
       lapsed:[],
-      visits:[['7/19 土','保育コース（体験）','line','中村','元気いっぱい。ご家族で通うか検討中。']] }]},
+      visits:[['7/19 土','ペットスクール（体験）','line','中村','元気いっぱい。ご家族で通うか検討中。']] }]},
 
   { name:'森田 直樹', tel:'080-8901-2345', line:true, source:'EPARK', since:'2023/04', stylist:'天満どうぶつ病院', members:[
     { n:'プリン', menu:'ヨークシャテリア', age:4, sex:'♀', bd:'2022/09/15', total:19, last:'7/24',
@@ -1335,13 +1346,13 @@ const FAMILIES = [
 
   { name:'西村 大輔', tel:'070-0123-4567', line:true, source:'EPARK', since:'2025/08', stylist:'扇町アニマルクリニック', members:[
     { n:'ベル', menu:'M.シュナウザー', age:5, sex:'♀', bd:'2021/07/07', total:11, last:'7/20',
-      plan:{label:'保育コース 月8回', quota:8, used:5, carry:2, carryLimit:'8月末まで'},
+      plan:{label:'ペットスクール 月8回', quota:8, used:5, carry:2, carryLimit:'8月末まで'},
       ticket:null,
       patch:{ date:'2026/01/15', state:['good','有効'], allergy:'2026/04/05' },
-      lapsed:[['5/31','保育コース 月8回','4月分の繰越',2]],
-      visits:[['7/20 日','保育コース','line','山本','アジリティに挑戦。'],
-              ['7/13 日','保育コース','line','山本','他の子とのあいさつが上手に。'],
-              ['7/6 日','保育コース','line','中村','']] }]},
+      lapsed:[['5/31','ペットスクール 月8回','4月分の繰越',2]],
+      visits:[['7/20 日','ペットスクール','line','山本','アジリティに挑戦。'],
+              ['7/13 日','ペットスクール','line','山本','他の子とのあいさつが上手に。'],
+              ['7/6 日','ペットスクール','line','中村','']] }]},
 ];
 // ---- 顧客一覧の描画 ----
 // 定休日の曜日（0=日）。実運用モードでは店舗プロフィールで上書きされる
@@ -1516,21 +1527,26 @@ function showCarteList(){
 }
 
 // ---- 顧客ごとのリマインド設定 ----
-// 現行システムで動いている4種（R1〜R4）と、今後の候補（R5〜R8）
+// R番号は要件書（docs/osaka-kitaku/要件定義書.md）に合わせる。R5 のみ未実装で欠番
 const REMINDERS = [
   { id:'R1', n:'前々日確認',             c:'ご予約の2日前 10:00',       need:() => true },
-  { id:'R2', n:'来店7日後フォロー',      c:'ご来店の7日後 10:00',       need:() => true },
-  { id:'R3', n:'休眠フォロー',           c:'最終来店から90日',          need:() => true },
-  { id:'R4', n:'誕生日メッセージ',       c:'お誕生日 当日 10:00',       need:() => true },
+  { id:'R2', n:'誕生日メッセージ',       c:'お誕生日 当日 10:00',       need:() => true },
+  { id:'R3', n:'ワクチン更新案内',       c:'期限30日前・直近半年利用',  need:() => true },
+  { id:'R4', n:'来店7日後フォロー',      c:'ご来店の7日後 10:00',       need:() => true },
   { id:'R5', n:'初回ご来店後の追客',     c:'次回のご予約が未定の場合',  need:d => !!d.first },
   { id:'R6', n:'回数券 残回数のご案内',  c:'2週間ご来店なし＋残回数',   need:d => !!d.ticket },
-  { id:'R7', n:'保育コース 残回数案内',  c:'1週間ご来店なし',           need:d => !!d.plan },
+  { id:'R7', n:'ペットスクール 残回数案内',  c:'1週間ご来店なし',           need:d => !!d.plan },
   { id:'R8', n:'繰越分の消化のご案内',   c:'翌月へ繰り越したとき',      need:d => !!(d.plan && d.plan.carry) },
+  { id:'R9', n:'来店お礼（写真付き）',   c:'来店当日 19:00・写真あり',  need:() => true },
+  { id:'R10', n:'休眠フォロー',          c:'最終来店から90日',          need:() => true },
 ];
 // 画面の R番号 → 日次ジョブ名（サーバの /reminders と同じ対応）
-const REMIND_JOB_OF = { R1:'preReminder', R2:'afterVisit', R3:'dormant', R4:'birthday' };
+const REMIND_JOB_OF = {
+  R1:'preReminder', R2:'birthday', R3:'vaccine', R4:'afterVisit',
+  R6:'ticketNudge', R7:'planNudge', R8:'carryNudge', R9:'thanks', R10:'dormant',
+};
 const custRem = {};                       // わんちゃんごとの個別設定（未設定＝店舗設定に従う）
-custRem['きなこ'] = { R4:false };            // 例: 誕生日メッセージを辞退
+custRem['きなこ'] = { R2:false };            // 例: 誕生日メッセージを辞退
 custRem['ラテ']   = { R6:false };            // 例: 回数券の来店促しを辞退
 // お客様ごとのリマインド設定（実運用モード）。サーバに保存され、日次ジョブが見る。
 // 対象はジョブの単位に合わせて「飼い主様」ごと。同じ飼い主様のわんちゃんが複数いても
@@ -1635,7 +1651,7 @@ document.addEventListener('click', e => {
   showToast(member + 'の「' + nm.textContent.replace('個別設定', '').trim() + '」を' + (on ? 'ON' : 'OFF') + 'にしました');
 });
 
-// ---- 回数券・保育コース（実運用モード）----
+// ---- 回数券・ペットスクール（実運用モード）----
 // 残回数はサーバの元帳から取る。画面では集計せず、そのまま出す
 let planMaster = [];
 async function loadPlanMaster(){
@@ -1656,11 +1672,41 @@ async function loadPetCredits(d){
       ? { left: c.ticket.remaining, exp: c.ticket.expiresOn || '期限なし' }
       : null;
     d.lapsed = c.lapsed.map(l => [
-      l.effective_on, l.source === 'ticket' ? '回数券' : '保育コース', l.note || '', l.count,
+      l.effective_on, l.source === 'ticket' ? '回数券' : 'ペットスクール', l.note || '', l.count,
     ]);
   } catch (err) {
     showToast('回数の読み込みに失敗しました: ' + err.message);
   }
+}
+
+// ---- ワクチン（R3）----
+// 期限は「接種日＋1年」で出す。サーバ側の更新案内ジョブと同じ考え方にしてあるので、
+// 画面の「更新まで◯日」と実際に案内が届くタイミング（期限30日前）がずれない
+function vacState(v){
+  if (!v) return null;
+  const d = new Date(String(v).replace(/\//g, '-') + 'T00:00:00+09:00');
+  if (isNaN(d)) return null;
+  const exp = new Date(d); exp.setFullYear(exp.getFullYear() + 1);
+  const days = Math.ceil((exp - new Date()) / 86400000);
+  if (days < 0) return ['crit', '期限切れ 要確認'];
+  if (days <= 30) return ['warn', '更新まで ' + days + '日'];
+  return ['good', '有効'];
+}
+function vaccineRows(d){
+  const p = d.patch;
+  if (!p || (!p.date && !p.allergy)) {
+    return '<p style="font-size:12px;color:var(--muted);margin:0">接種日が未登録です。'
+      + '「わんちゃんの情報を編集」から接種日を入れると、期限の30日前に更新のご案内が自動で届きます。</p>';
+  }
+  const row = (label, v, st) => '<dt>' + label + '</dt>'
+    + (v ? '<dd>' + v + ' 接種 <span class="pill ' + st[0] + '">' + st[1] + '</span></dd>'
+         : '<dd><span class="pill mut">未登録</span></dd>');
+  return '<dl class="kv">'
+    + row('混合', p.date, p.state || vacState(p.date))
+    + row('狂犬病', p.allergy, vacState(p.allergy) || ['good', '有効'])
+    + '</dl>'
+    + '<p style="font-size:12px;color:var(--muted);margin:8px 0 0">ご来店の前に期限切れが分かるよう、'
+    + '期限が近い方へ自動でご案内します（スタッフにも通知）。</p>';
 }
 
 // ---- ペットカルテの描画 ----
@@ -1686,11 +1732,11 @@ async function openCarte(d, o){
     : '';
   // 実運用モードでは未加入でもカードを出す（加入させる導線が要るため）
   const school = adminLive && !d.plan
-    ? '<div class="card"><div class="hd"><h2>保育コース</h2><span class="pill mut">未加入</span></div>'
+    ? '<div class="card"><div class="hd"><h2>ペットスクール</h2><span class="pill mut">未加入</span></div>'
       + '<div class="bd"><p style="font-size:12.5px;color:var(--muted);margin:0">'
       + 'この子は定額コースに加入していません。</p>' + planActions + '</div></div>'
-    : d.plan ? '<div class="card"><div class="hd"><h2>保育コースの利用</h2></div><div class="bd">'
-    + '<div style="display:flex;justify-content:space-between;font-size:12.5px"><span>当月分（' + d.plan.label.replace('保育コース ', '') + '）</span><b class="num">' + d.plan.used + ' / ' + d.plan.quota + ' 回</b></div>'
+    : d.plan ? '<div class="card"><div class="hd"><h2>ペットスクールの利用</h2></div><div class="bd">'
+    + '<div style="display:flex;justify-content:space-between;font-size:12.5px"><span>当月分（' + d.plan.label.replace('ペットスクール ', '') + '）</span><b class="num">' + d.plan.used + ' / ' + d.plan.quota + ' 回</b></div>'
     + '<div class="meter"><i style="width:' + (d.plan.used / d.plan.quota * 100) + '%"></i></div>'
     + (d.plan.carry ? '<div style="display:flex;justify-content:space-between;font-size:12.5px;margin-top:8px"><span>先月からの繰越分</span><b class="num">' + d.plan.carry + ' 回（' + d.plan.carryLimit + '）</b></div><div class="meter"><i style="width:0%;background:var(--honey)"></i></div>' : '')
     + '<p style="font-size:12px;color:var(--muted);margin:8px 0 0">当月分を優先消化 → その後に繰越分を消化。1週間ご来店がない場合は残回数をご案内します。</p>'
@@ -1748,13 +1794,7 @@ async function openCarte(d, o){
     + (o.stylist ? '<dt>かかりつけ</dt><dd>' + o.stylist + '</dd>' : '')
     + (d.notes ? '<dt>メモ</dt><dd>' + d.notes + '</dd>' : '')
     + '</dl></div></div>'
-    + (adminLive && !d.patch ? '' : '<div class="card"><div class="hd"><h2>ワクチン</h2></div><div class="bd">'
-    + (d.patch
-      ? '<dl class="kv"><dt>混合</dt><dd>' + d.patch.date + ' 接種 <span class="pill ' + d.patch.state[0] + '">' + d.patch.state[1] + '</span></dd>'
-        + '<dt>狂犬病</dt><dd>' + d.patch.allergy + ' 接種 <span class="pill good">有効</span></dd></dl>'
-        + '<p style="font-size:12px;color:var(--muted);margin:8px 0 0">お預かりの前に期限切れが分かるよう、期限が近い方へ自動でご案内します（スタッフにも通知）。</p>'
-      : '')
-    + '</div></div>')
+    + '<div class="card"><div class="hd"><h2>ワクチン</h2></div><div class="bd">' + vaccineRows(d) + '</div></div>'
     + school + tickets + lapsed + '</div>'
     + '<div style="display:grid;gap:16px;align-content:start">'
     + remCard(d, o)
@@ -1784,7 +1824,7 @@ async function openCarte(d, o){
   }
   go('cust', true);
 }
-// 回数券・保育コースの操作。保存したらカルテを開き直して残数を反映する
+// 回数券・ペットスクールの操作。保存したらカルテを開き直して残数を反映する
 async function creditAction(action, d, o){
   const reopen = () => openCarte(d, o);
   try {
@@ -1887,9 +1927,8 @@ const rows = [
   {name:'送迎',    role:'5頭まで'},
   {name:'佐藤',    role:'トリマー', st:true},
   {name:'高橋',    role:'トリマー・AM半休', st:true, off:[8,13,'AM半休']},
-  {name:'中村',    role:'保育担当・公休',   st:true, off:[8,21,'公休']},
-  {name:'山本',    role:'保育担当', st:true},
-  {name:'預かり',  role:'一時預かり'},
+  {name:'中村',    role:'スクール担当・公休', st:true, off:[8,21,'公休']},
+  {name:'山本',    role:'スクール担当', st:true},
 ];
 const evs = [
   {row:0, s:9,    d:1,   cls:'pickup', html:'<b>お迎え 3件</b>マロン・ソラ・レオ'},
@@ -1902,8 +1941,13 @@ const evs = [
   {row:2, s:13,   d:2,   cls:'',  pet:'プリン', html:'<b>プリン シャンプー＆カット</b><span class="src">EPARK</span>'},
   {row:2, s:15.5, d:0.5, cls:'',  pet:'レオ',   html:'<b>レオ 爪切り・耳掃除</b><span class="src">電話</span>'},
   {row:2, s:18,   d:1,   cls:'',  pet:'ベル',   html:'<b>ベル 夕方お迎え対応</b><span class="src">LINE</span>'},
-  {row:4, s:10,   d:8,   cls:'school', html:'<b>保育コース 6頭</b>マロン・ソラ ほか'},
-  {row:5, s:9,    d:9.5, cls:'',  pet:'ベル', html:'<b>ベル 一時預かり</b>9:00〜18:30 <span class="src">LINE</span>'},
+  // スクールの帯には複数の子が入る。pets の in/out は帯の時間と違う子だけ書く
+  // （タップでペット一覧→カルテを開ける。早い時間にくる子・遅くまでいる子は一覧に⭐で出る）
+  {row:4, s:10,   d:8,   cls:'school', html:'<b>ペットスクール 6頭</b>マロン・ソラ ほか',
+    pets:[
+      {n:'マロン', in:9}, {n:'ソラ', in:9}, {n:'レオ', in:9},
+      {n:'きなこ'}, {n:'モカ'}, {n:'ベル', out:18.5},
+    ]},
 ];
 const tl = document.getElementById('tl');
 const bodies = [];
@@ -1924,9 +1968,20 @@ rows.forEach(r => {
   tr.append(lb, bd); tl.appendChild(tr); bodies.push(bd);
 });
 function fmt(t){ const h = Math.floor(t), m = Math.round((t - h) * 60); return h + ':' + String(m).padStart(2, '0'); }
+// 帯の実際の在店時間。スクールのように複数の子が入る帯では、
+// 早く来る子・遅くまでいる子を含めた幅で見る（帯の枠内に収まっていても⭐を出すため）
+function evSpan(s, d, pets){
+  let arr = s, dep = s + d;
+  (pets || []).forEach(p => {
+    if (p.in != null && p.in < arr) arr = p.in;
+    if (p.out != null && p.out > dep) dep = p.out;
+  });
+  return { arr, dep };
+}
 function makeEv(e){
   const d = document.createElement('div');
-  const pc = periodCls(e.s, e.s + e.d);
+  const span = evSpan(e.s, e.d, e.pets);
+  const pc = periodCls(span.arr, span.dep);
   const ext = e.nc ? 0.5 : 0;                        // 新規顧客は+30分の準備枠
   d.className = 'tev ' + e.cls + (pc ? ' ' + pc : '');
   d.style.left  = ((e.s - DAY_START) / DAY_HOURS * 100) + '%';
@@ -1939,6 +1994,7 @@ function makeEv(e){
   if (e.nc) d.title = '初めてのわんちゃんのため +30分の枠を自動確保（' + fmt(e.s) + '〜' + fmt(e.s + e.d + 0.5) + '）';
   d.dataset.s = e.s; d.dataset.d = e.d; d.dataset.cls = e.cls; d.dataset.html = e.html; d.dataset.nc = e.nc ? '1' : '0';
   if (e.pet) d.dataset.pet = e.pet;
+  if (e.pets) d.dataset.pets = JSON.stringify(e.pets);   // 帯に入っている複数の子（タップで一覧表示）
   d.addEventListener('contextmenu', ev => ev.preventDefault());
   bodies[e.row].appendChild(d);
 }
@@ -1947,23 +2003,23 @@ evs.forEach(makeEv);
 // ================= 週表示 =================
 const WEEK = [
   { d:'7/20', w:'月', evs:[
-      {s:10,  dur:8,   cls:'school', t:'保育コース 5頭'},
+      {s:10,  dur:8,   cls:'school', t:'ペットスクール 5頭'},
       {s:11,  dur:2,   cls:'',       t:'ベル シャンプー＆カット'},
       {s:14,  dur:1,   cls:'',       t:'ココ シャンプー'},
       {s:16,  dur:2,   cls:'',       t:'モカ シャンプー＆カット'}] },
   { d:'7/21', w:'火', evs:[
-      {s:10,  dur:8,   cls:'school', t:'保育コース 6頭'},
-      {s:11,  dur:1.5, cls:'trial',  t:'ソラ 保育（体験）'},
-      {s:14,  dur:1.5, cls:'trial',  t:'ハナ 保育（体験）'},
+      {s:10,  dur:8,   cls:'school', t:'ペットスクール 6頭'},
+      {s:11,  dur:1.5, cls:'trial',  t:'ソラ スクール（体験）'},
+      {s:14,  dur:1.5, cls:'trial',  t:'ハナ スクール（体験）'},
       {s:16.5,dur:0.5, cls:'',       t:'レオ 爪切り'}] },
   { d:'7/22', w:'水', evs:[
-      {s:10,  dur:8,   cls:'school', t:'保育コース 4頭'},
+      {s:10,  dur:8,   cls:'school', t:'ペットスクール 4頭'},
       {s:10.5,dur:2,   cls:'',       t:'プリン シャンプー＆カット'},
       {s:14,  dur:1.5, cls:'',       t:'ムギ シャンプー'},
       {s:17,  dur:0.5, cls:'',       t:'ラテ 爪切り'}] },
   { d:'7/23', w:'木', closed:true, evs:[] },
   { d:'7/24', w:'金', today:true, evs:[
-      {s:10,  dur:8,   cls:'school', t:'保育コース 6頭'},
+      {s:10,  dur:8,   cls:'school', t:'ペットスクール 6頭'},
       {s:9,   dur:1.5, cls:'',       t:'ラテ シャンプー'},
       {s:10.5,dur:2,   cls:'',       t:'マロン シャンプー＆カット'},
       {s:13,  dur:1,   cls:'',       t:'ココ シャンプー'},
@@ -1978,7 +2034,7 @@ const WEEK = [
       {s:15,  dur:2,   cls:'',       t:'レオ シャンプー＆カット'},
       {s:17,  dur:1.5, cls:'',       t:'きなこ シャンプー'}] },
   { d:'7/26', w:'日', evs:[
-      {s:10,  dur:8,   cls:'school', t:'保育コース 3頭'},
+      {s:10,  dur:8,   cls:'school', t:'ペットスクール 3頭'},
       {s:11,  dur:2,   cls:'',       t:'ベル シャンプー＆カット'},
       {s:14,  dur:2,   cls:'',       t:'ラテ シャンプー＆カット'}] },
 ];
@@ -2006,7 +2062,7 @@ WEEK.forEach(day => {
     const el = document.createElement('div');
     const school = e.cls === 'school';
     const pc = periodCls(e.s, e.s + e.dur);
-    el.className = 'tev ' + e.cls + (pc ? ' ' + pc : '') + (school ? ' laneA' : ' laneB');   // 保育コースは上段、トリミングは下段
+    el.className = 'tev ' + e.cls + (pc ? ' ' + pc : '') + (school ? ' laneA' : ' laneB');   // ペットスクールは上段、トリミングは下段
     el.style.left  = ((e.s - DAY_START) / DAY_HOURS * 100) + '%';
     el.style.width = (e.dur / DAY_HOURS * 100) + '%';
     el.innerHTML = school
@@ -2019,7 +2075,7 @@ WEEK.forEach(day => {
 });
 
 // ================= 月表示 =================
-// [日, トリミング件数, 保育コース頭数, 初回のわんちゃん]（0 = 定休日）
+// [日, トリミング件数, ペットスクール頭数, 初回のわんちゃん]（0 = 定休日）
 // 木曜定休（2026年7月は 2・9・16・23・30 日）。20〜26日は週表示の内容と一致
 const MONTH = [
   [1,6,5,1],[2,0,0,0],[3,8,6,0],[4,9,0,1],[5,5,3,0],[6,4,5,0],[7,6,6,1],
@@ -2049,7 +2105,7 @@ MONTH.forEach(([day, salon, school, trial]) => {
     html += '<span class="closed">定休日</span>';
   } else {
     html += '<span class="mline"><i style="background:var(--accent)"></i><span>トリミング</span><b>' + salon + '</b></span>';
-    if (school) html += '<span class="mline"><i style="background:var(--honey)"></i><span>保育</span><b>' + school + '</b></span>';
+    if (school) html += '<span class="mline"><i style="background:var(--honey)"></i><span>スクール</span><b>' + school + '</b></span>';
     if (trial)  html += '<span class="mline"><i style="background:var(--good)"></i><span>初回</span><b>' + trial + '</b></span>';
   }
   c.innerHTML = html;
@@ -2063,7 +2119,7 @@ for (let i = 0; i < 2; i++) {                       // 7/31 は金曜 → 土・
 }
 const mt = MONTH.reduce((a, x) => [a[0] + x[1], a[1] + x[2], a[2] + x[3]], [0, 0, 0]);
 document.getElementById('msum').innerHTML =
-  '7月合計　トリミング <b>' + mt[0] + ' 件</b>　保育コース延べ <b>' + mt[1] + ' 頭</b>　初回 <b>' + mt[2] + ' 件</b>　営業 <b>' + MONTH.filter(x => x[1]).length + ' 日</b>（木曜定休）';
+  '7月合計　トリミング <b>' + mt[0] + ' 件</b>　ペットスクール延べ <b>' + mt[1] + ' 頭</b>　初回 <b>' + mt[2] + ' 件</b>　営業 <b>' + MONTH.filter(x => x[1]).length + ' 日</b>（木曜定休）';
 
 // ---- 表示切替 ----
 const VIEWS = {
@@ -2840,28 +2896,65 @@ function openPop(ev, x, y){
   const row = rows[bodies.indexOf(ev.parentElement)];
   const s = parseFloat(ev.dataset.s), d = parseFloat(ev.dataset.d);
   const title = (ev.querySelector('b') || {}).textContent || '予約';
-  const pc = periodCls(s, s + d);
+  const petList = ev.dataset.pets ? JSON.parse(ev.dataset.pets) : null;
+  // 1頭の予定は帯の時間そのままで判定する。複数頭の帯は、早く来る子・遅くまでいる子を
+  // 含めた在店時間で見る（帯は 10:00〜18:00 でも、9:00 に来る子がいれば早い子がいると出す）
+  const marks = (petList || []).map(p => ({
+    early: (p.in ?? s) < CORE_OPEN, late: (p.out ?? s + d) > CORE_CLOSE,
+  }));
+  const earlyCount = marks.filter(m => m.early).length;
+  const lateCount = marks.filter(m => m.late).length;
+  const pc = petList ? null : periodCls(s, s + d);
   const timeNote = pc === 'early' ? '（⭐ 10:00前にくる子）'
     : pc === 'late' ? '（⭐ 18:00以降に帰る子）'
     : pc === 'both' ? '（⭐ 10:00前にきて18:00以降に帰る子）' : '';
+  const groupNote = !petList ? ''
+    : earlyCount || lateCount
+      ? '⭐ ' + [earlyCount ? '10:00前にくる子 ' + earlyCount + '頭' : null,
+                lateCount ? '18:00以降に帰る子 ' + lateCount + '頭' : null].filter(Boolean).join('・')
+      : '全員 ' + fmt(s) + '〜' + fmt(s + d) + ' の通常時間';
   const back = document.createElement('div'); back.className = 'popback';
   back.addEventListener('pointerdown', closePop);
   const el = document.createElement('div'); el.className = 'pop';
   el.innerHTML = '<h3></h3>'
     + '<div class="meta">時間: <b>' + fmt(s) + ' 〜 ' + fmt(s + d) + '</b>' + timeNote + '</div>'
-    + (ev.dataset.pet ? '<div class="meta">わんちゃん: <b>' + ev.dataset.pet + '</b></div>' : '')
+    + (!petList && ev.dataset.pet ? '<div class="meta">わんちゃん: <b>' + ev.dataset.pet + '</b></div>' : '')
+    + (groupNote ? '<div class="meta">' + groupNote + '</div>' : '')
     + '<div class="meta">担当・枠: <b>' + row.name + '</b>（' + row.role + '）</div>';
   el.querySelector('h3').textContent = title;
+  const openCarteOf = (petName) => {
+    closePop();
+    const hit = findFamilyPet(petName);
+    // 名簿にいる子はその子のカルテを直接開く。いない子（新規など）は一覧へ
+    if (hit) openCarte(hit[0], hit[1]);
+    else document.querySelector('#nav button[data-s="cust"]').click();
+  };
+  if (petList) {
+    // 複数の子が入っている帯: 一覧から選んでカルテを開く。
+    // 帯の時間と違う子（早い時間にくる子・遅くまでいる子）は⭐と時刻で分かるようにする
+    const cap = document.createElement('div'); cap.className = 'meta';
+    cap.innerHTML = 'この予定のわんちゃん <b>' + petList.length + '頭</b>（タップでカルテ）';
+    el.appendChild(cap);
+    const list = document.createElement('div'); list.className = 'ppets';
+    petList.forEach((p, i) => {
+      const arr = p.in ?? s, dep = p.out ?? s + d;
+      const { early, late } = marks[i];
+      const note = early && late ? '&#11088; ' + fmt(arr) + 'にきて' + fmt(dep) + 'までいる子'
+        : early ? '&#11088; ' + fmt(arr) + 'にくる子'
+        : late ? '&#11088; ' + fmt(dep) + 'までいる子' : '';
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'ppet' + (early && late ? ' both' : early ? ' early' : late ? ' late' : '');
+      b.innerHTML = '<b>' + p.n + '</b>' + (note ? '<span class="pnote">' + note + '</span>' : '');
+      b.addEventListener('click', () => openCarteOf(p.n));
+      list.appendChild(b);
+    });
+    el.appendChild(list);
+  }
   const acts = document.createElement('div'); acts.className = 'acts';
   const mk = (cls, label, fn) => { const b = document.createElement('button'); b.className = 'pbtn ' + cls; b.textContent = label; b.addEventListener('click', fn); return b; };
+  if (!petList) acts.append(mk('', 'ペットカルテを開く', () => openCarteOf(ev.dataset.pet)));
   acts.append(
-    mk('', 'ペットカルテを開く', () => {
-      closePop();
-      const hit = findFamilyPet(ev.dataset.pet);
-      // 名簿にいる子はその子のカルテを直接開く。いない子（新規など）は一覧へ
-      if (hit) openCarte(hit[0], hit[1]);
-      else document.querySelector('#nav button[data-s="cust"]').click();
-    }),
     mk('cancel', 'キャンセルとして記録', () => removeEv(ev, 'キャンセルとして記録しました（履歴に残ります）')),
     mk('del', '完全に削除（入力ミス用）', () => removeEv(ev, '削除しました'))
   );
@@ -3185,7 +3278,7 @@ document.getElementById('sns-clear').addEventListener('click', () => {
 
 // 投稿履歴。実投稿モードではサーバの実データ、デモではサンプルを表示する
 const SNS_HIST = [
-  { at:'7/23(木) 19:00', count:12, status:'published', caption:'保育コースのようす🐾 みんなで水遊び！' },
+  { at:'7/23(木) 19:00', count:12, status:'published', caption:'ペットスクールのようす🐾 みんなで水遊び！' },
   { at:'7/22(水) 19:00', count:3,  status:'failed',    caption:'シャンプー before → after', error:'画像の取得に失敗しました' },
 ];
 const SNS_ST = { scheduled:['予約中','warn'], publishing:['投稿処理中','warn'], published:['投稿済み','good'], failed:['失敗','crit'], dry_run:['dry_run','mut'] };
@@ -3408,9 +3501,9 @@ const RESV = [
   { id:104, at:'7/24(金) 17:00', name:'チョコ',   menu:'初回カウンセリング',       staff:'中村', status:'confirmed', note:'大型犬ですが対応可能でしょうか。' },
   { id:105, at:'7/25(土) 10:00', name:'ムギ',     menu:'シャンプーコース',         staff:'佐藤', status:'confirmed', note:'', ok:true },
   { id:106, at:'7/25(土) 12:30', name:'レオ',     menu:'シャンプー＆カットコース', staff:'高橋', status:'confirmed', note:'' },
-  { id:107, at:'7/28(火) 13:00', name:'ベル',     menu:'一時預かり', staff:'山本', status:'confirmed', note:'お迎えは18時半ごろになります。' },
-  { id:108, at:'7/22(火) 10:00', name:'マロン',   menu:'保育コース',               staff:'山本', status:'visited',  note:'' },
-  { id:109, at:'7/21(月) 13:00', name:'ハナ',     menu:'保育コース（体験）',       staff:'中村', status:'visited',  note:'' },
+  { id:107, at:'7/28(火) 13:00', name:'ベル',     menu:'ペットスクール', staff:'山本', status:'confirmed', note:'お迎えは18時半ごろになります。' },
+  { id:108, at:'7/22(火) 10:00', name:'マロン',   menu:'ペットスクール',               staff:'山本', status:'visited',  note:'' },
+  { id:109, at:'7/21(月) 13:00', name:'ハナ',     menu:'ペットスクール（体験）',       staff:'中村', status:'visited',  note:'' },
   { id:110, at:'7/20(月) 15:00', name:'きなこ',   menu:'シャンプーコース',         staff:'伊藤', status:'cancelled', note:'' },
 ];
 const RV_STATUS = {
@@ -3527,8 +3620,7 @@ const MENUS = [
   { name:'シャンプー＆カットコース', min:120, active:true },
   { name:'部分カット（顔・足まわり）', min:30, active:true },
   { name:'爪切り・耳掃除', min:15, active:true },
-  { name:'保育コース', min:480, active:true },
-  { name:'一時預かり', min:60, active:true },
+  { name:'ペットスクール', min:480, active:true },
   { name:'体験入園', min:90, active:true },
   { name:'送迎', min:30, active:true },
   { name:'夏季限定 クールシャンプー', min:60, active:false },
@@ -3995,10 +4087,16 @@ function editPet(o, p, tr = null){   // p が null なら追加
     { key: 'name', label: 'お名前', value: p && p.n },
     { key: 'breed', label: '犬種', value: p && p.menu !== '犬種未登録' ? p.menu : '' },
     { key: 'birthday', label: '誕生日', type: 'date', value: p && p.pbd },
+    // ワクチンは接種日を入れる（期限は接種日+1年で自動判定され、R3 の更新案内が送られる）
+    { key: 'mvac', label: '混合ワクチン接種日', type: 'date', value: p && p.mvac },
+    { key: 'rvac', label: '狂犬病予防接種日', type: 'date', value: p && p.rvac },
     { key: 'notes', label: 'メモ（カットの好み・注意点など）', type: 'textarea', value: p && p.notes },
   ], {
     onSave: v => {
-      const body = JSON.stringify({ name: v.name, breed: v.breed || null, birthday: v.birthday || null, notes: v.notes || null });
+      const body = JSON.stringify({
+        name: v.name, breed: v.breed || null, birthday: v.birthday || null, notes: v.notes || null,
+        mixedVaccinatedOn: v.mvac || null, rabiesVaccinatedOn: v.rvac || null,
+      });
       return p
         ? adminApi('/pets/' + p.id, { method: 'PATCH', body })
         : adminApi('/customers/' + o.id + '/pets', { method: 'POST', body });
@@ -4052,10 +4150,17 @@ async function loadFamiliesLive(){
       members: pets.map(p => ({
         id: p.id, n: p.name, menu: p.breed || '犬種未登録', age: ageOf(p.birthday), sex: '',
         bd: dateJp(p.birthday), pbd: dateOnly(p.birthday), notes: p.notes,
+        mvac: dateOnly(p.mixed_vaccinated_on), rvac: dateOnly(p.rabies_vaccinated_on),
+        // カルテのワクチン欄はデモと同じ形（patch）で持つ。接種日が両方とも未登録なら
+        // カード側が「未登録」の案内を出す
+        patch: (p.mixed_vaccinated_on || p.rabies_vaccinated_on) ? {
+          date: dateJp(p.mixed_vaccinated_on), state: vacState(p.mixed_vaccinated_on),
+          allergy: dateJp(p.rabies_vaccinated_on),
+        } : null,
         // 最終来店は来店済みの予約から取る（カルテ一覧の列に出すため）
         // 一覧の列に出すため日付だけにする（時刻まで出すと列が広がって読みにくい）
         total: visited, last: lastVisit ? snsFmtJst(lastVisit.reserved_at).split(' ')[0] : '—',
-        plan: null, ticket: null, patch: null, lapsed: [], visits,
+        plan: null, ticket: null, lapsed: [], visits,
       })),
     };
   }));

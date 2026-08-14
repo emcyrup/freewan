@@ -12,6 +12,9 @@ const JOB_LABELS = {
   birthday: '誕生日',
   ticketNudge: '回数券促し',
   planNudge: 'コース残数',
+  carryNudge: '繰越消化案内',
+  vaccine: 'ワクチン更新',
+  thanks: '来店お礼',
 };
 
 // まとめ通知の1行。0 の項目は省いて読みやすくする

@@ -10,9 +10,8 @@
 -- 未承認の予約に前々日確認は飛ばない
 CREATE TYPE reservation_status AS ENUM
   ('requested', 'confirmed', 'cancelled', 'visited', 'no_show');
--- reservation_confirmed: 予約リクエストを承認したときに顧客へ送る確定通知
-CREATE TYPE job_type          AS ENUM
-  ('pre_reminder', 'after_visit', 'dormant', 'birthday', 'reservation_confirmed');
+-- job_type は当初 ENUM だったが、ジョブを増やすたびの ALTER TYPE が漏れやすいため
+-- TEXT に変更した（migration 013）。値の一覧は下の dedupe_key 命名規則を参照
 CREATE TYPE send_status       AS ENUM ('sent', 'failed', 'skipped');
 
 CREATE TABLE staff (
@@ -66,7 +65,7 @@ CREATE TABLE message_logs (
   dedupe_key     TEXT NOT NULL UNIQUE,
   customer_id    BIGINT NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
   reservation_id BIGINT REFERENCES reservations(id) ON DELETE SET NULL,
-  job_type       job_type NOT NULL,
+  job_type       TEXT NOT NULL,
   status         send_status NOT NULL DEFAULT 'sent',
   error          TEXT,
   sent_at        TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -127,6 +126,18 @@ CREATE UNIQUE INDEX pending_deliveries_pending_uniq
   ON pending_deliveries (job_type, customer_id) WHERE status = 'pending';
 CREATE INDEX pending_deliveries_status_idx ON pending_deliveries (status, created_at);
 
+-- 来店お礼（R9）に添付する写真。予約（来店）単位で持つ（migration 015）。
+-- ファイル名は推測不能なランダム値で、認証なしの静的配信（/thanks-media）から
+-- LINE クライアントが直接取得する
+CREATE TABLE visit_photos (
+  id             BIGSERIAL PRIMARY KEY,
+  reservation_id BIGINT NOT NULL REFERENCES reservations(id) ON DELETE CASCADE,
+  file           TEXT NOT NULL,
+  sort_order     INTEGER NOT NULL DEFAULT 0,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX visit_photos_reservation_idx ON visit_photos (reservation_id, sort_order, id);
+
 -- dedupe_key の命名規則
 --   pre_reminder          : pre_reminder:res:{reservation_id}
 --   after_visit           : after_visit:res:{reservation_id}
@@ -134,4 +145,7 @@ CREATE INDEX pending_deliveries_status_idx ON pending_deliveries (status, create
 --   birthday              : birthday:cust:{customer_id}:{YYYY}
 --   ticketNudge           : ticket_nudge:cust:{customer_id}:{YYYY-MM-DD}
 --   planNudge             : plan_nudge:cust:{customer_id}:{YYYY-MM-DD}
+--   carryNudge            : carry_nudge:cust:{customer_id}:{YYYY-MM}
+--   vaccine               : vaccine:cust:{customer_id}:{一番近い期限 YYYY-MM-DD}
+--   thanks                : thanks:res:{reservation_id}
 --   reservation_confirmed : reservation_{confirmed|cancelled}:res:{reservation_id}

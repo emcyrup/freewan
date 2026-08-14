@@ -1,4 +1,7 @@
 // 管理画面用 API。全ルートが Basic 認証（index.js 側で適用）配下にある前提。
+import { randomBytes } from 'node:crypto';
+import { writeFile, unlink } from 'node:fs/promises';
+import path from 'node:path';
 import express from 'express';
 import { normalizePhone } from '../customers/phone.js';
 import { buildPreReminderMessage } from '../line/messages/preReminder.js';
@@ -11,6 +14,7 @@ import {
   buildDeclinedMessage,
 } from '../line/messages/reservationStatus.js';
 import { REMINDER_JOBS } from '../reminders.js';
+import { MAX_THANKS_PHOTOS } from '../jobs/thanks.js';
 
 // テスト送信できるメッセージの一覧。顧客へ送りうるものは全種類ここに載せる。
 // needs は文面を組み立てるのに要る対象（予約 or 顧客）。
@@ -34,6 +38,7 @@ export function createAdminRouter({
   customerReminders = null,
   approvalQueue = null,
   planService = null,
+  thanksDataDir = null,
 }) {
   const router = express.Router();
 
@@ -338,18 +343,24 @@ export function createAdminRouter({
 
   // ---- ペット ----
   const validatePet = (body) => {
-    const { name, breed, birthday, notes } = body ?? {};
+    const { name, breed, birthday, notes, mixedVaccinatedOn, rabiesVaccinatedOn } = body ?? {};
     if (!name?.trim()) return { error: 'invalid_name' };
     if (birthday && !/^\d{4}-\d{2}-\d{2}$/.test(birthday)) return { error: 'invalid_birthday' };
+    // ワクチンは接種日だけを持つ（期限は接種日＋1年で導く。migrations/014 参照）
+    for (const v of [mixedVaccinatedOn, rabiesVaccinatedOn]) {
+      if (v && !/^\d{4}-\d{2}-\d{2}$/.test(v)) return { error: 'invalid_vaccinated_on' };
+    }
     return {
       name: name.trim(),
       breed: breed?.trim() || null,
       birthday: birthday || null,
       notes: notes?.trim() || null,
+      mixedVaccinatedOn: mixedVaccinatedOn || null,
+      rabiesVaccinatedOn: rabiesVaccinatedOn || null,
     };
   };
 
-  // ---- 回数券・保育コース（定額プラン）----
+  // ---- 回数券・ペットスクール（定額プラン）----
   // 残回数は元帳（plan_credits）の合計。画面はここを読むだけで、集計値は持たない
   const plansGuard = (res) => {
     if (planService) return true;
@@ -527,7 +538,9 @@ export function createAdminRouter({
   router.get('/customers/:id/pets', async (req, res, next) => {
     try {
       const { rows } = await pool.query(
-        `SELECT id, name, breed, birthday, notes FROM pets WHERE customer_id = $1 ORDER BY id`,
+        `SELECT id, name, breed, birthday, notes,
+                mixed_vaccinated_on::text, rabies_vaccinated_on::text
+         FROM pets WHERE customer_id = $1 ORDER BY id`,
         [Number(req.params.id)]
       );
       res.json({ pets: rows });
@@ -544,9 +557,11 @@ export function createAdminRouter({
       const { rows: exists } = await pool.query(`SELECT 1 FROM customers WHERE id = $1`, [customerId]);
       if (exists.length === 0) return res.status(404).json({ error: 'customer_not_found' });
       const { rows } = await pool.query(
-        `INSERT INTO pets (customer_id, name, breed, birthday, notes)
-         VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-        [customerId, pet.name, pet.breed, pet.birthday, pet.notes]
+        `INSERT INTO pets (customer_id, name, breed, birthday, notes,
+                           mixed_vaccinated_on, rabies_vaccinated_on)
+         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+        [customerId, pet.name, pet.breed, pet.birthday, pet.notes,
+         pet.mixedVaccinatedOn, pet.rabiesVaccinatedOn]
       );
       res.json({ ok: true, petId: rows[0].id });
     } catch (err) {
@@ -559,9 +574,11 @@ export function createAdminRouter({
       const pet = validatePet(req.body);
       if (pet.error) return res.status(400).json({ error: pet.error });
       const { rowCount } = await pool.query(
-        `UPDATE pets SET name = $2, breed = $3, birthday = $4, notes = $5, updated_at = now()
+        `UPDATE pets SET name = $2, breed = $3, birthday = $4, notes = $5,
+                mixed_vaccinated_on = $6, rabies_vaccinated_on = $7, updated_at = now()
          WHERE id = $1`,
-        [Number(req.params.id), pet.name, pet.breed, pet.birthday, pet.notes]
+        [Number(req.params.id), pet.name, pet.breed, pet.birthday, pet.notes,
+         pet.mixedVaccinatedOn, pet.rabiesVaccinatedOn]
       );
       if (rowCount === 0) return res.status(404).json({ error: 'not_found' });
       res.json({ ok: true });
@@ -632,6 +649,82 @@ export function createAdminRouter({
         return res.status(result.error === 'not_found' ? 404 : 400).json(result);
       }
       res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // ---- 来店写真（R9 来店お礼）----
+  // SNS 投稿と同じ方式: ブラウザ側で JPEG へ正規化し1枚ずつ raw ボディで受け取る
+  // （multipart パーサを足さず依存を増やさないため）。保存名は推測不能なランダム値。
+  // 写真を付けた来店だけが 19:00 のお礼配信の対象になる（写真＝送る意思表示）
+  const thanksGuard = (res) => {
+    if (thanksDataDir) return true;
+    res.status(503).json({ error: 'not_configured' });
+    return false;
+  };
+
+  router.get('/reservations/:id/photos', async (req, res, next) => {
+    try {
+      if (!thanksGuard(res)) return;
+      const { rows } = await pool.query(
+        `SELECT id, file FROM visit_photos WHERE reservation_id = $1 ORDER BY sort_order, id`,
+        [Number(req.params.id)]
+      );
+      res.json({ photos: rows, max: MAX_THANKS_PHOTOS });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.post(
+    '/reservations/:id/photos',
+    express.raw({ type: ['image/jpeg'], limit: '8mb' }),
+    async (req, res, next) => {
+      try {
+        if (!thanksGuard(res)) return;
+        const reservationId = Number(req.params.id);
+        const { rows: resv } = await pool.query(
+          `SELECT 1 FROM reservations WHERE id = $1`,
+          [reservationId]
+        );
+        if (resv.length === 0) return res.status(404).json({ error: 'not_found' });
+        const buf = req.body;
+        // JPEG のマジックバイト。ブラウザ側の変換をすり抜けた別形式を弾く
+        if (!Buffer.isBuffer(buf) || buf.length < 4 || buf[0] !== 0xff || buf[1] !== 0xd8) {
+          return res.status(400).json({ error: 'invalid_jpeg' });
+        }
+        // Push は1回5通まで（お礼テキスト＋写真4枚）。超過ぶんは送りようがないので受け付けない
+        const { rows: cnt } = await pool.query(
+          `SELECT count(*)::int AS n FROM visit_photos WHERE reservation_id = $1`,
+          [reservationId]
+        );
+        if (cnt[0].n >= MAX_THANKS_PHOTOS) return res.status(400).json({ error: 'too_many_photos' });
+        const file = `${randomBytes(12).toString('hex')}.jpg`;
+        await writeFile(path.join(thanksDataDir, file), buf);
+        const { rows } = await pool.query(
+          `INSERT INTO visit_photos (reservation_id, file, sort_order) VALUES ($1, $2, $3)
+           RETURNING id`,
+          [reservationId, file, cnt[0].n]
+        );
+        res.json({ ok: true, id: rows[0].id, file });
+      } catch (err) {
+        next(err);
+      }
+    }
+  );
+
+  router.delete('/reservations/:id/photos/:photoId', async (req, res, next) => {
+    try {
+      if (!thanksGuard(res)) return;
+      const { rows } = await pool.query(
+        `DELETE FROM visit_photos WHERE id = $1 AND reservation_id = $2 RETURNING file`,
+        [Number(req.params.photoId), Number(req.params.id)]
+      );
+      if (rows.length === 0) return res.status(404).json({ error: 'not_found' });
+      // ファイル名はアップロードごとに発行するので他の予約と共有されない。行と一緒に消してよい
+      await unlink(path.join(thanksDataDir, rows[0].file)).catch(() => {});
+      res.json({ ok: true });
     } catch (err) {
       next(err);
     }

@@ -158,7 +158,7 @@ test('お客様ごとの設定は行が無ければ全 ON', async () => {
   const cr = createCustomerReminders({ pool });
   assert.deepEqual(await cr.get(1), {
     preReminder: true, afterVisit: true, dormant: true, birthday: true,
-    ticketNudge: true, planNudge: true,
+    ticketNudge: true, planNudge: true, carryNudge: true, vaccine: true, thanks: true,
   });
 });
 

@@ -101,7 +101,7 @@ test('消化は期限切れの付与を対象にしない', async () => {
   assert.deepEqual(result, { consumed: 0, shortfall: 2, used: [] });
 });
 
-test('保育コースは当月分から、回数券は期限の近いものから消化する', async () => {
+test('ペットスクールは当月分から、回数券は期限の近いものから消化する', async () => {
   const orders = [];
   const client = {
     query: async (sql) => {

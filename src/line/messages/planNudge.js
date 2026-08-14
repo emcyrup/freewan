@@ -1,6 +1,6 @@
 // 定額コース会員の残回数案内（要件 R7）の Flex Message テンプレート。
 // 「月4回・月8回」等の会員が使い忘れないよう、月内の残り回数を知らせる。
-// コース名は店舗ごとに違う（保育コース／スクール会員）ため、DB のプラン名をそのまま使う。
+// コース名は店舗ごとに違う（ペットスクール／スクール会員）ため、DB のプラン名をそのまま使う。
 
 export function buildPlanNudgeMessage({ customerName, pets }) {
   const lines = pets.map(
