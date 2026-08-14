@@ -418,6 +418,11 @@ button.trow2:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
 .ctable button.cnlink:hover{text-decoration-thickness:2px}
 .ctable button.cnlink:focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:4px}
 .ctable .rowacts{display:flex; gap:6px; justify-content:flex-end; flex-wrap:wrap}
+/* 行そのものを押して開ける表（顧客一覧・ペットカルテの一覧） */
+tr.rowlink{cursor:pointer}
+tr.rowlink:hover td{background:var(--accent-soft)}
+tr.rowlink:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
+tr.rowlink:hover td.cn{background:var(--accent-soft)}   /* 貼り付いた列も一緒に色を変える */
 .erow>td{background:var(--surface2); border-top:0}
 .erow .ehd{font-size:12px; font-weight:700; padding:10px 18px 0}
 .cres{display:none; gap:8px; flex-wrap:wrap; background:var(--surface); border:1px solid var(--line);
@@ -746,6 +751,19 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
     <button class="kpi" id="kpiTrial"><div class="k">初回ご来店</div><div class="v num">9<small> 頭</small></div><div class="d up">再来率 67%・タップで一覧</div></button>
     <div class="kpi"><div class="k">当月の来店数</div><div class="v num">182<small> 件</small></div><div class="d up">先月同日比 +11</div></div>
     <div class="kpi"><div class="k">失効した回数券</div><div class="v num">3<small> 回</small></div><div class="d dn">7月失効・対象 2頭（わんちゃん別に記録）</div></div>
+  </div>
+
+  <!-- スクールの当月実績（要件書 2.4）。件数の意味が読み取れるよう補足を必ず付ける -->
+  <div class="card" id="schoolcard" style="margin-top:16px">
+    <div class="hd"><h2>ペットスクール（今月）</h2><span class="pill mut" id="school-month">当月</span></div>
+    <div class="bd">
+      <div class="grid kpis" id="schoolkpis">
+        <div class="kpi"><div class="k">カウンセリング</div><div class="v num">7<small> 件</small></div><div class="d">うち スクールと同時 3件</div></div>
+        <div class="kpi"><div class="k">体験入園</div><div class="v num">5<small> 件</small></div><div class="d">体験のご利用</div></div>
+        <div class="kpi"><div class="k">入園</div><div class="v num">4<small> 頭</small></div><div class="d">今月あらたに入園した子</div></div>
+        <div class="kpi"><div class="k">来園</div><div class="v num">96<small> 件</small></div><div class="d">来店済にしたスクールの予約</div></div>
+      </div>
+    </div>
   </div>
 
   <div class="grid dash2" id="dash2">
@@ -1488,6 +1506,27 @@ let storeClosedDays = [4];   // 既定は木曜定休
 const ownersEl = document.getElementById('owners'), cntEl = document.getElementById('cnt'), qEl = document.getElementById('q');
 // 行の直下に開く編集欄。renderOwners が初期表示でも closeInline を呼ぶため、ここで宣言しておく
 let inlineRow = null;
+/**
+ * 表の行そのものを押して開けるようにする。
+ * 中のボタン（わんちゃんの名前・操作）を押したときは、そちらの動きだけを起こす。
+ * 行は button にできないので、キーボードでも同じ操作ができるよう役割と Enter/Space を足す
+ */
+function rowOpens(tr, fn, label){
+  tr.classList.add('rowlink');
+  tr.tabIndex = 0;
+  tr.setAttribute('role', 'button');
+  tr.setAttribute('aria-label', label);
+  tr.addEventListener('click', e => {
+    if (e.target.closest('button, a, input, select, textarea')) return;
+    fn();
+  });
+  tr.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    if (e.target !== tr) return;
+    e.preventDefault();
+    fn();
+  });
+}
 function memberTags(d){
   const t = [];
   if (d.plan) t.push('<span class="pill acc">' + d.plan.label.replace('スクール ', '') + '</span>');
@@ -1552,6 +1591,9 @@ function renderOwners(q = ''){
     };
     // 顧客情報（LINEリマインドの設定を含む）はデモでも開ける
     mk('顧客情報', () => openCustomerPanel(o));
+    // 行のどこを押しても顧客情報。わんちゃんの名前や操作ボタンを押したときは、
+    // そちらの動きを優先する（行の処理まで走らせない）
+    rowOpens(tr, () => openCustomerPanel(o), o.name + ' 様の顧客情報を開く');
     if (adminLive) {   // 実運用モードでは一覧から直接編集・追加できる
       mk('編集', () => editOwner(o, tr), 'mut');
       mk('＋ わんちゃん', () => editPet(o, null, tr), 'mut');
@@ -1622,6 +1664,7 @@ function renderCarteList(q = ''){
     const name = document.createElement('td');
     name.className = 'cn';
     name.dataset.label = 'わんちゃん';
+    rowOpens(tr, () => openCarte(d, o), d.n + ' のカルテを開く');
     const link = document.createElement('button');
     link.type = 'button'; link.className = 'cname cnlink'; link.textContent = d.n;
     link.title = 'カルテを開く';
@@ -3045,6 +3088,16 @@ async function renderDashboardLive(){
     + kpi('承認待ちのご予約', d.pending_reservations, '件', d.pending_reservations ? '予約管理から承認してください' : '対応漏れはありません')
     + kpi('今月のご来店', d.visits_this_month, '件', '来店済にした予約の数')
     + kpi('今月の新規のお客様', d.new_customers, '世帯', '登録は全' + d.customers + '世帯 / ' + d.pets + '頭');
+
+  // スクールの当月実績。入園は「回数」ではなく、今月あらたに入園した子の頭数
+  document.getElementById('school-month').textContent =
+    new Intl.DateTimeFormat('ja-JP', { timeZone: 'Asia/Tokyo', month: 'long' }).format(today);
+  document.getElementById('schoolkpis').innerHTML =
+    kpi('カウンセリング', d.counseling_this_month, '件',
+      d.counseling_with_school ? 'うち スクールと同時 ' + d.counseling_with_school + '件' : '単独のカウンセリングのみ')
+    + kpi('体験入園', d.trials_this_month, '件', '体験のご利用')
+    + kpi('入園', d.enrolled_this_month, '頭', '今月あらたに入園した子')
+    + kpi('来園', d.school_visits_this_month, '件', '来店済にしたスクールの予約');
 
   // 売上・来店経路・トリマー実績は持っていないため、カードごと出さない
   const dash2 = document.getElementById('dash2');
@@ -4774,6 +4827,28 @@ function openCustomerPanel(o){
     petbox.appendChild(b);
   });
   if (!members.length) petbox.innerHTML = '<span class="nopet">わんちゃん未登録</span>';
+  // 編集・わんちゃん追加もここから。保存したら顧客情報に戻す
+  // （一覧やカルテへ飛ばされると、続けて設定を見たいときに戻り直しになる）
+  if (adminLive) {
+    const reopen = async () => {
+      await refreshListAfterEdit();
+      const fresh = FAMILIES.find(f => String(f.id) === String(o.id));
+      if (fresh) openCustomerPanel(fresh);
+    };
+    const acts = document.createElement('div');
+    acts.className = 'frow';
+    acts.style.marginTop = '12px';
+    const mk = (label, fn) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'sbtn'; b.textContent = label;
+      b.addEventListener('click', fn);
+      acts.appendChild(b);
+    };
+    mk('編集', () => editOwner(o, null, reopen));
+    mk('＋ わんちゃん', () => editPet(o, null, null, reopen));
+    members.forEach(m => mk(m.n + ' を編集', () => editPet(o, m, null, reopen)));
+    win.querySelector('.cpbd').insertBefore(acts, win.querySelector('.panelrem'));
+  }
   back.appendChild(win);
   document.body.appendChild(back);
   editBack = back;
@@ -4805,7 +4880,7 @@ async function refreshAfterEdit(custId, petId){
 
 // tr を渡すとその行の直下で編集する（顧客一覧）。渡さなければ従来どおりモーダル（カルテ）。
 // 誕生日はこの画面では扱わない。ペットの誕生日はカルテのわんちゃん編集にある
-function editOwner(o, tr = null){
+function editOwner(o, tr = null, afterFn = null){
   const open = tr
     ? (title, rows, opts) => openInlineEdit(tr, title, rows, { ...opts, key: 'owner-' + o.id })
     : openEditModal;
@@ -4836,11 +4911,11 @@ function editOwner(o, tr = null){
       const { deleted } = await adminApi('/customers/' + o.id, { method: 'DELETE' });
       return o.name + ' 様を削除しました（わんちゃん' + deleted.pets + '頭・予約' + deleted.reservations + '件）';
     },
-    after: () => (tr ? refreshListAfterEdit() : refreshAfterEdit(o.id)),
+    after: afterFn || (() => (tr ? refreshListAfterEdit() : refreshAfterEdit(o.id))),
   });
 }
 
-function editPet(o, p, tr = null){   // p が null なら追加
+function editPet(o, p, tr = null, afterFn = null){   // p が null なら追加
   const open = tr
     ? (title, rows, opts) => openInlineEdit(tr, title, rows, { ...opts, key: 'pet-' + o.id + '-' + (p ? p.id : 'new') })
     : openEditModal;
@@ -4866,7 +4941,7 @@ function editPet(o, p, tr = null){   // p が null なら追加
       if (!confirm(p.n + ' の情報を削除しますか？（元に戻せません）')) return false;
       await adminApi('/pets/' + p.id, { method: 'DELETE' });
     } : null,
-    after: () => (tr ? refreshListAfterEdit() : refreshAfterEdit(o.id, p && p.id)),
+    after: afterFn || (() => (tr ? refreshListAfterEdit() : refreshAfterEdit(o.id, p && p.id))),
   });
 }
 

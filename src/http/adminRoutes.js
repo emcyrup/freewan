@@ -83,7 +83,40 @@ export function createAdminRouter({
            (SELECT count(*) FROM reservations
              WHERE (reserved_at AT TIME ZONE 'Asia/Tokyo')::date = (SELECT today FROM jst)
                AND status IN ('confirmed', 'visited')) AS today_reservations,
-           (SELECT count(*) FROM shift_requests WHERE status = 'pending') AS pending_shift_requests`
+           (SELECT count(*) FROM shift_requests WHERE status = 'pending') AS pending_shift_requests,
+           -- ここからスクールの集計（要件書 2.4）。当月の予約を JST の月初から数える。
+           -- 見送った回（cancelled / no_show）は実績にならないので外す
+           (SELECT count(*) FROM reservations
+             WHERE category = 'school' AND status IN ('confirmed', 'visited')
+               AND (school_stage = 'counseling' OR with_counseling = true)
+               AND (reserved_at AT TIME ZONE 'Asia/Tokyo')::date
+                   >= date_trunc('month', (SELECT today FROM jst))::date) AS counseling_this_month,
+           -- スクールと同じ回に行うカウンセリング。上の内数として画面に出す
+           (SELECT count(*) FROM reservations
+             WHERE category = 'school' AND status IN ('confirmed', 'visited')
+               -- 段階が未設定（NULL）の回も内数に入れる。<> だと NULL が落ちてしまう
+               AND with_counseling = true AND school_stage IS DISTINCT FROM 'counseling'
+               AND (reserved_at AT TIME ZONE 'Asia/Tokyo')::date
+                   >= date_trunc('month', (SELECT today FROM jst))::date) AS counseling_with_school,
+           (SELECT count(*) FROM reservations
+             WHERE category = 'school' AND status IN ('confirmed', 'visited')
+               AND school_stage = 'trial'
+               AND (reserved_at AT TIME ZONE 'Asia/Tokyo')::date
+                   >= date_trunc('month', (SELECT today FROM jst))::date) AS trials_this_month,
+           -- 入園「数」は通園の回数ではなく、当月に初めて入園した子の頭数。
+           -- 回数で数えると通っている子のぶんが毎月積み上がり、新しく入った数が分からなくなる
+           (SELECT count(*) FROM (
+              SELECT pet_id, min(reserved_at) AS first_at FROM reservations
+              WHERE category = 'school' AND school_stage = 'enrolled'
+                AND status IN ('confirmed', 'visited') AND pet_id IS NOT NULL
+              GROUP BY pet_id
+            ) f
+            WHERE (f.first_at AT TIME ZONE 'Asia/Tokyo')::date
+                  >= date_trunc('month', (SELECT today FROM jst))::date) AS enrolled_this_month,
+           (SELECT count(*) FROM reservations
+             WHERE category = 'school' AND status = 'visited'
+               AND (reserved_at AT TIME ZONE 'Asia/Tokyo')::date
+                   >= date_trunc('month', (SELECT today FROM jst))::date) AS school_visits_this_month`
       );
       // count() は bigint で文字列になるため、画面で扱いやすい数値へ揃える
       res.json(Object.fromEntries(Object.entries(rows[0]).map(([k, v]) => [k, Number(v)])));
