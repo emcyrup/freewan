@@ -637,7 +637,7 @@ export function createAdminRouter({
       const to = req.query.to || null;
       const { rows } = await pool.query(
         `SELECT r.id, r.reserved_at, r.menu, r.status, r.confirmed_by_customer, r.note,
-                r.category, r.duration_minutes, r.school_stage,
+                r.category, r.duration_minutes, r.school_stage, r.with_counseling,
                 c.id AS customer_id, c.name AS customer_name, s.name AS staff_name,
                 r.staff_id, p.name AS pet_name
          FROM reservations r
@@ -699,6 +699,21 @@ export function createAdminRouter({
       if (!Number.isInteger(id)) return res.status(400).json({ error: 'invalid_id' });
       const stage = req.body?.stage ?? null;
       const result = await reservationService.setSchoolStage(id, stage);
+      if (!result.ok) {
+        return res.status(result.error === 'not_found' ? 404 : 400).json(result);
+      }
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // その回でカウンセリングも行うか（スクール・体験と同時実施）
+  router.patch('/reservations/:id/counseling', async (req, res, next) => {
+    try {
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id)) return res.status(400).json({ error: 'invalid_id' });
+      const result = await reservationService.setCounseling(id, req.body?.on === true);
       if (!result.ok) {
         return res.status(result.error === 'not_found' ? 404 : 400).json(result);
       }

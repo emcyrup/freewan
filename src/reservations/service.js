@@ -534,5 +534,27 @@ export function createReservationService({ pool, slack, lineClient = null, planS
     return { ok: true };
   }
 
-  return { upsertExternal, createManual, createRequest, setStatus, setSchoolStage };
+  /**
+   * その回でカウンセリングも行うかを記録する。
+   * 段階（school_stage）とは別に持つ。「スクール初回時にカウンセリング未実施」の回は
+   * カウンセリングとスクールを同じ回で行うため、どちらか一方では表せないため。
+   */
+  async function setCounseling(reservationId, on) {
+    const { rows } = await pool.query(
+      `SELECT category FROM reservations WHERE id = $1`,
+      [reservationId]
+    );
+    if (rows.length === 0) return { ok: false, error: 'not_found' };
+    // 区分未設定の古い予約は直せるように通す（setSchoolStage と同じ扱い）
+    if (rows[0].category && rows[0].category !== 'school') {
+      return { ok: false, error: 'not_school' };
+    }
+    await pool.query(
+      `UPDATE reservations SET with_counseling = $2, updated_at = now() WHERE id = $1`,
+      [reservationId, on === true]
+    );
+    return { ok: true };
+  }
+
+  return { upsertExternal, createManual, createRequest, setStatus, setSchoolStage, setCounseling };
 }

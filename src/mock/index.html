@@ -495,7 +495,7 @@ textarea{width:100%; border:1px solid var(--line); border-radius:8px; background
 .rvnote{font-size:12px; color:var(--muted)}
 /* 予約一覧。列が7つあるので、狭くなったら潰さず横に流す（.tscroll の中に置く）。
    行の区切りが分かるよう1行おきに薄く敷き、上下は詰めすぎない */
-.rvtable{min-width:880px}
+.rvtable{min-width:980px}
 .rvtable thead th{position:sticky; top:0; background:var(--surface); z-index:2}
 .rvtable td{vertical-align:top}
 .rvtable tbody tr:nth-child(even) td{background:var(--surface2)}
@@ -503,11 +503,20 @@ textarea{width:100%; border:1px solid var(--line); border-radius:8px; background
   box-shadow:1px 0 0 var(--line)}
 .rvtable tbody tr:nth-child(even) td.rvat{background:var(--surface2)}
 .rvtable thead th:first-child{z-index:3}
-/* ご要望は長さがまちまち。2行で打ち切り、全文はマウスを乗せると出す */
-.rvtable td.rvnote{max-width:240px}
+/* ご要望は長さがまちまち。2行で打ち切り、全文はマウスを乗せると出す。
+   幅を決めておかないと、操作の列に押されて1文字ずつ折り返す */
+.rvtable td.rvnote{min-width:190px; max-width:240px}
 .rvtable td.rvnote span{display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
   overflow:hidden; line-height:1.5}
 .rvtable td.rvacts{width:1%}          /* ボタンぶんだけ使い、余った幅は他の列へ回す */
+/* スクールの段階とカウンセリング同時実施。コースの欄でまとめて扱う */
+.rvschool{display:flex; flex-wrap:wrap; gap:5px; align-items:center; margin-top:5px}
+.stagesel{font:inherit; font-size:11.5px; font-weight:700; padding:3px 6px; border-radius:7px;
+  border:1px solid var(--line); background:var(--surface); color:var(--ink)}
+.stagesel:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+/* 押した状態を色で表すトグル（カウンセリング同時実施） */
+.sbtn.tog{border-style:dashed; color:var(--muted)}
+.sbtn.tog.on{border-style:solid; border-color:var(--good); background:var(--good-soft); color:var(--good)}
 /* 承認待ちは見落とすと顧客を待たせるため、行ごと強調する */
 tr.await td{background:var(--warn-soft)}
 .rvtable tr.await td.rvat{background:var(--warn-soft)}
@@ -762,22 +771,6 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
   <h1>予約カレンダー</h1>
   <p class="sub" id="calsub"></p>
 
-  <div class="vbar">
-    <div class="seg" id="vseg">
-      <button data-v="day" class="on">日</button>
-      <button data-v="week">週</button>
-      <button data-v="month">月</button>
-    </div>
-    <div class="seg" id="vnav">
-      <button data-n="-1" aria-label="前へ">&#9664;</button>
-      <button data-n="0">今日</button>
-      <button data-n="1" aria-label="次へ">&#9654;</button>
-    </div>
-    <span class="vrange" id="vrange"></span>
-  </div>
-
-  <div class="calsum" id="calsum"></div>
-
   <div class="card" id="newresv">
     <div class="hd"><h2>新規予約</h2><span class="pill mut">スタッフ入力</span></div>
     <div class="bd">
@@ -802,6 +795,22 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
       </div>
     </div>
   </div>
+
+  <div class="vbar">
+    <div class="seg" id="vseg">
+      <button data-v="day" class="on">日</button>
+      <button data-v="week">週</button>
+      <button data-v="month">月</button>
+    </div>
+    <div class="seg" id="vnav">
+      <button data-n="-1" aria-label="前へ">&#9664;</button>
+      <button data-n="0">今日</button>
+      <button data-n="1" aria-label="次へ">&#9654;</button>
+    </div>
+    <span class="vrange" id="vrange"></span>
+  </div>
+
+  <div class="calsum" id="calsum"></div>
 
   <div class="card" id="freecard">
     <div class="hd"><h2>空き状況をさがす</h2><span class="pill mut">日付を3つまで</span></div>
@@ -888,7 +897,7 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
     <div class="bd tscroll" style="padding:6px 0 0">
       <table class="rvtable">
         <thead>
-          <tr><th>日時</th><th>わんちゃん</th><th>コース</th><th>担当</th><th>状態</th><th>ご要望</th><th>操作</th></tr>
+          <tr><th>日時</th><th>わんちゃん</th><th>飼い主様</th><th>コース</th><th>担当</th><th>状態</th><th>ご要望</th><th>操作</th></tr>
         </thead>
         <tbody id="rvrows"></tbody>
       </table>
@@ -2124,15 +2133,19 @@ function demoDay(date){
       used.add(p);
       // 入園（通っている子）と体験の混在。件数の内訳表示に使う
       const e = { n:p, stage: rnd() < 0.75 ? 'enrolled' : 'trial' };
+      // カウンセリング未実施のままスクール初回を迎える子は、その回で先にカウンセリングをする
+      if (e.stage === 'trial' && rnd() < 0.5) e.cons = true;
       if (rnd() < 0.3) e.in = 9;
       else if (rnd() < 0.2) e.out = 18.5;
       pets.push(e);
     }
     const enrolled = pets.filter(p => p.stage === 'enrolled').length;
+    const withCons = pets.filter(p => p.cons).length;
     evs.push({
       row:schoolRow, s:10, d:8, cls:'school', cat:'school', pets,
       html:'<b>' + pets.slice(0, 2).map(p => petLabel(p.n)).join('・') + (n > 2 ? ' ほか' : '') + '</b>'
-        + 'ペットスクール ' + n + '頭（うち入園 ' + enrolled + '）',
+        + 'ペットスクール ' + n + '頭（うち入園 ' + enrolled
+        + (withCons ? '・カウンセリング同時 ' + withCons : '') + '）',
     });
   }
 
@@ -2356,6 +2369,8 @@ function countRange(dates){
       else if (e.cls === 'school') {
         t.school += (e.pets || []).length;
         t.enrolled += (e.pets || []).filter(p => p.stage === 'enrolled').length;
+        // スクールと同じ回に行うカウンセリングも1件として数える
+        t.counseling += (e.pets || []).filter(p => p.cons).length;
       } else if (e.stage === 'counseling') t.counseling++;
       else if (e.cat === 'hotel') t.hotel++;
     });
@@ -3290,11 +3305,15 @@ function openPop(ev, x, y){
   const timeNote = pc === 'early' ? '（⭐ 10:00前にくる子）'
     : pc === 'late' ? '（⭐ 18:00以降に帰る子）'
     : pc === 'both' ? '（⭐ 10:00前にきて18:00以降に帰る子）' : '';
+  // この回でカウンセリングも行う子。誰に付き添うかが当日いちばん効くので帯の説明に出す
+  const consNames = (petList || []).filter(p => p.cons).map(p => p.n);
   const groupNote = !petList ? ''
     : earlyCount || lateCount
       ? '⭐ ' + [earlyCount ? '10:00前にくる子 ' + earlyCount + '頭' : null,
                 lateCount ? '18:00以降に帰る子 ' + lateCount + '頭' : null].filter(Boolean).join('・')
       : '全員 ' + fmt(s) + '〜' + fmt(s + d) + ' の通常時間';
+  const consNote = consNames.length
+    ? 'この回でカウンセリングも行う子: <b>' + consNames.join('・') + '</b>' : '';
   const back = document.createElement('div'); back.className = 'popback';
   back.addEventListener('pointerdown', closePop);
   const el = document.createElement('div'); el.className = 'pop';
@@ -3302,6 +3321,7 @@ function openPop(ev, x, y){
     + '<div class="meta">時間: <b>' + fmt(s) + ' 〜 ' + fmt(s + d) + '</b>' + timeNote + '</div>'
     + (!petList && ev.dataset.pet ? '<div class="meta">わんちゃん: <b>' + ev.dataset.pet + '</b></div>' : '')
     + (groupNote ? '<div class="meta">' + groupNote + '</div>' : '')
+    + (consNote ? '<div class="meta">' + consNote + '</div>' : '')
     + '<div class="meta">担当・枠: <b>' + row.name + '</b>（' + row.role + '）</div>';
   el.querySelector('h3').textContent = title;
   const openCarteOf = (petName) => {
@@ -3321,9 +3341,11 @@ function openPop(ev, x, y){
     petList.forEach((p, i) => {
       const arr = p.in ?? s, dep = p.out ?? s + d;
       const { early, late } = marks[i];
-      const note = early && late ? '&#11088; ' + fmt(arr) + 'にきて' + fmt(dep) + 'までいる子'
+      const timeNote2 = early && late ? '&#11088; ' + fmt(arr) + 'にきて' + fmt(dep) + 'までいる子'
         : early ? '&#11088; ' + fmt(arr) + 'にくる子'
         : late ? '&#11088; ' + fmt(dep) + 'までいる子' : '';
+      const note = [p.cons ? 'カウンセリング同時' : null, timeNote2 || null]
+        .filter(Boolean).join('・');
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'ppet' + (early && late ? ' both' : early ? ' early' : late ? ' late' : '');
@@ -3894,6 +3916,8 @@ const RESV = [
   { id:104, day:5,  time:'17:00', name:'チョコ',   menu:'体験入園',                 staff:'中村', status:'confirmed', note:'大型犬ですが対応可能でしょうか。', cat:'school', mins:90, stage:'counseling' },
   { id:105, day:1,  time:'10:00', name:'ムギ',     menu:'シャンプーコース',         staff:'高橋', status:'confirmed', note:'', ok:true, cat:'trimming', mins:60 },
   { id:106, day:1,  time:'9:00',  name:'レオ',     menu:'ペットスクール',           staff:'山本', status:'confirmed', note:'', cat:'school', mins:480, stage:'enrolled' },
+  // 初回スクールでカウンセリング未実施の回。同じ日にカウンセリングをしてからスクールへ入る
+  { id:116, day:2,  time:'9:00',  name:'クッキー', menu:'ペットスクール',           staff:'中村', status:'confirmed', note:'カウンセリングがまだなので、当日にお願いします。', cat:'school', mins:480, stage:'trial', cons:true },
   { id:112, day:0,  time:'9:00',  name:'ソラ',     menu:'ペットスクール',           staff:'中村', status:'confirmed', note:'', cat:'school', mins:480, stage:'enrolled' },
   { id:107, day:4,  time:'13:00', name:'ベル',     menu:'ペットホテル',             staff:'',     status:'confirmed', note:'お迎えは18時半ごろになります。', cat:'hotel', mins:1440 },
   { id:113, day:7,  time:'10:00', name:'ココ',     menu:'部分カット（顔・足まわり）', staff:'佐藤', status:'confirmed', note:'', cat:'trimming', mins:30 },
@@ -3903,7 +3927,7 @@ const RESV = [
   { id:108, day:-7, time:'9:00',  name:'マロン',   menu:'ペットスクール',           staff:'山本', status:'visited',  note:'', cat:'school', mins:480, stage:'enrolled' },
   { id:115, day:-3, time:'13:00', name:'モモ',     menu:'シャンプーコース',         staff:'高橋', status:'no_show',  note:'', cat:'trimming', mins:60 },
   { id:110, day:9,  time:'15:00', name:'きなこ',   menu:'シャンプーコース',         staff:'高橋', status:'cancelled', note:'', cat:'trimming', mins:60 },
-].map(r => ({ ...r, at: rvAt(r.day, r.time) }));
+].map(r => ({ ...r, at: rvAt(r.day, r.time), owner: ownerOf(r.name) || '' }));
 // スクールの進み方。体験だけを対象にした配信や追客の絞り込みにも使う
 const SCHOOL_STAGES = [
   { v:'counseling', label:'カウンセリング' },
@@ -3967,6 +3991,21 @@ async function setSchoolStage(r, stage){
   }
 }
 
+// カウンセリングは段階とは別に持つ。スクール初回でカウンセリング未実施のときは
+// 同じ回でカウンセリング→スクールと続けるため、どちらか一方では表せない
+async function setCounseling(r, on){
+  const msg = r.name + ' の予約を「カウンセリング' + (on ? '同時実施' : 'なし') + '」にしました';
+  if (!adminLive) { r.cons = on; renderResv(); showToast(msg); return; }
+  try {
+    await adminApi('/reservations/' + r.id + '/counseling', {
+      method: 'PATCH', body: JSON.stringify({ on }),
+    });
+    r.cons = on; renderResv(); showToast(msg);
+  } catch (err) {
+    showToast('エラー: ' + err.message);
+  }
+}
+
 function rvSetStatus(r, status, msg){
   const before = r.status;
   r.status = status;
@@ -3976,8 +4015,9 @@ function rvSetStatus(r, status, msg){
 // 実運用モードの予約読み込み。日時表示は SNS と同じ JST 整形を使う
 function rvMap(r){
   return { id: r.id, at: snsFmtJst(r.reserved_at), name: r.pet_name || r.customer_name,
-    menu: r.menu || '—', staff: r.staff_name || '', status: r.status, note: r.note || '',
-    ok: r.confirmed_by_customer, cat: r.category, mins: r.duration_minutes, stage: r.school_stage };
+    owner: r.customer_name || '', menu: r.menu || '—', staff: r.staff_name || '',
+    status: r.status, note: r.note || '', ok: r.confirmed_by_customer,
+    cat: r.category, mins: r.duration_minutes, stage: r.school_stage, cons: r.with_counseling === true };
 }
 async function rvReload(){
   const params = new URLSearchParams();
@@ -4110,18 +4150,53 @@ function renderResv(){
     tr.className = (r.status === 'requested' ? 'await' : '') + (dup ? ' clash' : '');
     const stage = r.cat === 'school' && r.stage
       ? ' <span class="pill hny">' + (SCHOOL_STAGES.find(x => x.v === r.stage) || {}).label + '</span>' : '';
+    // カウンセリングは段階と同時に成り立つ（初回スクールでその場でカウンセリングをする回がある）
+    const cons = r.cat === 'school' && r.cons && r.stage !== 'counseling'
+      ? ' <span class="pill good">カウンセリング同時</span>' : '';
+    // 段階とカウンセリングは予約の「中身」なのでコースの欄で扱う。
+    // 操作の欄に置くと来店・取消と並んで幅を食い、他の列が読めなくなる。
+    // 終わった予約（キャンセル・無断）は触れないので表示だけにする
+    const schoolCtl = r.cat === 'school' && r.status !== 'cancelled' && r.status !== 'no_show';
     // 重複の警告は日時の下に置く。横に並べると日時の列がその幅まで広がってしまう
     tr.innerHTML = '<td class="num rvat" data-label="日時">' + esc(r.at)
       + (dup ? '<span class="pill crit" style="display:block;margin-top:3px">時間が重複</span>' : '') + '</td>'
       + '<td class="rvname" data-label="わんちゃん">' + esc(r.name) + '</td>'
+      + '<td class="rvname" data-label="飼い主様">' + esc(r.owner || '—') + '</td>'
       + '<td data-label="コース">' + esc(r.menu)
-      + (r.cat ? ' <span class="pill mut">' + CAT_LABELS[r.cat] + '</span>' : '') + stage + '</td>'
+      + (r.cat ? ' <span class="pill mut">' + CAT_LABELS[r.cat] + '</span>' : '')
+      + (schoolCtl ? '<div class="rvschool"></div>' : stage + cons) + '</td>'
       + '<td class="rvname" data-label="担当">' + esc(r.staff || '指名なし') + '</td>'
       + '<td data-label="状態"><span class="pill ' + cls + '">' + label + '</span>'
       + (r.status === 'confirmed' && r.ok ? ' <span class="pill good">本人確認済</span>' : '') + '</td>'
       // ご要望は飼い主様が自由に書ける欄なので、タグとして解釈させない
       + '<td class="rvnote" data-label="ご要望"><span></span></td>';
     tr.querySelector('.rvnote span').textContent = r.note || '—';
+    if (schoolCtl) {
+      const box = tr.querySelector('.rvschool');
+      // 段階は「今どこか」を見せたいので、押すたびに回るボタンではなく選択にする
+      const sel = document.createElement('select');
+      sel.className = 'stagesel';
+      sel.setAttribute('aria-label', 'スクールの段階');
+      sel.innerHTML = '<option value="">段階なし</option>'
+        + SCHOOL_STAGES.map(x => '<option value="' + x.v + '">' + x.label + '</option>').join('');
+      sel.value = r.stage || '';
+      sel.addEventListener('change', () => setSchoolStage(r, sel.value || null));
+      box.appendChild(sel);
+      // カウンセリング未実施のままスクール初回を迎える子は、その回でカウンセリングも行う。
+      // 段階が「カウンセリング」の回は同時実施を問う意味がないので出さない
+      if (r.stage !== 'counseling') {
+        const tog = document.createElement('button');
+        tog.type = 'button';
+        tog.className = 'sbtn tog' + (r.cons ? ' on' : '');
+        tog.textContent = 'カウンセリング同時';
+        tog.setAttribute('aria-pressed', String(!!r.cons));
+        tog.title = r.cons
+          ? 'この回のカウンセリング同時実施を取り消す'
+          : 'この回でカウンセリングも行う（初回スクールでカウンセリング未実施のとき）';
+        tog.addEventListener('click', () => setCounseling(r, !r.cons));
+        box.appendChild(tog);
+      }
+    }
     // 打ち切った本文は、マウスを乗せる／長押しで全文が読めるようにしておく
     if (r.note) tr.querySelector('.rvnote').title = r.note;
     // td 自体を flex にすると表のセルでなくなり、行の色が最後の列だけ抜ける。
@@ -4159,14 +4234,6 @@ function renderResv(){
     } else if (r.status === 'visited') {
       // 写真を付けた来店だけが 19:00 のお礼配信の対象になる（R9）
       mk('写真', '', () => openVisitPhotos(r));
-    }
-    // スクールは「カウンセリング → 体験 → 入園」と進む。押すたびに次へ回す
-    if (r.cat === 'school' && r.status !== 'cancelled' && r.status !== 'no_show') {
-      const now = SCHOOL_STAGES.findIndex(x => x.v === r.stage);
-      const next = SCHOOL_STAGES[(now + 1) % SCHOOL_STAGES.length];
-      // 「〜にする」まで入れると操作の列が広がって他の列を圧迫するため、矢印で表す
-      mk('&rarr; ' + next.label, 'mut', () => setSchoolStage(r, next.v));
-      acts.lastChild.title = '「' + next.label + '」にする';
     }
     tr.appendChild(td);
     rvrows.appendChild(tr);

@@ -153,3 +153,48 @@ test('区分が未設定の古い予約には段階を付けられる（あと�
   const service = createReservationService({ pool, slack: { notify: async () => {} } });
   assert.deepEqual(await service.setSchoolStage(5, 'counseling'), { ok: true });
 });
+
+// ---- カウンセリングの同時実施 ----
+// 「スクール初回時にカウンセリング未実施 → その回でカウンセリングをしてからスクール」を
+// 表せるよう、段階（school_stage）とは別に持つ
+
+test('スクールの予約に、その回のカウンセリング実施を記録できる', async () => {
+  const { pool, queries } = makeStagePool('school');
+  const service = createReservationService({ pool, slack: { notify: async () => {} } });
+
+  assert.deepEqual(await service.setCounseling(5, true), { ok: true });
+  const update = queries.find((q) => /UPDATE reservations SET with_counseling/.test(q.sql));
+  assert.deepEqual(update.params, [5, true]);
+});
+
+test('カウンセリング同時実施は段階を書き換えない（別々に持つ）', async () => {
+  const { pool, queries } = makeStagePool('school');
+  const service = createReservationService({ pool, slack: { notify: async () => {} } });
+
+  await service.setCounseling(5, true);
+  assert.equal(
+    queries.filter((q) => /school_stage/.test(q.sql)).length, 0,
+    '体験や入園の段階はそのままで、カウンセリングだけを足せること'
+  );
+});
+
+test('カウンセリング同時実施は外せる', async () => {
+  const { pool, queries } = makeStagePool('school');
+  const service = createReservationService({ pool, slack: { notify: async () => {} } });
+
+  assert.deepEqual(await service.setCounseling(5, false), { ok: true });
+  const update = queries.find((q) => /UPDATE reservations SET with_counseling/.test(q.sql));
+  assert.deepEqual(update.params, [5, false]);
+});
+
+test('スクール以外・存在しない予約にはカウンセリングを付けない', async () => {
+  const trimming = createReservationService({
+    pool: makeStagePool('trimming').pool, slack: { notify: async () => {} },
+  });
+  assert.deepEqual(await trimming.setCounseling(5, true), { ok: false, error: 'not_school' });
+
+  const missing = createReservationService({
+    pool: makeStagePool(undefined).pool, slack: { notify: async () => {} },
+  });
+  assert.deepEqual(await missing.setCounseling(5, true), { ok: false, error: 'not_found' });
+});

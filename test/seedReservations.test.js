@@ -148,3 +148,13 @@ test('削除はデモぶんだけを消す', async () => {
   const del = pool.queries.find((q) => /DELETE FROM reservations/.test(q.sql));
   assert.equal(del.params[0], 'demo:%', '手入力した本物の予約は消さない');
 });
+
+test('カウンセリング同時実施の回を1件含む（段階とは別に持つ）', async () => {
+  const pool = makePool();
+  await seedReservations(pool);
+  const inserts = pool.queries.filter((q) => /INSERT INTO reservations/.test(q.sql));
+  const withCons = inserts.filter((q) => q.params[12] === true);
+  assert.equal(withCons.length, 1);
+  assert.equal(withCons[0].params[7], 'trial', '段階は体験のまま。カウンセリングで上書きしない');
+  assert.match(inserts[0].sql, /with_counseling/);
+});

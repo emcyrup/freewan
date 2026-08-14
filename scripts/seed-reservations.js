@@ -62,6 +62,10 @@ export const DEMO_RESERVATIONS = [
     staff: '山本', status: 'visited', stage: 'enrolled', note: '' },
   { ref: 'r15', pet: 'モモ', menu: 'シャンプーコース', day: -3, time: '13:00',
     staff: '高橋', status: 'no_show', note: '' },
+  // カウンセリング未実施のままスクール初回を迎える回。同じ日にカウンセリングをしてから入る
+  { ref: 'r16', pet: 'クッキー', menu: 'ペットスクール', day: 6, time: '9:00',
+    staff: '中村', status: 'confirmed', stage: 'trial', cons: true,
+    note: 'カウンセリングがまだなので、当日にお願いします。' },
 ];
 
 /** メニューの区分と所要時間。menus テーブルを正とし、無ければ組み込みの表で補う */
@@ -139,11 +143,11 @@ export async function seedReservations(pool, items = DEMO_RESERVATIONS) {
     const { rows } = await pool.query(
       `INSERT INTO reservations
          (customer_id, staff_id, menu, note, pet_id, category, duration_minutes,
-          school_stage, reserved_at, status, confirmed_by_customer, external_id)
+          school_stage, reserved_at, status, confirmed_by_customer, with_counseling, external_id)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8,
                ((now() AT TIME ZONE 'Asia/Tokyo')::date + ($9::int * INTERVAL '1 day') + $10::time)
                  AT TIME ZONE 'Asia/Tokyo',
-               $11, $12, $13)
+               $11, $12, $13, $14)
        ON CONFLICT (external_id) DO NOTHING
        RETURNING id`,
       [
@@ -159,6 +163,7 @@ export async function seedReservations(pool, items = DEMO_RESERVATIONS) {
         item.time,
         item.status,
         item.confirmed === true,
+        item.cons === true,
         DEMO_PREFIX + item.ref,
       ]
     );

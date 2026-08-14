@@ -51,6 +51,9 @@ CREATE TABLE reservations (
   category      TEXT CHECK (category IN ('hotel', 'trimming', 'school')),
   duration_minutes INTEGER CHECK (duration_minutes > 0),
   school_stage  TEXT CHECK (school_stage IN ('counseling', 'trial', 'enrolled')),
+  -- 「その子がどこまで進んでいるか」が school_stage、「この回でカウンセリングもするか」がこちら。
+  -- スクール初回でカウンセリング未実施のときは同じ回で両方行うため、1つの値では表せない
+  with_counseling BOOLEAN NOT NULL DEFAULT FALSE,
   reserved_at   TIMESTAMPTZ NOT NULL,
   status        reservation_status NOT NULL DEFAULT 'confirmed',
   confirmed_by_customer BOOLEAN NOT NULL DEFAULT FALSE,  -- 前々日確認への返答
