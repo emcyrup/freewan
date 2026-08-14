@@ -332,10 +332,11 @@ button.trow2:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
 .calsum span b{margin-left:5px}
 .calsum i{display:inline-block; width:9px; height:9px; border-radius:3px; margin-right:6px; vertical-align:-1px}
 .freerow{display:flex; flex-wrap:wrap; gap:8px; align-items:center}
+/* 候補日3つは常に横並び。ボタンは入りきらなければ次の行へ回す */
+.freedates{display:flex; gap:6px; flex:1 1 330px; min-width:0}
+.freedates input{flex:1 1 0; min-width:0}
 .freerow input{font:inherit; font-size:13px; padding:7px 9px; border:1px solid var(--line);
-  border-radius:8px; background:var(--surface); color:var(--ink);
-  /* 3つの候補日を同じ幅で並べる。中身の有無で幅が変わると入力欄に見えなくなる */
-  flex:1 1 130px; min-width:0}
+  border-radius:8px; background:var(--surface); color:var(--ink); min-width:0}
 .freerow .sbtn{flex:0 0 auto}
 .freeday{border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-top:8px}
 .freeday .fd{display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:13px; font-weight:700}
@@ -364,6 +365,10 @@ button.trow2:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
 .cust2{grid-template-columns:340px 1fr}
 .kv{display:grid; grid-template-columns:96px 1fr; gap:4px 10px; font-size:13px}
 .kv dt{color:var(--muted)} .kv dd{margin:0}
+/* 顧客情報。基本情報の下にリマインド設定のカードを置く */
+.cpbd{padding:14px 18px; overflow-y:auto}
+.custkv{margin:0 0 12px; font-size:12.5px}
+.panelrem .card{box-shadow:none}
 .meter{background:var(--surface2); border-radius:99px; height:8px; overflow:hidden; margin:6px 0 2px}
 .meter i{display:block; height:100%; background:var(--accent); border-radius:99px}
 .tl{list-style:none; margin:0; padding:0}
@@ -494,6 +499,7 @@ textarea{width:100%; border:1px solid var(--line); border-radius:8px; background
 .card.tight .frow+.frow{margin-top:6px}
 .card.tight .frow input,.card.tight .frow select{font-size:12.5px; padding:6px 8px}
 .card.tight .frow input,.card.tight .frow select{flex:1 1 150px}
+.card.tight .freedates input{flex:1 1 0}
 .hdnote{font-size:11.5px; color:var(--muted); font-weight:500; line-height:1.5}
 .hint{font-size:12px; color:var(--muted); margin:0 0 12px}
 /* .ghost はドラッグ中のゴースト（position:fixed）用なので、ボタンには使えない */
@@ -806,9 +812,12 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
       <span class="hdnote">候補日をまとめて確認できます。日付を押すとその日のカレンダーへ移動します。</span></div>
     <div class="bd">
       <div class="frow freerow">
-        <input type="date" class="freedate" aria-label="候補日1">
-        <input type="date" class="freedate" aria-label="候補日2">
-        <input type="date" class="freedate" aria-label="候補日3">
+        <!-- 候補日は3つ並べて見比べるものなので、狭い画面でも必ず1行に収める -->
+        <div class="freedates">
+          <input type="date" class="freedate" aria-label="候補日1">
+          <input type="date" class="freedate" aria-label="候補日2">
+          <input type="date" class="freedate" aria-label="候補日3">
+        </div>
         <button class="sbtn pri" id="freego">検索</button>
         <button class="sbtn" id="freeclear" type="button">クリア</button>
       </div>
@@ -1526,15 +1535,17 @@ function renderOwners(q = ''){
     acts.appendChild(actsbox);
     tr.append(name, pets, tel, line, acts);
 
+    const mk = (label, fn, cls) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'sbtn' + (cls ? ' ' + cls : ''); b.textContent = label;
+      b.addEventListener('click', fn);
+      actsbox.appendChild(b);
+    };
+    // 顧客情報（LINEリマインドの設定を含む）はデモでも開ける
+    mk('顧客情報', () => openCustomerPanel(o));
     if (adminLive) {   // 実運用モードでは一覧から直接編集・追加できる
-      const mk = (label, fn) => {
-        const b = document.createElement('button');
-        b.type = 'button'; b.className = 'sbtn mut'; b.textContent = label;
-        b.addEventListener('click', fn);
-        actsbox.appendChild(b);
-      };
-      mk('編集', () => editOwner(o, tr));
-      mk('＋ わんちゃん', () => editPet(o, null, tr));
+      mk('編集', () => editOwner(o, tr), 'mut');
+      mk('＋ わんちゃん', () => editPet(o, null, tr), 'mut');
     }
     ownersEl.appendChild(tr);
   });
@@ -1661,25 +1672,34 @@ const REMIND_JOB_OF = {
   R1:'preReminder', R2:'birthday', R3:'vaccine', R4:'afterVisit',
   R6:'ticketNudge', R7:'planNudge', R8:'carryNudge', R9:'thanks', R10:'dormant',
 };
-const custRem = {};                       // わんちゃんごとの個別設定（未設定＝店舗設定に従う）
-custRem['きなこ'] = { R2:false };            // 例: 誕生日メッセージを辞退
-custRem['ラテ']   = { R6:false };            // 例: 回数券の来店促しを辞退
+// 配信は飼い主様ごと（同じお宅にわんちゃんが複数いても送信は1通）。
+// 設定もわんちゃんではなく飼い主様に持たせる
+const custRem = {};                       // 飼い主様ごとの個別設定（未設定＝店舗設定に従う）
+custRem['藤本 恵子'] = { R2:false };         // 例: 誕生日メッセージを辞退
+custRem['岡田 美穂'] = { R6:false };         // 例: 回数券の来店促しを辞退
 // お客様ごとのリマインド設定（実運用モード）。サーバに保存され、日次ジョブが見る。
 // 対象はジョブの単位に合わせて「飼い主様」ごと。同じ飼い主様のわんちゃんが複数いても
 // 送信は1通なので、わんちゃんごとには分けられない
 const custRemLive = {};   // 顧客id → { ジョブ名: true/false }
-function remCard(d, o){
+/**
+ * 飼い主様ごとのリマインド設定カード。顧客情報（顧客一覧 → 顧客情報）に出す。
+ * 対象かどうかの判定は回数券・コースなどわんちゃん単位のデータを見るが、送信は飼い主様単位なので
+ * 「1頭でも当てはまれば出す」。わんちゃんごとに出し分けると同じ設定が何度も並んでしまう。
+ */
+function remCard(o){
+  const members = o.members || [];
+  const needAny = (r) => members.length === 0 ? r.need({}) : members.some(m => r.need(m));
   const mine = custRemLive[o.id] || {};
-  const rows = REMINDERS.filter(r => r.need(d)).map(r => {
-    const ov = custRem[d.n] && custRem[d.n][r.id] !== undefined;
-    const on = ov ? custRem[d.n][r.id] : true;
+  const rows = REMINDERS.filter(needAny).map(r => {
+    const ov = custRem[o.name] && custRem[o.name][r.id] !== undefined;
+    const on = ov ? custRem[o.name][r.id] : true;
     const job = REMIND_JOB_OF[r.id];
     // 店舗設定で止まっているものは、お客様ごとに ON にしても送られない。
     // 触れるトグルのままだと「ONにしたのに来ない」と誤解されるため状態表示にする
     const jobOff = adminLive && job && remindEnabled[job] === false;
     let control;
     if (!adminLive) {
-      control = '<button class="sw crem" data-member="' + d.n + '" data-id="' + r.id + '" role="switch" aria-checked="' + on + '" aria-label="' + r.n + '"><i></i></button>';
+      control = '<button class="sw crem" data-member="' + o.name + '" data-id="' + r.id + '" role="switch" aria-checked="' + on + '" aria-label="' + r.n + '"><i></i></button>';
     } else if (o.optOut) {
       control = '<span class="pill crit">配信停止中</span>';
     } else if (!job) {
@@ -1696,17 +1716,17 @@ function remCard(d, o){
       + '<span class="src ' + (o.line ? 'line' : 'tel') + '">' + (o.line ? 'LINE' : '未連携') + '</span>'
       + control + '</div>';
   }).join('');
-  const off = REMINDERS.filter(r => !r.need(d)).map(r => r.n).join('・');
+  const off = REMINDERS.filter(r => !needAny(r)).map(r => r.n).join('・');
   const note = adminLive
     ? (o.optOut
-        ? '<b>配信停止中</b>のため送られません。再開は「飼い主様情報を編集」から。'
+        ? '<b>配信停止中</b>のため送られません。再開は「編集」から。'
         : 'ここで切り替えると<b>この飼い主様だけ</b>その種類を止められます。'
           + '店舗全体で止めるときは<b>リマインド設定</b>の画面で切り替えます。')
-    : '個別にOFFにすると、この子だけ送信を止められます。'
+    : '個別にOFFにすると、この飼い主様への送信を止められます。'
       + (off ? '<br>現在の対象外: ' + off : '');
   return '<div class="card" id="remcard"><div class="hd">'
-    + '<h2>' + (adminLive ? '飼い主様へのリマインド設定' : 'この子へのリマインド設定') + '</h2>'
-    + '<span class="pill mut">' + (adminLive ? '飼い主様ごとの設定' : '店舗設定を引き継ぎ') + '</span></div>'
+    + '<h2>LINEリマインド設定</h2>'
+    + '<span class="pill mut">飼い主様ごと</span></div>'
     + '<div class="rem">' + rows + '</div>'
     + '<div class="bd" style="border-top:1px solid var(--line)"><p style="font-size:12px;color:var(--muted);margin:0">'
     + note
@@ -1714,11 +1734,11 @@ function remCard(d, o){
     + '</p></div></div>';
 }
 
-// カルテを開いている飼い主様。設定を読み込んだ後にカードだけ差し替えるために持つ
-let carteCtx = null;
+// 顧客情報を開いている飼い主様。設定を読み込んだ後にカードだけ差し替えるために持つ
+let remCtx = null;
 function repaintRemCard(){
   const el = document.getElementById('remcard');
-  if (el && carteCtx) el.outerHTML = remCard(carteCtx.d, carteCtx.o);
+  if (el && remCtx) el.outerHTML = remCard(remCtx);
 }
 async function loadCustomerReminders(o){
   if (!adminLive || o.id == null) return;
@@ -1764,7 +1784,7 @@ document.addEventListener('click', e => {
   custRem[member][sw.dataset.id] = on;
   const nm = sw.closest('.row').querySelector('.nm');
   if (!nm.querySelector('.pill')) nm.insertAdjacentHTML('beforeend', ' <span class="pill hny">個別設定</span>');
-  showToast(member + 'の「' + nm.textContent.replace('個別設定', '').trim() + '」を' + (on ? 'ON' : 'OFF') + 'にしました');
+  showToast(member + ' 様の「' + nm.textContent.replace('個別設定', '').trim() + '」を' + (on ? 'ON' : 'OFF') + 'にしました');
 });
 
 // ---- 回数券・ペットスクール（実運用モード）----
@@ -1913,7 +1933,15 @@ async function openCarte(d, o){
     + '<div class="card"><div class="hd"><h2>ワクチン</h2></div><div class="bd">' + vaccineRows(d) + '</div></div>'
     + school + tickets + lapsed + '</div>'
     + '<div style="display:grid;gap:16px;align-content:start">'
-    + remCard(d, o)
+    // リマインドは飼い主様ごと（同じお宅にわんちゃんが複数いても送信は1通）なので、
+    // わんちゃんのカルテではなく顧客情報に置いている
+    + '<div class="card"><div class="hd"><h2>LINEリマインド設定</h2>'
+    + '<span class="pill mut">飼い主様ごと</span></div>'
+    + '<div class="bd"><p style="font-size:12.5px;color:var(--muted);margin:0 0 10px">'
+    + 'リマインドは飼い主様ごとの設定です（わんちゃんが複数いても送信は1通）。'
+    + '<b>顧客一覧</b>の「顧客情報」から切り替えます。</p>'
+    + '<button class="sbtn" id="toremind" type="button">' + o.name + ' 様の顧客情報を開く</button>'
+    + '</div></div>'
     + '<div class="card"><div class="hd"><h2>来店履歴・カルテ</h2><span class="pill mut">全 ' + d.total + ' 件</span></div>'
     + '<div class="bd" style="padding-top:4px">'
     + (d.visits.length
@@ -1927,7 +1955,7 @@ async function openCarte(d, o){
     + '</div></div></div></div>';
 
   carteCtx = { d, o };
-  loadCustomerReminders(o);   // 読めたらリマインドのカードだけ差し替える
+  document.getElementById('toremind').addEventListener('click', () => openCustomerPanel(o));
   custbody.querySelectorAll('[data-credit]').forEach(b => {
     b.addEventListener('click', () => creditAction(b.dataset.credit, d, o));
   });
@@ -4700,6 +4728,40 @@ function openInlineEdit(tr, title, rows, { onSave, onDelete, after, key }){
   inlineRow = er;
   form.focus();
 }
+
+/**
+ * 顧客情報。LINEリマインドは飼い主様ごとの設定なので、
+ * わんちゃんのカルテではなくここに置く（同じお宅にわんちゃんが複数いても送信は1通）。
+ * 一覧の行の直下ではなく重ねて開く。設定の一覧は縦に長く、
+ * 横スクロールする表の中に差し込むと端が切れて読めなくなるため。
+ */
+function openCustomerPanel(o){
+  closeEdit();
+  closeInline();
+  const back = document.createElement('div'); back.className = 'mback';
+  back.addEventListener('click', e => { if (e.target === back) closeEdit(); });
+  const win = document.createElement('div'); win.className = 'mwin';
+  const pets = (o.members || []).map(m => m.n).join('・') || 'わんちゃん未登録';
+  win.innerHTML = '<div class="mhd"><h2></h2><button class="mx" aria-label="閉じる">&#10005;</button></div>'
+    + '<div class="cpbd">'
+    + '<dl class="kv custkv">'
+    + '<dt>電話番号</dt><dd>' + esc(o.tel) + '</dd>'
+    + '<dt>LINE</dt><dd>' + (o.line ? '<span class="pill good">連携済み</span>'
+        : '<span class="pill mut">未連携</span>　未連携の間は配信されません') + '</dd>'
+    + '<dt>わんちゃん</dt><dd>' + esc(pets) + '</dd>'
+    + '<dt>配信</dt><dd>' + (o.optOut ? '<span class="pill crit">配信停止中</span>' : '通常') + '</dd>'
+    + '</dl>'
+    + '<div class="panelrem"></div></div>';
+  win.querySelector('h2').textContent = o.name + ' 様の顧客情報';
+  win.querySelector('.mx').addEventListener('click', closeEdit);
+  back.appendChild(win);
+  document.body.appendChild(back);
+  editBack = back;
+  remCtx = o;
+  win.querySelector('.panelrem').innerHTML = remCard(o);
+  loadCustomerReminders(o);   // 読めたらリマインドのカードだけ差し替える
+}
+
 window.addEventListener('keydown', e => { if (e.key === 'Escape') closeEdit(); });
 
 // 顧客一覧から編集したときの再読み込み。カルテへは飛ばさず一覧のまま更新する
