@@ -330,8 +330,15 @@ button.trow2:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
   border-radius:8px; background:var(--surface); color:var(--ink)}
 .freeday{border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-top:8px}
 .freeday .fd{display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:13px; font-weight:700}
-.freeday .fl{margin:6px 0 0; font-size:12.5px; color:var(--muted); display:grid; gap:3px}
+.freeday .fl{margin:6px 0 0; font-size:12.5px; color:var(--muted); display:grid; gap:6px}
+.freeday .fl .fr{display:flex; flex-wrap:wrap; gap:6px; align-items:center}
+.freeday .fl .fn{min-width:5.5em; color:var(--ink); font-weight:700}
 .freeday.closed{opacity:.6}
+/* 空いている時間。押すとその時間から予約を入れられる */
+.fslot{font:inherit; font-size:12px; font-weight:700; padding:4px 9px; border-radius:99px; cursor:pointer;
+  border:1px solid var(--good); background:rgba(45,142,90,.10); color:var(--good)}
+.fslot:hover{background:rgba(45,142,90,.18)}
+.fslot.none{border-color:var(--line); background:var(--surface); color:var(--muted); cursor:default; font-weight:500}
 .legend{display:flex; flex-wrap:wrap; gap:14px; font-size:12px; color:var(--muted); margin-top:10px}
 .legend i{display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; vertical-align:-1px}
 
@@ -725,6 +732,7 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
         <input type="date" class="freedate" aria-label="候補日2">
         <input type="date" class="freedate" aria-label="候補日3">
         <button class="sbtn pri" id="freego">検索</button>
+        <button class="sbtn" id="freeclear" type="button">クリア</button>
       </div>
       <p class="hint" style="margin:8px 0 0">お客様から候補日をいただいたときに、まとめて空きを確認できます。日付をタップするとその日のカレンダーへ移動します。</p>
       <div id="freeout"></div>
@@ -828,13 +836,6 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
       </div>
     </div>
 
-    <div class="card">
-      <div class="hd"><h2>配信メッセージの確認</h2></div>
-      <div class="bd">
-        <p class="hint">実物の文面は「テスト送信」の画面で全種類ためせます（飼い主様には届きません）。</p>
-        <button class="btn sub" id="ts-goto" type="button">テスト送信を開く</button>
-      </div>
-    </div>
   </div>
 
   <div class="grid resv2">
@@ -2365,23 +2366,62 @@ function renderFree(){
     const left = Math.max(0, SCHOOL_CAPACITY - school);
     head.insertAdjacentHTML('beforeend',
       '<span class="pill ' + (left ? 'good' : 'crit') + '">スクール 残り' + left + '頭</span>');
+    // 電話口で即答できるよう、担当を問わず「入れられる時間」を先に出す
+    const open = mergeSlots([1, 2].flatMap(row => freeSlots(date, row)));
+    head.insertAdjacentHTML('beforeend',
+      '<span class="pill ' + (open.length ? 'good' : 'crit') + '">トリミング '
+        + (open.length ? slotText(open) : '空きなし') + '</span>');
     box.appendChild(head);
     const lines = document.createElement('div');
     lines.className = 'fl';
     [1, 2].forEach(row => {
-      const name = CAL_ROWS[row].name;
       const off = dayOff(date, row);
-      const slots = freeSlots(date, row);
-      lines.insertAdjacentHTML('beforeend',
-        '<span>' + name + '：' + (off ? off[2]
-          : slots.length ? slots.map(([a, b]) => fmt(a) + '〜' + fmt(b)).join('／')
-          : '空きなし') + '</span>');
+      const slots = off ? [] : freeSlots(date, row);
+      const line = document.createElement('div');
+      line.className = 'fr';
+      line.insertAdjacentHTML('beforeend', '<span class="fn">' + CAL_ROWS[row].name + '</span>');
+      if (off) {
+        line.insertAdjacentHTML('beforeend', '<span class="fslot none">' + off[2] + '</span>');
+      } else if (!slots.length) {
+        line.insertAdjacentHTML('beforeend', '<span class="fslot none">空きなし</span>');
+      } else {
+        slots.forEach(([a, b]) => {
+          const chip = document.createElement('button');
+          chip.type = 'button'; chip.className = 'fslot';
+          chip.textContent = fmt(a) + '〜' + fmt(b);
+          // その時間で予約を取りたくなるのが自然な流れなので、日カレンダーへ送る
+          chip.addEventListener('click', () => {
+            calState.date = date; setView('day'); window.scrollTo(0, 0);
+          });
+          line.appendChild(chip);
+        });
+      }
+      lines.appendChild(line);
     });
     box.appendChild(lines);
     out.appendChild(box);
   });
 }
+/** 担当ごとの空きをまとめて「店として空いている時間」にする */
+function mergeSlots(slots){
+  const sorted = slots.slice().sort((a, b) => a[0] - b[0]);
+  const merged = [];
+  sorted.forEach(([s, e]) => {
+    const last = merged[merged.length - 1];
+    if (last && s <= last[1]) last[1] = Math.max(last[1], e);
+    else merged.push([s, e]);
+  });
+  return merged;
+}
+function slotText(slots){
+  return slots.map(([a, b]) => fmt(a) + '〜' + fmt(b)).join('／');
+}
+function clearFree(){
+  document.querySelectorAll('.freedate').forEach(i => { i.value = ''; });
+  document.getElementById('freeout').innerHTML = '';
+}
 document.getElementById('freego').addEventListener('click', renderFree);
+document.getElementById('freeclear').addEventListener('click', clearFree);
 
 function renderCalendar(){
   renderDay(); renderWeek(); renderMonth(); renderCalSum();
@@ -3769,20 +3809,32 @@ document.getElementById('th-later').addEventListener('click', () => {
 // ================= 予約管理 =================
 // 実運用モードでは管理 API の実データを表示し、承認・来店登録・テスト送信もすべて本物が動く。
 // API に届かないときは下記のサンプルデータでデモ動作する。
+// 日付は「開いた日」からの相対で組み立てる。固定の日付を書くと、
+// 時間が経つほど一覧が過去だらけになり、承認や来店登録の練習ができなくなるため。
+// 並びは scripts/seed-reservations.js（実DBへのデモ投入）と揃えてある
+const rvAt = (day, time) => {
+  const d = calAddDays(todayJst(), day);
+  return (d.getMonth() + 1) + '/' + d.getDate() + '(' + DOW_JP[d.getDay()] + ') ' + time;
+};
 const RESV = [
-  { id:101, at:'7/26(日) 11:00', name:'ルナ',     menu:'シャンプー＆カットコース', staff:'',     status:'requested', note:'はじめてなので、短くしすぎない仕上がりを希望します。', cat:'trimming', mins:120 },
-  { id:102, at:'7/29(水) 14:30', name:'ラテ',     menu:'シャンプーコース',         staff:'伊藤', status:'requested', note:'', cat:'trimming', mins:60 },
-  { id:103, at:'7/24(金) 10:30', name:'マロン',   menu:'シャンプー＆カットコース', staff:'佐藤', status:'confirmed', note:'', ok:true, cat:'trimming', mins:120 },
+  { id:101, day:2,  time:'11:00', name:'クッキー', menu:'シャンプー＆カットコース', staff:'',     status:'requested', note:'はじめてなので、短くしすぎない仕上がりを希望します。', cat:'trimming', mins:120 },
+  { id:102, day:3,  time:'14:30', name:'ラテ',     menu:'シャンプーコース',         staff:'高橋', status:'requested', note:'', cat:'trimming', mins:60 },
+  { id:103, day:0,  time:'10:30', name:'マロン',   menu:'シャンプー＆カットコース', staff:'佐藤', status:'confirmed', note:'', ok:true, cat:'trimming', mins:120 },
   // 103 と同じ担当・重なる時間。重複の警告表示を確かめるためのサンプル
-  { id:111, at:'7/24(金) 11:30', name:'モカ',     menu:'カットコース',             staff:'佐藤', status:'confirmed', note:'', cat:'trimming', mins:90 },
-  { id:104, at:'7/24(金) 17:00', name:'チョコ',   menu:'体験入園',                 staff:'中村', status:'confirmed', note:'大型犬ですが対応可能でしょうか。', cat:'school', mins:90, stage:'counseling' },
-  { id:105, at:'7/25(土) 10:00', name:'ムギ',     menu:'シャンプーコース',         staff:'佐藤', status:'confirmed', note:'', ok:true, cat:'trimming', mins:60 },
-  { id:106, at:'7/25(土) 12:30', name:'レオ',     menu:'シャンプー＆カットコース', staff:'高橋', status:'confirmed', note:'', cat:'trimming', mins:120 },
-  { id:107, at:'7/28(火) 13:00', name:'ベル',     menu:'ペットホテル',             staff:'',     status:'confirmed', note:'お迎えは18時半ごろになります。', cat:'hotel', mins:1440 },
-  { id:108, at:'7/22(火) 10:00', name:'マロン',   menu:'ペットスクール',           staff:'山本', status:'visited',  note:'', cat:'school', mins:480, stage:'enrolled' },
-  { id:109, at:'7/21(月) 13:00', name:'ハナ',     menu:'体験入園',                 staff:'中村', status:'visited',  note:'', cat:'school', mins:90, stage:'trial' },
-  { id:110, at:'7/20(月) 15:00', name:'きなこ',   menu:'シャンプーコース',         staff:'伊藤', status:'cancelled', note:'', cat:'trimming', mins:60 },
-];
+  { id:111, day:0,  time:'11:30', name:'モカ',     menu:'カットコース',             staff:'佐藤', status:'confirmed', note:'シニアなので休憩をはさみながらお願いします。', cat:'trimming', mins:90 },
+  { id:104, day:5,  time:'17:00', name:'チョコ',   menu:'体験入園',                 staff:'中村', status:'confirmed', note:'大型犬ですが対応可能でしょうか。', cat:'school', mins:90, stage:'counseling' },
+  { id:105, day:1,  time:'10:00', name:'ムギ',     menu:'シャンプーコース',         staff:'高橋', status:'confirmed', note:'', ok:true, cat:'trimming', mins:60 },
+  { id:106, day:1,  time:'9:00',  name:'レオ',     menu:'ペットスクール',           staff:'山本', status:'confirmed', note:'', cat:'school', mins:480, stage:'enrolled' },
+  { id:112, day:0,  time:'9:00',  name:'ソラ',     menu:'ペットスクール',           staff:'中村', status:'confirmed', note:'', cat:'school', mins:480, stage:'enrolled' },
+  { id:107, day:4,  time:'13:00', name:'ベル',     menu:'ペットホテル',             staff:'',     status:'confirmed', note:'お迎えは18時半ごろになります。', cat:'hotel', mins:1440 },
+  { id:113, day:7,  time:'10:00', name:'ココ',     menu:'部分カット（顔・足まわり）', staff:'佐藤', status:'confirmed', note:'', cat:'trimming', mins:30 },
+  { id:114, day:12, time:'11:00', name:'プリン',   menu:'シャンプー＆カットコース', staff:'佐藤', status:'confirmed', note:'リボンはピンクでお願いします。', cat:'trimming', mins:120 },
+  // 当日の来店済。写真を付けるとその日の 19:00 にお礼が届く導線（R9）を試せる
+  { id:109, day:0,  time:'13:00', name:'ハナ',     menu:'体験入園',                 staff:'中村', status:'visited',  note:'', cat:'school', mins:90, stage:'trial' },
+  { id:108, day:-7, time:'9:00',  name:'マロン',   menu:'ペットスクール',           staff:'山本', status:'visited',  note:'', cat:'school', mins:480, stage:'enrolled' },
+  { id:115, day:-3, time:'13:00', name:'モモ',     menu:'シャンプーコース',         staff:'高橋', status:'no_show',  note:'', cat:'trimming', mins:60 },
+  { id:110, day:9,  time:'15:00', name:'きなこ',   menu:'シャンプーコース',         staff:'高橋', status:'cancelled', note:'', cat:'trimming', mins:60 },
+].map(r => ({ ...r, at: rvAt(r.day, r.time) }));
 // スクールの進み方。体験だけを対象にした配信や追客の絞り込みにも使う
 const SCHOOL_STAGES = [
   { v:'counseling', label:'カウンセリング' },
@@ -4270,7 +4322,6 @@ async function tsReloadResv({ quiet = false } = {}){
 document.getElementById('ts-search').addEventListener('click',
   () => fillCustomers(document.getElementById('ts-q').value, 'ts-cust'));
 document.getElementById('ts-reload').addEventListener('click', () => tsReloadResv());
-document.getElementById('ts-goto').addEventListener('click', () => go('test'));
 tsRenderButtons();
 // 期間の初期値は今日を挟んで前後2週間。テスト送信は過去の予約でも文面を確認できるため、
 // 予約管理（これからの予約）とは違って過去側も既定で含める

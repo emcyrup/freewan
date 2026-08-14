@@ -61,6 +61,10 @@ GCP に VM を1台立て、`docs/new-store.md` の手順で構築中。
 - **`ANTHROPIC_API_KEY` を `.env` に追記する**（2026-08-14 未設定と判明）。無いと
   スタッフのシフト変更申請が解釈されず（申請が1件も作られない）、来店フォロー返信の
   自動分類も動かない。起動ログに警告が出るようにしてある
+- 実データが入るまで画面を空のまま触るのが辛いときは、デモ用の顧客・予約を投入できる
+  （`node scripts/seed-customers.js` → `node scripts/seed-reservations.js`。どちらも `--remove`）。
+  予約サービスを通さない直接 INSERT で、LINE 連携済みの顧客にはぶら下げないため、
+  `SEND_MODE=live` のままでもスタッフ通知・顧客配信は発生しない
 
 ### Step 8 でやること（残りは Secrets 登録のみ）
 

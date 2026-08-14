@@ -19,7 +19,17 @@
 
 デモモードの**サンプルデータに実在の顧客名や電話番号を書き込んではいけない**。画面共有・
 スクリーンショットにそのまま乗る前提で扱う。なお実DBに同じサンプル顧客を投入して試したい
-ときは `scripts/seed-customers.js` を使う。
+ときは `scripts/seed-customers.js` を使う。予約一覧・カレンダーにも中身が要るときは、続けて
+`scripts/seed-reservations.js` を実行する（どちらも `--remove` で消せる）。
+
+```
+docker compose exec app node scripts/seed-customers.js
+docker compose exec app node scripts/seed-reservations.js
+```
+
+デモ予約は予約サービスを通さず SQL で直接入れるため、スタッフ通知（Slack／LINE）は飛ばない。
+また LINE 連携済みの顧客にはぶら下げないので、配信ジョブ（いずれも `line_user_id IS NOT NULL`
+が条件）の対象にもならない。`SEND_MODE=live` のままでも投入して差し支えない。
 
 **スタッフ情報・シフト入力**は実データで動く（Phase 8）。スタッフの追加・編集・LINE 連携・
 グループ参加状況、公式LINE からのシフト変更申請・承認・本人への通知、**週次シフト表の入力**
