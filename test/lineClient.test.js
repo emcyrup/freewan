@@ -128,9 +128,19 @@ test('pushTest: 宛先は常にテスト用ID、live では拒否、DB には書
   assert.equal(sent.status, 'sent');
   assert.equal(pushed[0].to, 'Utester');
 
-  const live = createLineClient({ config: { sendMode: 'live' }, pool, api });
-  assert.deepEqual(await live.pushTest([{ type: 'text', text: 'x' }]), { status: 'refused' });
-  assert.equal(pushed.length, 1, 'live では送信されない');
+  // live 運用中こそ文面を確かめたい。宛先は引数で受け取らずテスト用に固定されるので、
+  // live でも飼い主様には届かない
+  const live = createLineClient(
+    { config: { sendMode: 'live', testLineUserId: 'Utester' }, pool, api }
+  );
+  assert.deepEqual(await live.pushTest([{ type: 'text', text: 'x' }]), { status: 'sent' });
+  assert.equal(pushed[1].to, 'Utester', 'live でも宛先はテスト用アカウント');
+
+  // 宛先が無いときは送らない
+  const noDest = createLineClient({ config: { sendMode: 'live' }, pool, api });
+  assert.deepEqual(await noDest.pushTest([{ type: 'text', text: 'x' }]),
+    { status: 'refused', reason: 'no_test_user' });
+  assert.equal(pushed.length, 2, '宛先が無いときは送信しない');
   assert.equal(queries.length, 0, 'message_logs に記録しない（本番の dedupe に影響させない）');
 });
 

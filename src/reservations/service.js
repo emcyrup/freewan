@@ -13,6 +13,9 @@ const MAX_PENDING_REQUESTS = 3;
 const MAX_DAYS_AHEAD = 180;
 // 区分が分からない予約の所要時間。重複判定の幅として使う
 const DEFAULT_DURATION_MINUTES = 60;
+// 来店経路。集計（要件書 2.4）に使うので、入口ごとに既定を決めておく
+export const VISIT_SOURCES = ['epark', 'tel', 'epark_tel', 'line', 'walkin', 'other'];
+const normalizeSource = (v, fallback) => (VISIT_SOURCES.includes(v) ? v : fallback);
 // 1対1で対応する区分だけ重複を禁じる。スクールとホテルは複数頭を同時に受けるため対象外
 const EXCLUSIVE_CATEGORIES = ['trimming'];
 
@@ -180,6 +183,7 @@ export function createReservationService({ pool, slack, lineClient = null, planS
     petName,
     reservedAt,
     status = 'confirmed',
+    source,
   }) {
     if (!externalId) return { ok: false, error: 'external_id_required' };
     const phoneNorm = normalizePhone(phone);
@@ -220,8 +224,8 @@ export function createReservationService({ pool, slack, lineClient = null, planS
       const { rows } = await client.query(
         `INSERT INTO reservations
            (customer_id, staff_id, pet_id, menu, reserved_at, status, external_id,
-            category, duration_minutes)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            category, duration_minutes, source)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
          ON CONFLICT (external_id) DO UPDATE
            SET customer_id = EXCLUDED.customer_id,
                staff_id = EXCLUDED.staff_id,
@@ -231,10 +235,12 @@ export function createReservationService({ pool, slack, lineClient = null, planS
                status = EXCLUDED.status,
                category = EXCLUDED.category,
                duration_minutes = EXCLUDED.duration_minutes,
+               -- 経路は手で直せるようにしてあるので、取り込みで上書きしない
+               source = COALESCE(reservations.source, EXCLUDED.source),
                updated_at = now()
          RETURNING id, (xmax = 0) AS inserted`,
         [customerId, staffId, petId, menu || null, reservedAt, status, externalId,
-         spec.category, spec.durationMinutes]
+         spec.category, spec.durationMinutes, normalizeSource(source, 'epark')]
       );
 
       if (status === 'visited') {
@@ -262,7 +268,7 @@ export function createReservationService({ pool, slack, lineClient = null, planS
   }
 
   /** 管理画面からの手入力予約 */
-  async function createManual({ customerId, reservedAt, menu, staffId, petId }) {
+  async function createManual({ customerId, reservedAt, menu, staffId, petId, source }) {
     if (!Number.isInteger(customerId)) return { ok: false, error: 'invalid_customer' };
     if (!reservedAt || Number.isNaN(Date.parse(reservedAt))) {
       return { ok: false, error: 'invalid_reserved_at' };
@@ -299,10 +305,10 @@ export function createReservationService({ pool, slack, lineClient = null, planS
 
     const { rows } = await pool.query(
       `INSERT INTO reservations
-         (customer_id, staff_id, pet_id, menu, reserved_at, category, duration_minutes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+         (customer_id, staff_id, pet_id, menu, reserved_at, category, duration_minutes, source)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
       [customerId, staffId || null, petId || null, menu || null, reservedAt,
-       spec.category, spec.durationMinutes]
+       spec.category, spec.durationMinutes, normalizeSource(source, 'tel')]
     );
 
     let staffName = null;
@@ -392,8 +398,8 @@ export function createReservationService({ pool, slack, lineClient = null, planS
     const { rows } = await pool.query(
       `INSERT INTO reservations
          (customer_id, staff_id, pet_id, menu, reserved_at, status, note,
-          category, duration_minutes)
-       VALUES ($1, $2, $3, $4, $5, 'requested', $6, $7, $8)
+          category, duration_minutes, source)
+       VALUES ($1, $2, $3, $4, $5, 'requested', $6, $7, $8, 'line')
        RETURNING id`,
       [customer.id, staffId || null, petId || null, menuName, reservedAt, note || null,
        category, durationMinutes]
@@ -556,5 +562,21 @@ export function createReservationService({ pool, slack, lineClient = null, planS
     return { ok: true };
   }
 
-  return { upsertExternal, createManual, createRequest, setStatus, setSchoolStage, setCounseling };
+  /** 来店経路を後から直す。入口で自動で付くが、実際は電話だった等があるため */
+  async function setSource(reservationId, source) {
+    if (source !== null && !VISIT_SOURCES.includes(source)) {
+      return { ok: false, error: 'invalid_source' };
+    }
+    const { rowCount } = await pool.query(
+      `UPDATE reservations SET source = $2, updated_at = now() WHERE id = $1`,
+      [reservationId, source]
+    );
+    if (rowCount === 0) return { ok: false, error: 'not_found' };
+    return { ok: true };
+  }
+
+  return {
+    upsertExternal, createManual, createRequest, setStatus,
+    setSchoolStage, setCounseling, setSource,
+  };
 }

@@ -174,3 +174,13 @@ test('確定・見送りメッセージに日時が入る', () => {
   assert.match(buildConfirmedMessage(payload).text, /8月3日\(月\) 14:00/);
   assert.match(buildDeclinedMessage(payload).text, /8月3日\(月\) 14:00/);
 });
+
+test('予約フォームからの申し込みは来店経路が公式LINEになる', async () => {
+  const f = makeFakes();
+  const service = createReservationService(f);
+
+  await service.createRequest({ ...baseRequest });
+  const insert = f.queries.find((q) => /INSERT INTO reservations/.test(q.sql));
+  // 入口が分かっているので自動で付ける（集計の歯抜けを作らない）
+  assert.match(insert.sql, /'line'/);
+});

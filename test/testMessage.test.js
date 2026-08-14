@@ -28,11 +28,12 @@ function makePool() {
   };
 }
 
-function makeApp({ sendMode = 'test', testLineUserId = 'Utest' } = {}) {
+function makeApp({ sendMode = 'test', testLineUserId = 'Utest', refuse = false } = {}) {
   const sent = [];
   const lineClient = {
+    // 宛先はクライアント側で固定される。ここでは「宛先が無くて送れない」ときだけ断る
     pushTest: async (messages) => {
-      if (sendMode === 'live') return { status: 'refused' };
+      if (refuse) return { status: 'refused', reason: 'no_test_user' };
       sent.push(messages);
       return { status: sendMode === 'dry_run' ? 'dry_run' : 'sent' };
     },
@@ -72,12 +73,19 @@ const post = (base, body) =>
 
 test('顧客へ送りうるメッセージが全種類テストできる', async () => {
   // 種類を増やしたのに画面から確認できない、が起きないよう本数も固定する
-  assert.equal(TEST_MESSAGE_TYPES.length, 7);
+  assert.equal(TEST_MESSAGE_TYPES.length, 12);
   const types = TEST_MESSAGE_TYPES.map((t) => t.type);
   assert.deepEqual(types, [
     'preReminder', 'afterVisit', 'dormant', 'birthday',
+    'vaccine', 'ticketNudge', 'planNudge', 'carryNudge', 'thanks',
     'requestReceived', 'confirmed', 'declined',
   ]);
+  // 毎朝・夕方に自動で送る種類（R1〜R10）が全て入っていること。
+  // 1つでも抜けると、その文面は条件が揃うまで確かめられない
+  for (const t of ['preReminder', 'birthday', 'vaccine', 'afterVisit',
+    'ticketNudge', 'planNudge', 'carryNudge', 'thanks', 'dormant']) {
+    assert.ok(types.includes(t), `${t} がテスト送信できない`);
+  }
 });
 
 test('予約が要る種類はすべて文面を組み立てて送る', async () => {
@@ -131,12 +139,22 @@ test('存在しない種類・対象は 400/404 で弾く', async () => {
   assert.equal(sent.length, 0);
 });
 
-test('SEND_MODE=live ではテスト送信を拒否する', async () => {
+test('SEND_MODE=live でもテスト送信できる（宛先はテスト用に固定）', async () => {
   const { app, sent } = makeApp({ sendMode: 'live' });
   await withServer(app, async (base) => {
     const res = await post(base, { type: 'birthday', customerId: 1 });
+    assert.equal(res.status, 200);
+    assert.equal((await res.json()).ok, true);
+  });
+  assert.equal(sent.length, 1, 'live 運用中こそ文面を確かめたいので送れる');
+});
+
+test('テスト宛先が無いときは送らず、理由を返す', async () => {
+  const { app, sent } = makeApp({ sendMode: 'live', refuse: true });
+  await withServer(app, async (base) => {
+    const res = await post(base, { type: 'birthday', customerId: 1 });
     assert.equal(res.status, 400);
-    assert.equal((await res.json()).error, 'live_mode');
+    assert.equal((await res.json()).error, 'no_test_user');
   });
   assert.equal(sent.length, 0);
 });
@@ -147,6 +165,6 @@ test('送信前に SEND_MODE とテスト宛先の設定状況を返す', async 
     const body = await (await fetch(`${base}/api/admin/test-message`)).json();
     assert.equal(body.sendMode, 'dry_run');
     assert.equal(body.testUserConfigured, false);
-    assert.equal(body.types.length, 7);
+    assert.equal(body.types.length, 12);
   });
 });

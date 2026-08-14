@@ -536,7 +536,7 @@ textarea{width:100%; border:1px solid var(--line); border-radius:8px; background
 .rvnote{font-size:12px; color:var(--muted)}
 /* 予約一覧。列が7つあるので、狭くなったら潰さず横に流す（.tscroll の中に置く）。
    行の区切りが分かるよう1行おきに薄く敷き、上下は詰めすぎない */
-.rvtable{min-width:980px}
+.rvtable{min-width:1080px}
 .rvtable thead th{position:sticky; top:0; background:var(--surface); z-index:2}
 .rvtable td{vertical-align:top}
 .rvtable tbody tr:nth-child(even) td{background:var(--surface2)}
@@ -810,15 +810,17 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
         </table>
       </div>
     </div>
-    <div class="card">
-      <div class="hd"><h2>来店経路（7月）</h2></div>
-      <div class="bd">
-        <div class="bar"><span class="lb">EPARK</span><span class="tr"><i class="fl" style="width:56%"></i></span><span class="n num">96</span></div>
-        <div class="bar"><span class="lb">公式LINE</span><span class="tr"><i class="fl" style="width:24%"></i></span><span class="n num">41</span></div>
-        <div class="bar"><span class="lb">電話</span><span class="tr"><i class="fl" style="width:13%"></i></span><span class="n num">22</span></div>
-        <div class="bar"><span class="lb">EPARK TEL</span><span class="tr"><i class="fl" style="width:8%"></i></span><span class="n num">14</span></div>
-        <div class="bar b2"><span class="lb">紹介・他</span><span class="tr"><i class="fl" style="width:5%"></i></span><span class="n num">9</span></div>
-      </div>
+  </div>
+
+  <!-- 来店経路（要件書 2.1 / 2.4）。当月に実際にご来店いただいた件数で数える -->
+  <div class="card" id="srccard" style="margin-top:16px">
+    <div class="hd"><h2>来店経路</h2><span class="pill mut" id="src-month">今月</span></div>
+    <div class="bd" id="srcbars">
+      <div class="bar"><span class="lb">EPARK</span><span class="tr"><i class="fl" style="width:56%"></i></span><span class="n num">96</span></div>
+      <div class="bar"><span class="lb">公式LINE</span><span class="tr"><i class="fl" style="width:24%"></i></span><span class="n num">41</span></div>
+      <div class="bar"><span class="lb">電話</span><span class="tr"><i class="fl" style="width:13%"></i></span><span class="n num">22</span></div>
+      <div class="bar"><span class="lb">EPARK TEL</span><span class="tr"><i class="fl" style="width:8%"></i></span><span class="n num">14</span></div>
+      <div class="bar b2"><span class="lb">紹介・他</span><span class="tr"><i class="fl" style="width:5%"></i></span><span class="n num">9</span></div>
     </div>
   </div>
 
@@ -859,6 +861,14 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
         <select id="nr-staff" aria-label="担当">
           <option value="">担当（任意）</option>
           <option>佐藤</option><option>高橋</option><option>伊藤</option><option>中村</option><option>山本</option>
+        </select>
+        <select id="nr-source" aria-label="来店経路">
+          <option value="tel">電話</option>
+          <option value="epark">EPARK</option>
+          <option value="epark_tel">EPARK TEL</option>
+          <option value="walkin">ご来店</option>
+          <option value="line">公式LINE</option>
+          <option value="other">紹介・その他</option>
         </select>
         <button class="sbtn pri" id="nr-submit" type="button">予約を登録</button>
       </div>
@@ -969,7 +979,7 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
     <div class="bd tscroll" style="padding:6px 0 0">
       <table class="rvtable">
         <thead>
-          <tr><th>日時</th><th>わんちゃん</th><th>飼い主様</th><th>コース</th><th>担当</th><th>状態</th><th>ご要望</th><th>操作</th></tr>
+          <tr><th>日時</th><th>わんちゃん</th><th>飼い主様</th><th>コース</th><th>担当</th><th>経路</th><th>状態</th><th>ご要望</th><th>操作</th></tr>
         </thead>
         <tbody id="rvrows"></tbody>
       </table>
@@ -1169,7 +1179,7 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
     <div class="card">
       <div class="hd"><h2>お客様を選んで送る</h2></div>
       <div class="bd">
-        <p class="hint">お名前だけで組み立てられるメッセージです。</p>
+        <p class="hint">お名前とわんちゃんの名前で組み立てます。残回数や期限は<b>見本の値</b>です（文面の確認用）。</p>
         <div class="frow" style="margin-bottom:8px">
           <input type="text" id="ts-q" placeholder="飼い主名・わんちゃん名 or 電話番号で検索">
           <button class="btn sub" id="ts-search" type="button">検索</button>
@@ -3131,9 +3141,27 @@ async function renderDashboardLive(){
     + kpi('入園', d.enrolled_this_month, '頭', '今月あらたに入園した子')
     + kpi('来園', d.school_visits_this_month, '件', '来店済にしたスクールの予約');
 
-  // 売上・来店経路・トリマー実績は持っていないため、カードごと出さない
+  // 売上・トリマー実績は持っていないため、カードごと出さない
   const dash2 = document.getElementById('dash2');
   if (dash2) dash2.remove();
+
+  // 来店経路。予約の入口から自動で付き、予約一覧で直せる。
+  // 「未設定」も隠さずに出す（隠すと直すきっかけが無くなり、集計がずっと歯抜けになる）
+  const srcMap = d.sources_this_month || {};
+  const rows = SOURCES.map(x => [x.label, srcMap[x.v] || 0, false])
+    .concat(srcMap.unknown ? [['未設定', srcMap.unknown, true]] : [])
+    .filter(([, n]) => n > 0)
+    .sort((a, b) => b[1] - a[1]);
+  const max = Math.max(1, ...rows.map(r => r[1]));
+  document.getElementById('src-month').textContent =
+    new Intl.DateTimeFormat('ja-JP', { timeZone: 'Asia/Tokyo', month: 'long' }).format(today);
+  document.getElementById('srcbars').innerHTML = rows.length
+    ? rows.map(([label, n, mut]) =>
+        '<div class="bar' + (mut ? ' b2' : '') + '"><span class="lb">' + label + '</span>'
+        + '<span class="tr"><i class="fl" style="width:' + Math.round(n / max * 100) + '%"></i></span>'
+        + '<span class="n num">' + n + '</span></div>').join('')
+    : '<p class="hint" style="margin:0">今月のご来店はまだありません。'
+      + '来店経路は予約管理の一覧で選べます。</p>';
 
   // ショートカットの補足も実データに合わせる
   const quickNotes = {
@@ -4059,25 +4087,25 @@ const rvAt = (day, time) => {
   return (d.getMonth() + 1) + '/' + d.getDate() + '(' + DOW_JP[d.getDay()] + ') ' + time;
 };
 const RESV = [
-  { id:101, day:2,  time:'11:00', name:'クッキー', menu:'シャンプー＆カットコース', staff:'',     status:'requested', note:'はじめてなので、短くしすぎない仕上がりを希望します。', cat:'trimming', mins:120 },
-  { id:102, day:3,  time:'14:30', name:'ラテ',     menu:'シャンプーコース',         staff:'高橋', status:'requested', note:'', cat:'trimming', mins:60 },
-  { id:103, day:0,  time:'10:30', name:'マロン',   menu:'シャンプー＆カットコース', staff:'佐藤', status:'confirmed', note:'', ok:true, cat:'trimming', mins:120 },
+  { id:101, day:2,  time:'11:00', name:'クッキー', menu:'シャンプー＆カットコース', staff:'',     status:'requested', note:'はじめてなので、短くしすぎない仕上がりを希望します。', cat:'trimming', mins:120, src:'line' },
+  { id:102, day:3,  time:'14:30', name:'ラテ',     menu:'シャンプーコース',         staff:'高橋', status:'requested', note:'', cat:'trimming', mins:60, src:'line' },
+  { id:103, day:0,  time:'10:30', name:'マロン',   menu:'シャンプー＆カットコース', staff:'佐藤', status:'confirmed', note:'', ok:true, cat:'trimming', mins:120, src:'epark' },
   // 103 と同じ担当・重なる時間。重複の警告表示を確かめるためのサンプル
-  { id:111, day:0,  time:'11:30', name:'モカ',     menu:'カットコース',             staff:'佐藤', status:'confirmed', note:'シニアなので休憩をはさみながらお願いします。', cat:'trimming', mins:90 },
-  { id:104, day:5,  time:'17:00', name:'チョコ',   menu:'体験入園',                 staff:'中村', status:'confirmed', note:'大型犬ですが対応可能でしょうか。', cat:'school', mins:90, stage:'counseling' },
-  { id:105, day:1,  time:'10:00', name:'ムギ',     menu:'シャンプーコース',         staff:'高橋', status:'confirmed', note:'', ok:true, cat:'trimming', mins:60 },
-  { id:106, day:1,  time:'9:00',  name:'レオ',     menu:'ペットスクール',           staff:'山本', status:'confirmed', note:'', cat:'school', mins:480, stage:'enrolled' },
+  { id:111, day:0,  time:'11:30', name:'モカ',     menu:'カットコース',             staff:'佐藤', status:'confirmed', note:'シニアなので休憩をはさみながらお願いします。', cat:'trimming', mins:90, src:'tel' },
+  { id:104, day:5,  time:'17:00', name:'チョコ',   menu:'体験入園',                 staff:'中村', status:'confirmed', note:'大型犬ですが対応可能でしょうか。', cat:'school', mins:90, stage:'counseling', src:'epark' },
+  { id:105, day:1,  time:'10:00', name:'ムギ',     menu:'シャンプーコース',         staff:'高橋', status:'confirmed', note:'', ok:true, cat:'trimming', mins:60, src:'epark_tel' },
+  { id:106, day:1,  time:'9:00',  name:'レオ',     menu:'ペットスクール',           staff:'山本', status:'confirmed', note:'', cat:'school', mins:480, stage:'enrolled', src:'walkin' },
   // 初回スクールでカウンセリング未実施の回。同じ日にカウンセリングをしてからスクールへ入る
-  { id:116, day:2,  time:'9:00',  name:'クッキー', menu:'ペットスクール',           staff:'中村', status:'confirmed', note:'カウンセリングがまだなので、当日にお願いします。', cat:'school', mins:480, stage:'trial', cons:true },
-  { id:112, day:0,  time:'9:00',  name:'ソラ',     menu:'ペットスクール',           staff:'中村', status:'confirmed', note:'', cat:'school', mins:480, stage:'enrolled' },
-  { id:107, day:4,  time:'13:00', name:'ベル',     menu:'ペットホテル',             staff:'',     status:'confirmed', note:'お迎えは18時半ごろになります。', cat:'hotel', mins:1440 },
-  { id:113, day:7,  time:'10:00', name:'ココ',     menu:'部分カット（顔・足まわり）', staff:'佐藤', status:'confirmed', note:'', cat:'trimming', mins:30 },
-  { id:114, day:12, time:'11:00', name:'プリン',   menu:'シャンプー＆カットコース', staff:'佐藤', status:'confirmed', note:'リボンはピンクでお願いします。', cat:'trimming', mins:120 },
+  { id:116, day:2,  time:'9:00',  name:'クッキー', menu:'ペットスクール',           staff:'中村', status:'confirmed', note:'カウンセリングがまだなので、当日にお願いします。', cat:'school', mins:480, stage:'trial', cons:true, src:'line' },
+  { id:112, day:0,  time:'9:00',  name:'ソラ',     menu:'ペットスクール',           staff:'中村', status:'confirmed', note:'', cat:'school', mins:480, stage:'enrolled', src:'epark' },
+  { id:107, day:4,  time:'13:00', name:'ベル',     menu:'ペットホテル',             staff:'',     status:'confirmed', note:'お迎えは18時半ごろになります。', cat:'hotel', mins:1440, src:'tel' },
+  { id:113, day:7,  time:'10:00', name:'ココ',     menu:'部分カット（顔・足まわり）', staff:'佐藤', status:'confirmed', note:'', cat:'trimming', mins:30, src:'epark' },
+  { id:114, day:12, time:'11:00', name:'プリン',   menu:'シャンプー＆カットコース', staff:'佐藤', status:'confirmed', note:'リボンはピンクでお願いします。', cat:'trimming', mins:120, src:'other' },
   // 当日の来店済。写真を付けるとその日の 19:00 にお礼が届く導線（R9）を試せる
-  { id:109, day:0,  time:'13:00', name:'ハナ',     menu:'体験入園',                 staff:'中村', status:'visited',  note:'', cat:'school', mins:90, stage:'trial' },
-  { id:108, day:-7, time:'9:00',  name:'マロン',   menu:'ペットスクール',           staff:'山本', status:'visited',  note:'', cat:'school', mins:480, stage:'enrolled' },
-  { id:115, day:-3, time:'13:00', name:'モモ',     menu:'シャンプーコース',         staff:'高橋', status:'no_show',  note:'', cat:'trimming', mins:60 },
-  { id:110, day:9,  time:'15:00', name:'きなこ',   menu:'シャンプーコース',         staff:'高橋', status:'cancelled', note:'', cat:'trimming', mins:60 },
+  { id:109, day:0,  time:'13:00', name:'ハナ',     menu:'体験入園',                 staff:'中村', status:'visited',  note:'', cat:'school', mins:90, stage:'trial', src:'epark' },
+  { id:108, day:-7, time:'9:00',  name:'マロン',   menu:'ペットスクール',           staff:'山本', status:'visited',  note:'', cat:'school', mins:480, stage:'enrolled', src:'line' },
+  { id:115, day:-3, time:'13:00', name:'モモ',     menu:'シャンプーコース',         staff:'高橋', status:'no_show',  note:'', cat:'trimming', mins:60, src:'tel' },
+  { id:110, day:9,  time:'15:00', name:'きなこ',   menu:'シャンプーコース',         staff:'高橋', status:'cancelled', note:'', cat:'trimming', mins:60, src:'epark' },
 ].map(r => ({ ...r, at: rvAt(r.day, r.time), owner: ownerOf(r.name) || '' }));
 // スクールの進み方。体験だけを対象にした配信や追客の絞り込みにも使う
 const SCHOOL_STAGES = [
@@ -4086,6 +4114,16 @@ const SCHOOL_STAGES = [
   { v:'enrolled',   label:'入園' },
 ];
 const CAT_LABELS = { trimming:'トリミング', school:'スクール', hotel:'ホテル' };
+// 来店経路。集計（ダッシュボード）と予約一覧の表示で同じ並び・同じ呼び方を使う
+const SOURCES = [
+  { v:'epark',     label:'EPARK',      cls:'epark' },
+  { v:'line',      label:'公式LINE',   cls:'line' },
+  { v:'tel',       label:'電話',       cls:'tel' },
+  { v:'epark_tel', label:'EPARK TEL',  cls:'epark' },
+  { v:'walkin',    label:'ご来店',     cls:'walkin' },
+  { v:'other',     label:'紹介・その他', cls:'tel' },
+];
+const SOURCE_LABEL = Object.fromEntries(SOURCES.map(x => [x.v, x.label]));
 // 予定の開始を分に直す。同じ年内で比べられれば十分なので月日から組み立てる
 /** 飼い主様が入力した文字をそのまま HTML に混ぜないための逃がし（名前・コース名・ご要望） */
 function esc(v){
@@ -4157,6 +4195,21 @@ async function setCounseling(r, on){
   }
 }
 
+// 来店経路。入口で自動で付くが、実際は電話だった等があるので後から直せるようにする
+async function setSource(r, source){
+  const label = SOURCE_LABEL[source] || '未設定';
+  if (!adminLive) { r.src = source; renderResv(); showToast(r.name + ' の来店経路を「' + label + '」にしました'); return; }
+  try {
+    await adminApi('/reservations/' + r.id + '/source', {
+      method: 'PATCH', body: JSON.stringify({ source: source || null }),
+    });
+    r.src = source; renderResv();
+    showToast(r.name + ' の来店経路を「' + label + '」にしました');
+  } catch (err) {
+    showToast('エラー: ' + err.message);
+  }
+}
+
 function rvSetStatus(r, status, msg){
   const before = r.status;
   r.status = status;
@@ -4168,7 +4221,8 @@ function rvMap(r){
   return { id: r.id, at: snsFmtJst(r.reserved_at), name: r.pet_name || r.customer_name,
     owner: r.customer_name || '', menu: r.menu || '—', staff: r.staff_name || '',
     status: r.status, note: r.note || '', ok: r.confirmed_by_customer,
-    cat: r.category, mins: r.duration_minutes, stage: r.school_stage, cons: r.with_counseling === true };
+    cat: r.category, mins: r.duration_minutes, stage: r.school_stage, cons: r.with_counseling === true,
+    src: r.source || '' };
 }
 async function rvReload(){
   const params = new URLSearchParams();
@@ -4317,11 +4371,22 @@ function renderResv(){
       + (r.cat ? ' <span class="pill mut">' + CAT_LABELS[r.cat] + '</span>' : '')
       + (schoolCtl ? '<div class="rvschool"></div>' : stage + cons) + '</td>'
       + '<td class="rvname" data-label="担当">' + esc(r.staff || '指名なし') + '</td>'
+      + '<td class="rvsrc" data-label="経路"></td>'
       + '<td data-label="状態"><span class="pill ' + cls + '">' + label + '</span>'
       + (r.status === 'confirmed' && r.ok ? ' <span class="pill good">本人確認済</span>' : '') + '</td>'
       // ご要望は飼い主様が自由に書ける欄なので、タグとして解釈させない
       + '<td class="rvnote" data-label="ご要望"><span></span></td>';
     tr.querySelector('.rvnote span').textContent = r.note || '—';
+    // 経路は「どこから入ったか」。集計に効くので、未設定のままにならないよう選べるようにする
+    const srcCell = tr.querySelector('.rvsrc');
+    const ssel = document.createElement('select');
+    ssel.className = 'stagesel';
+    ssel.setAttribute('aria-label', '来店経路');
+    ssel.innerHTML = '<option value="">未設定</option>'
+      + SOURCES.map(x => '<option value="' + x.v + '">' + x.label + '</option>').join('');
+    ssel.value = r.src || '';
+    ssel.addEventListener('change', () => setSource(r, ssel.value));
+    srcCell.appendChild(ssel);
     if (schoolCtl) {
       const box = tr.querySelector('.rvschool');
       // 段階は「今どこか」を見せたいので、押すたびに回るボタンではなく選択にする
@@ -4528,6 +4593,7 @@ document.getElementById('nr-submit').addEventListener('click', async () => {
           reservedAt: at + ':00+09:00',   // datetime-local は JST 前提なのでオフセットを明示する
           menu,
           staffId: document.getElementById('nr-staff').value || null,
+          source: document.getElementById('nr-source').value || null,
         }),
       });
       showToast(name + 'の予約を登録しました（スタッフ入力のため承認は不要です）');
@@ -4553,6 +4619,11 @@ const TEST_TYPES = [
   { type:'afterVisit',      label:'来店7日後フォロー',    needs:'reservation', note:'ご来店の7日後に自動送信' },
   { type:'dormant',         label:'休眠フォロー',        needs:'customer',    note:'最終来店から90日で自動送信' },
   { type:'birthday',        label:'誕生日メッセージ',    needs:'customer',    note:'お誕生日当日に自動送信' },
+  { type:'vaccine',         label:'ワクチン更新案内',    needs:'customer',    note:'期限30日前に自動送信（期限は見本の日付）' },
+  { type:'ticketNudge',     label:'回数券 残回数のご案内', needs:'customer',  note:'2週間ご来店なしで自動送信（回数は見本）' },
+  { type:'planNudge',       label:'コース残回数のご案内', needs:'customer',   note:'1週間ご来店なしで自動送信（回数は見本）' },
+  { type:'carryNudge',      label:'繰越分の消化のご案内', needs:'customer',   note:'月替わりに自動送信（回数は見本）' },
+  { type:'thanks',          label:'来店お礼（写真付き）', needs:'reservation', note:'来店当日19:00。写真はそのご予約に登録済みのもの' },
   { type:'requestReceived', label:'予約リクエスト受付',  needs:'reservation', note:'予約フォーム送信の直後' },
   { type:'confirmed',       label:'予約の確定通知',      needs:'reservation', note:'「承認」を押したとき' },
   { type:'declined',        label:'予約の見送り通知',    needs:'reservation', note:'「見送り」を押したとき' },
@@ -4602,7 +4673,11 @@ async function tsRenderState(){
       test: testUserConfigured
         ? ['good', 'test', 'テスト用アカウントへ実際に届きます。飼い主様には届きません。']
         : ['crit', 'test', 'TEST_LINE_USER_ID が未設定のため送信できません。'],
-      live: ['crit', 'live', '本番送信モードのため、誤配信防止としてテスト送信はできません。'],
+      // live でも宛先はテスト用に固定される（顧客には行かない）。
+      // 本番運用中こそ文面を確かめたい場面が多いので送れるようにしてある
+      live: testUserConfigured
+        ? ['good', 'live', 'テスト用アカウントへ実際に届きます。宛先は固定なので飼い主様には届きません。']
+        : ['crit', 'live', 'TEST_LINE_USER_ID が未設定のため送信できません。'],
     };
     const [cls, mode, text] = states[sendMode] ?? ['mut', sendMode, ''];
     box.innerHTML = '<p class="hint" style="margin:0"><span class="pill ' + cls + '">SEND_MODE = ' + mode + '</span> ' + text + '</p>';

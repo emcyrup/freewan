@@ -139,15 +139,19 @@ export function createLineClient({ config, pool, api, approval = null }) {
   /**
    * 管理画面からのテスト送信。宛先は常にテスト用 ID（顧客本人には送らない設計）。
    * message_logs には記録しない＝本番ジョブの dedupe や抽出条件に影響を与えない。
-   * live モードでは誤操作防止のため拒否する。
+   * live 運用中こそ文面を確かめたい場面が多いため、live でも送れる。
+   * 安全は「宛先を引数で受け取らない」ことで担保している。
    */
   async function pushTest(messages) {
-    if (config.sendMode === 'live') {
-      return { status: 'refused' };
-    }
     if (config.sendMode === 'dry_run') {
       console.log(`[dry_run test-send]\n${JSON.stringify(messages, null, 2)}`);
       return { status: 'dry_run' };
+    }
+    // test / live のどちらでも宛先はテスト用アカウントに固定する。
+    // 引数に宛先を取らない形にしてあるのがこの機能の安全装置で、live でも
+    // 飼い主様には届かない。宛先が無いときは送らずに理由を返す
+    if (!config.testLineUserId) {
+      return { status: 'refused', reason: 'no_test_user' };
     }
     await client.pushMessage({ to: config.testLineUserId, messages });
     return { status: 'sent' };

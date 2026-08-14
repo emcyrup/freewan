@@ -30,42 +30,42 @@ const MENU_FALLBACK = {
 // 一覧の既定表示は当日から14日先までなので、day が 0〜13 のものが最初から見える。
 export const DEMO_RESERVATIONS = [
   { ref: 'r01', pet: 'マロン', menu: 'シャンプー＆カットコース', day: 0, time: '10:30',
-    staff: '佐藤', status: 'confirmed', confirmed: true, note: '' },
+    staff: '佐藤', status: 'confirmed', confirmed: true, note: '', source: 'epark' },
   // r01 と同じ担当・重なる時間。予約一覧の「時間が重複」の赤表示を確かめるためのもの
   { ref: 'r02', pet: 'モカ', menu: 'カットコース', day: 0, time: '11:30',
-    staff: '佐藤', status: 'confirmed', note: 'シニアなので休憩をはさみながらお願いします。' },
+    staff: '佐藤', status: 'confirmed', note: 'シニアなので休憩をはさみながらお願いします。', source: 'tel' },
   { ref: 'r03', pet: 'ソラ', menu: 'ペットスクール', day: 0, time: '9:00',
-    staff: '中村', status: 'confirmed', stage: 'enrolled', note: '' },
+    staff: '中村', status: 'confirmed', stage: 'enrolled', note: '', source: 'line' },
   // 当日の来店済。写真を付けると 19:00 のお礼配信（R9）の対象になる導線を試せる
   { ref: 'r04', pet: 'ハナ', menu: '体験入園', day: 0, time: '13:00',
-    staff: '中村', status: 'visited', stage: 'trial', note: '' },
+    staff: '中村', status: 'visited', stage: 'trial', note: '', source: 'epark' },
   { ref: 'r05', pet: 'ムギ', menu: 'シャンプーコース', day: 1, time: '10:00',
-    staff: '高橋', status: 'confirmed', confirmed: true, note: '' },
+    staff: '高橋', status: 'confirmed', confirmed: true, note: '', source: 'epark_tel' },
   { ref: 'r06', pet: 'レオ', menu: 'ペットスクール', day: 1, time: '9:00',
-    staff: '山本', status: 'confirmed', stage: 'enrolled', note: '' },
+    staff: '山本', status: 'confirmed', stage: 'enrolled', note: '', source: 'walkin' },
   { ref: 'r07', pet: 'クッキー', menu: 'シャンプー＆カットコース', day: 2, time: '11:00',
-    staff: null, status: 'requested', note: 'はじめてなので、短くしすぎない仕上がりを希望します。' },
+    staff: null, status: 'requested', note: 'はじめてなので、短くしすぎない仕上がりを希望します。', source: 'line' },
   { ref: 'r08', pet: 'ラテ', menu: 'シャンプーコース', day: 3, time: '14:30',
-    staff: '高橋', status: 'requested', note: '' },
+    staff: '高橋', status: 'requested', note: '', source: 'line' },
   { ref: 'r09', pet: 'ベル', menu: 'ペットホテル', day: 4, time: '13:00',
-    staff: null, status: 'confirmed', note: 'お迎えは18時半ごろになります。' },
+    staff: null, status: 'confirmed', note: 'お迎えは18時半ごろになります。', source: 'tel' },
   { ref: 'r10', pet: 'チョコ', menu: '体験入園', day: 5, time: '17:00',
-    staff: '中村', status: 'confirmed', stage: 'counseling', note: '大型犬ですが対応可能でしょうか。' },
+    staff: '中村', status: 'confirmed', stage: 'counseling', note: '大型犬ですが対応可能でしょうか。', source: 'epark' },
   { ref: 'r11', pet: 'ココ', menu: '部分カット（顔・足まわり）', day: 7, time: '10:00',
-    staff: '佐藤', status: 'confirmed', note: '' },
+    staff: '佐藤', status: 'confirmed', note: '', source: 'epark' },
   { ref: 'r12', pet: 'きなこ', menu: 'シャンプーコース', day: 9, time: '15:00',
-    staff: '高橋', status: 'cancelled', note: '' },
+    staff: '高橋', status: 'cancelled', note: '', source: 'epark' },
   { ref: 'r13', pet: 'プリン', menu: 'シャンプー＆カットコース', day: 12, time: '11:00',
-    staff: '佐藤', status: 'confirmed', note: 'リボンはピンクでお願いします。' },
+    staff: '佐藤', status: 'confirmed', note: 'リボンはピンクでお願いします。', source: 'other' },
   // 過去ぶん。期間を指定して振り返る操作を試せるようにする
   { ref: 'r14', pet: 'マロン', menu: 'ペットスクール', day: -7, time: '9:00',
-    staff: '山本', status: 'visited', stage: 'enrolled', note: '' },
+    staff: '山本', status: 'visited', stage: 'enrolled', note: '', source: 'line' },
   { ref: 'r15', pet: 'モモ', menu: 'シャンプーコース', day: -3, time: '13:00',
-    staff: '高橋', status: 'no_show', note: '' },
+    staff: '高橋', status: 'no_show', note: '', source: 'tel' },
   // カウンセリング未実施のままスクール初回を迎える回。同じ日にカウンセリングをしてから入る
   { ref: 'r16', pet: 'クッキー', menu: 'ペットスクール', day: 6, time: '9:00',
     staff: '中村', status: 'confirmed', stage: 'trial', cons: true,
-    note: 'カウンセリングがまだなので、当日にお願いします。' },
+    note: 'カウンセリングがまだなので、当日にお願いします。', source: 'line' },
 ];
 
 /** メニューの区分と所要時間。menus テーブルを正とし、無ければ組み込みの表で補う */
@@ -143,11 +143,11 @@ export async function seedReservations(pool, items = DEMO_RESERVATIONS) {
     const { rows } = await pool.query(
       `INSERT INTO reservations
          (customer_id, staff_id, menu, note, pet_id, category, duration_minutes,
-          school_stage, reserved_at, status, confirmed_by_customer, with_counseling, external_id)
+          school_stage, reserved_at, status, confirmed_by_customer, with_counseling, source, external_id)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8,
                ((now() AT TIME ZONE 'Asia/Tokyo')::date + ($9::int * INTERVAL '1 day') + $10::time)
                  AT TIME ZONE 'Asia/Tokyo',
-               $11, $12, $13, $14)
+               $11, $12, $13, $14, $15)
        ON CONFLICT (external_id) DO NOTHING
        RETURNING id`,
       [
@@ -164,6 +164,7 @@ export async function seedReservations(pool, items = DEMO_RESERVATIONS) {
         item.status,
         item.confirmed === true,
         item.cons === true,
+        item.source ?? null,
         DEMO_PREFIX + item.ref,
       ]
     );

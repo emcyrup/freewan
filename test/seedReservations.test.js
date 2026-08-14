@@ -158,3 +158,13 @@ test('カウンセリング同時実施の回を1件含む（段階とは別に�
   assert.equal(withCons[0].params[7], 'trial', '段階は体験のまま。カウンセリングで上書きしない');
   assert.match(inserts[0].sql, /with_counseling/);
 });
+
+test('デモ予約には来店経路が入っている（集計の確認に使うため）', async () => {
+  const pool = makePool();
+  await seedReservations(pool);
+  const inserts = pool.queries.filter((q) => /INSERT INTO reservations/.test(q.sql));
+  assert.match(inserts[0].sql, /source/);
+  const sources = inserts.map((q) => q.params[13]);
+  assert.equal(sources.filter(Boolean).length, DEMO_RESERVATIONS.length, '全件に経路がある');
+  assert.ok(new Set(sources).size >= 4, '経路が偏らず、棒グラフの見え方を確かめられる');
+});

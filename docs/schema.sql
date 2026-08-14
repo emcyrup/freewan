@@ -54,6 +54,9 @@ CREATE TABLE reservations (
   -- 「その子がどこまで進んでいるか」が school_stage、「この回でカウンセリングもするか」がこちら。
   -- スクール初回でカウンセリング未実施のときは同じ回で両方行うため、1つの値では表せない
   with_counseling BOOLEAN NOT NULL DEFAULT FALSE,
+  -- 来店経路。入口で自動で付き（フォーム=line / 手入力=tel 既定 / 取り込み=epark）、画面で直せる。
+  -- 顧客ではなく予約に持たせる（同じお客様でも回ごとに経路が変わるため）
+  source        TEXT CHECK (source IN ('epark','tel','epark_tel','line','walkin','other')),
   reserved_at   TIMESTAMPTZ NOT NULL,
   status        reservation_status NOT NULL DEFAULT 'confirmed',
   confirmed_by_customer BOOLEAN NOT NULL DEFAULT FALSE,  -- 前々日確認への返答

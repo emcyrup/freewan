@@ -198,3 +198,60 @@ test('スクール以外・存在しない予約にはカウンセリングを�
   });
   assert.deepEqual(await missing.setCounseling(5, true), { ok: false, error: 'not_found' });
 });
+
+// ---- 来店経路 ----
+// 集計（要件書 2.1 / 2.4）に使うため、入口ごとに既定が付く
+
+test('手入力の予約は既定で電話。指定があればそれを使う', async () => {
+  const { pool, queries } = makeStagePool('trimming');
+  pool.query = async (sql, params) => {
+    queries.push({ sql, params });
+    if (/SELECT name FROM customers/.test(sql)) return { rows: [{ name: '山田' }] };
+    if (/FROM menus/.test(sql)) return { rows: [{ category: 'trimming', duration_minutes: 60 }] };
+    if (/INSERT INTO reservations/.test(sql)) return { rows: [{ id: 1 }] };
+    return { rows: [] };
+  };
+  const service = createReservationService({ pool, slack: { notify: async () => {} } });
+
+  await service.createManual({ customerId: 1, reservedAt: '2026-09-01T10:00:00+09:00', menu: 'カット' });
+  let insert = queries.find((q) => /INSERT INTO reservations/.test(q.sql));
+  assert.equal(insert.params.at(-1), 'tel', 'スタッフ入力は電話が既定');
+
+  queries.length = 0;
+  await service.createManual({
+    customerId: 1, reservedAt: '2026-09-01T10:00:00+09:00', menu: 'カット', source: 'walkin',
+  });
+  insert = queries.find((q) => /INSERT INTO reservations/.test(q.sql));
+  assert.equal(insert.params.at(-1), 'walkin');
+
+  // 知らない値は既定へ倒す（画面の作りが変わっても不正値を入れない）
+  queries.length = 0;
+  await service.createManual({
+    customerId: 1, reservedAt: '2026-09-01T10:00:00+09:00', menu: 'カット', source: 'sms',
+  });
+  insert = queries.find((q) => /INSERT INTO reservations/.test(q.sql));
+  assert.equal(insert.params.at(-1), 'tel');
+});
+
+test('来店経路は後から直せる。知らない値は受け付けない', async () => {
+  const queries = [];
+  const pool = {
+    query: async (sql, params) => {
+      queries.push({ sql, params });
+      return { rowCount: 1 };
+    },
+  };
+  const service = createReservationService({ pool, slack: { notify: async () => {} } });
+
+  assert.deepEqual(await service.setSource(5, 'epark_tel'), { ok: true });
+  assert.deepEqual(queries[0].params, [5, 'epark_tel']);
+
+  assert.deepEqual(await service.setSource(5, 'fax'), { ok: false, error: 'invalid_source' });
+  assert.deepEqual(await service.setSource(5, null), { ok: true }, '未設定へ戻せる');
+});
+
+test('存在しない予約の経路は直せない', async () => {
+  const pool = { query: async () => ({ rowCount: 0 }) };
+  const service = createReservationService({ pool, slack: { notify: async () => {} } });
+  assert.deepEqual(await service.setSource(5, 'epark'), { ok: false, error: 'not_found' });
+});

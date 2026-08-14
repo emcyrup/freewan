@@ -8,6 +8,11 @@ import { buildPreReminderMessage } from '../line/messages/preReminder.js';
 import { buildAfterVisitMessage } from '../line/messages/afterVisit.js';
 import { buildDormantMessage } from '../line/messages/dormant.js';
 import { buildBirthdayMessage } from '../line/messages/birthday.js';
+import { buildVaccineMessage } from '../line/messages/vaccine.js';
+import { buildTicketNudgeMessage } from '../line/messages/ticketNudge.js';
+import { buildPlanNudgeMessage } from '../line/messages/planNudge.js';
+import { buildCarryNudgeMessage } from '../line/messages/carryNudge.js';
+import { buildThanksMessages } from '../line/messages/thanks.js';
 import {
   buildRequestReceivedMessage,
   buildConfirmedMessage,
@@ -23,10 +28,19 @@ export const TEST_MESSAGE_TYPES = [
   { type: 'afterVisit', label: '来店7日後フォロー', needs: 'reservation', note: 'ご来店の7日後に自動送信' },
   { type: 'dormant', label: '休眠フォロー', needs: 'customer', note: '最終来店から90日で自動送信' },
   { type: 'birthday', label: '誕生日メッセージ', needs: 'customer', note: 'お誕生日当日に自動送信' },
+  { type: 'vaccine', label: 'ワクチン更新案内', needs: 'customer', note: '期限30日前に自動送信（期限は見本の日付）' },
+  { type: 'ticketNudge', label: '回数券 残回数のご案内', needs: 'customer', note: '2週間ご来店なしで自動送信（回数は見本）' },
+  { type: 'planNudge', label: 'コース残回数のご案内', needs: 'customer', note: '1週間ご来店なしで自動送信（回数は見本）' },
+  { type: 'carryNudge', label: '繰越分の消化のご案内', needs: 'customer', note: '月替わりに自動送信（回数は見本）' },
+  { type: 'thanks', label: '来店お礼（写真付き）', needs: 'reservation', note: '来店当日19:00。写真はそのご予約に登録済みのもの' },
   { type: 'requestReceived', label: '予約リクエスト受付', needs: 'reservation', note: '予約フォーム送信の直後' },
   { type: 'confirmed', label: '予約の確定通知', needs: 'reservation', note: '「承認」を押したとき' },
   { type: 'declined', label: '予約の見送り通知', needs: 'reservation', note: '「見送り」を押したとき' },
 ];
+
+// 回数券・コースの残数などは、条件が揃った顧客でないと実データが無い。
+// 文面の確認が目的なので、見本の数値で組み立てる（画面にも「見本」と出す）
+const SAMPLE = { remaining: 3, planName: 'ペットスクール 月4回', vaccine: '混合ワクチン' };
 
 // 予約の区分。カレンダーの色分けと、時間の重複を禁じるかどうかの判断に使う
 export const MENU_CATEGORIES = ['hotel', 'trimming', 'school'];
@@ -116,10 +130,23 @@ export function createAdminRouter({
            (SELECT count(*) FROM reservations
              WHERE category = 'school' AND status = 'visited'
                AND (reserved_at AT TIME ZONE 'Asia/Tokyo')::date
-                   >= date_trunc('month', (SELECT today FROM jst))::date) AS school_visits_this_month`
+                   >= date_trunc('month', (SELECT today FROM jst))::date) AS school_visits_this_month,
+           -- 来店経路（要件書 2.1 / 2.4）。当月に実際にご来店いただいた件数で数える。
+           -- 経路が入っていない予約は unknown にまとめる（0件のときは画面に出さない）
+           (SELECT COALESCE(json_object_agg(k, n), '{}'::json) FROM (
+              SELECT COALESCE(source, 'unknown') AS k, count(*) AS n FROM reservations
+              WHERE status = 'visited'
+                AND (reserved_at AT TIME ZONE 'Asia/Tokyo')::date
+                    >= date_trunc('month', (SELECT today FROM jst))::date
+              GROUP BY 1
+            ) t) AS sources_this_month`
       );
-      // count() は bigint で文字列になるため、画面で扱いやすい数値へ揃える
-      res.json(Object.fromEntries(Object.entries(rows[0]).map(([k, v]) => [k, Number(v)])));
+      // count() は bigint で文字列になるため、画面で扱いやすい数値へ揃える。
+      // 来店経路だけは経路名→件数のオブジェクトなので、中の値を揃える
+      res.json(Object.fromEntries(Object.entries(rows[0]).map(([k, v]) =>
+        (v !== null && typeof v === 'object')
+          ? [k, Object.fromEntries(Object.entries(v).map(([k2, v2]) => [k2, Number(v2)]))]
+          : [k, Number(v)])));
     } catch (err) {
       next(err);
     }
@@ -670,7 +697,7 @@ export function createAdminRouter({
       const to = req.query.to || null;
       const { rows } = await pool.query(
         `SELECT r.id, r.reserved_at, r.menu, r.status, r.confirmed_by_customer, r.note,
-                r.category, r.duration_minutes, r.school_stage, r.with_counseling,
+                r.category, r.duration_minutes, r.school_stage, r.with_counseling, r.source,
                 c.id AS customer_id, c.name AS customer_name, s.name AS staff_name,
                 r.staff_id, p.name AS pet_name
          FROM reservations r
@@ -693,13 +720,14 @@ export function createAdminRouter({
 
   router.post('/reservations', async (req, res, next) => {
     try {
-      const { customerId, reservedAt, menu, staffId, petId } = req.body ?? {};
+      const { customerId, reservedAt, menu, staffId, petId, source } = req.body ?? {};
       const result = await reservationService.createManual({
         customerId: Number(customerId),
         reservedAt,
         menu,
         staffId: staffId ? Number(staffId) : null,
         petId: petId ? Number(petId) : null,
+        source,
       });
       // 時間の重なりは「入力ミス」なので、他の入力エラーと区別して 409 で返す
       if (!result.ok) {
@@ -732,6 +760,21 @@ export function createAdminRouter({
       if (!Number.isInteger(id)) return res.status(400).json({ error: 'invalid_id' });
       const stage = req.body?.stage ?? null;
       const result = await reservationService.setSchoolStage(id, stage);
+      if (!result.ok) {
+        return res.status(result.error === 'not_found' ? 404 : 400).json(result);
+      }
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // 来店経路の付け替え（入口で自動で付くが、実際は電話だった等があるため）
+  router.patch('/reservations/:id/source', async (req, res, next) => {
+    try {
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id)) return res.status(400).json({ error: 'invalid_id' });
+      const result = await reservationService.setSource(id, req.body?.source ?? null);
       if (!result.ok) {
         return res.status(result.error === 'not_found' ? 404 : 400).json(result);
       }
@@ -1013,10 +1056,14 @@ export function createAdminRouter({
         const id = Number(reservationId);
         if (!Number.isInteger(id)) return res.status(400).json({ error: 'invalid_reservation' });
         const { rows } = await pool.query(
-          `SELECT r.id, r.reserved_at, r.menu, c.name AS customer_name, s.name AS staff_name
+          `SELECT r.id, r.reserved_at, r.menu, c.name AS customer_name, s.name AS staff_name,
+                  p.name AS pet_name,
+                  (SELECT json_agg(vp.file ORDER BY vp.sort_order, vp.id)
+                   FROM visit_photos vp WHERE vp.reservation_id = r.id) AS files
            FROM reservations r
            JOIN customers c ON c.id = r.customer_id
            LEFT JOIN staff s ON s.id = r.staff_id
+           LEFT JOIN pets p ON p.id = r.pet_id
            WHERE r.id = $1`,
           [id]
         );
@@ -1034,6 +1081,16 @@ export function createAdminRouter({
           requestReceived: () => buildRequestReceivedMessage(base),
           confirmed: () => buildConfirmedMessage(base),
           declined: () => buildDeclinedMessage(base),
+          // 本番と同じ組み立て。写真はそのご予約に登録済みのものを使う
+          // （無ければ文だけ。何が届くかを確かめるのが目的なので、見本の画像は足さない）
+          thanks: () => buildThanksMessages({
+            customerName: r.customer_name,
+            petName: r.pet_name,
+            photoUrls: config.publicBaseUrl
+              ? (r.files ?? []).slice(0, MAX_THANKS_PHOTOS)
+                  .map((f) => `${config.publicBaseUrl}/thanks-media/${f}`)
+              : [],
+          }),
         };
         message = builders[type]();
       } else {
@@ -1042,18 +1099,47 @@ export function createAdminRouter({
         const { rows } = await pool.query(`SELECT id, name FROM customers WHERE id = $1`, [id]);
         const c = rows[0];
         if (!c) return res.status(404).json({ error: 'customer_not_found' });
-        message =
-          type === 'dormant'
-            ? buildDormantMessage({ customerName: c.name })
-            : buildBirthdayMessage({ customerName: c.name, couponUrl: config.birthdayCouponUrl });
+        // わんちゃんの名前は実データを使う（名前の出方まで含めて確かめたいため）。
+        // 残回数・期限は条件が揃った顧客でないと存在しないので見本の値にする
+        const { rows: petRows } = await pool.query(
+          `SELECT name FROM pets WHERE customer_id = $1 ORDER BY id`,
+          [id]
+        );
+        const names = petRows.length > 0 ? petRows.map((p) => p.name) : ['わんちゃん'];
+        const inDays = (n) => {
+          const d = new Date(Date.now() + n * 86400000);
+          return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        };
+        const builders = {
+          dormant: () => buildDormantMessage({ customerName: c.name }),
+          birthday: () => buildBirthdayMessage({ customerName: c.name, couponUrl: config.birthdayCouponUrl }),
+          vaccine: () => buildVaccineMessage({
+            customerName: c.name,
+            pets: names.map((name) => ({ name, vaccine: SAMPLE.vaccine, expiresOn: inDays(30) })),
+          }),
+          ticketNudge: () => buildTicketNudgeMessage({
+            customerName: c.name,
+            pets: names.map((name) => ({ name, remaining: SAMPLE.remaining, expiresOn: inDays(30) })),
+          }),
+          planNudge: () => buildPlanNudgeMessage({
+            customerName: c.name,
+            pets: names.map((name) => ({ name, planName: SAMPLE.planName, remaining: SAMPLE.remaining })),
+          }),
+          carryNudge: () => buildCarryNudgeMessage({
+            customerName: c.name,
+            pets: names.map((name) => ({ name, remaining: 1, expiresOn: inDays(14) })),
+          }),
+        };
+        message = builders[type]();
       }
 
-      const result = await lineClient.pushTest([message]);
+      // 来店お礼だけは文＋写真の複数通になる
+      const result = await lineClient.pushTest(Array.isArray(message) ? message : [message]);
       if (result.status === 'refused') {
         return res.status(400).json({
           ok: false,
-          error: 'live_mode',
-          message: 'SEND_MODE=live ではテスト送信できません（誤配信防止）',
+          error: 'no_test_user',
+          message: 'TEST_LINE_USER_ID が未設定のため送れません（宛先が無いため）',
         });
       }
       res.json({ ok: true, mode: result.status });
