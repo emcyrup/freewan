@@ -20,7 +20,7 @@ services:
     # 起動前にマイグレーションを適用する
     command: sh -c "node scripts/migrate.js && node src/index.js"
     volumes:
-      # Instagram 投稿用の写真置き場。再ビルドで消えないよう永続化する
+      # 写真置き場（SNS 投稿・来店お礼）。再ビルドで消えないよう永続化する
       - snsdata:/app/data
     depends_on:
       db:

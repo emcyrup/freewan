@@ -3149,12 +3149,14 @@ const shots = ['マロン','ソラ','ハナ','レオ','ココ','モカ','プリ�
 const hues = [155, 42, 205, 18, 95, 265, 330, 175, 60, 230, 10, 130, 300, 190];
 const snsItems = shots.map((label, i) => ({ label, hue: hues[i], url: null }));
 
-// 管理画面と同じブラウザ側 JPEG 正規化（Instagram の縦横比 4:5〜1.91:1 に白地パディング）
-async function snsNormalizeToJpeg(file){
+// 管理画面と同じブラウザ側 JPEG 正規化（Instagram の縦横比 4:5〜1.91:1 に白地パディング）。
+// LINE へ送る来店写真は縦横比の制約が無いため pad:false で呼ぶ（余白を足さない）
+async function snsNormalizeToJpeg(file, { pad = true } = {}){
   const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
   let cw = bmp.width, ch = bmp.height;
   const ratio = bmp.width / bmp.height;
-  if (ratio < 0.8) cw = Math.round(bmp.height * 0.8);
+  if (!pad) { /* そのままの縦横比で縮小するだけ */ }
+  else if (ratio < 0.8) cw = Math.round(bmp.height * 0.8);
   else if (ratio > 1.91) ch = Math.round(bmp.width / 1.91);
   const scale = Math.min(1, 1440 / Math.max(cw, ch));
   const canvas = document.createElement('canvas');
@@ -3537,6 +3539,101 @@ async function rvReload(){
   reservations.forEach(r => RESV.push(rvMap(r)));
   renderResv();
 }
+// ---- 来店写真（R9 来店お礼の添付）----
+// 当日ご来店の予約に写真を付けると、その日の 19:00 にお礼と一緒に飼い主様へ届く。
+// 写真を付けた来店だけが対象なので、付けなければ送られない（付ける＝送る意思表示）
+const MAX_VISIT_PHOTOS = 4;   // LINE の Push は1回5通まで。お礼の文1通＋写真4枚に収める
+async function openVisitPhotos(r){
+  if (!adminLive) { showToast('写真の登録は実運用モード（サーバに接続時）でご利用いただけます'); return; }
+  closeEdit();
+  const back = document.createElement('div'); back.className = 'mback';
+  back.addEventListener('click', e => { if (e.target === back) closeEdit(); });
+  const win = document.createElement('div'); win.className = 'mwin';
+  win.innerHTML = '<div class="mhd"><h2></h2><button class="mx" aria-label="閉じる">&#10005;</button></div>'
+    + '<div class="vpbd" style="padding:14px 18px;display:grid;gap:10px;overflow-y:auto"></div>';
+  win.querySelector('h2').textContent = r.name + ' の来店写真（' + r.at + '）';
+  win.querySelector('.mx').addEventListener('click', closeEdit);
+  back.appendChild(win);
+  document.body.appendChild(back);
+  editBack = back;
+  await renderVisitPhotos(r, win.querySelector('.vpbd'));
+}
+async function renderVisitPhotos(r, bd){
+  bd.innerHTML = '<p class="hint" style="margin:0">読み込み中…</p>';
+  let photos = [];
+  try {
+    ({ photos } = await adminApi('/reservations/' + r.id + '/photos'));
+  } catch (err) {
+    bd.innerHTML = '';
+    const p = document.createElement('p'); p.className = 'hint';
+    p.textContent = '写真を読み込めませんでした: ' + err.message;
+    bd.appendChild(p);
+    return;
+  }
+  bd.innerHTML = '';
+  const note = document.createElement('p');
+  note.className = 'hint';
+  note.style.margin = '0';
+  note.innerHTML = photos.length
+    ? '本日 <b>19:00</b> に、お礼のメッセージと一緒にこの写真を飼い主様へお送りします（最大' + MAX_VISIT_PHOTOS + '枚）。'
+    : '写真を登録すると、本日 <b>19:00</b> にお礼のメッセージと一緒に飼い主様へ届きます。登録しなければ送られません。';
+  bd.appendChild(note);
+
+  if (photos.length) {
+    const grid = document.createElement('div');
+    grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px';
+    photos.forEach(ph => {
+      const box = document.createElement('div');
+      box.style.cssText = 'position:relative';
+      const img = document.createElement('img');
+      img.src = '/thanks-media/' + ph.file;
+      img.alt = '';
+      img.style.cssText = 'width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;border:1px solid var(--line)';
+      const del = document.createElement('button');
+      del.className = 'sbtn mut';
+      del.textContent = '削除';
+      del.style.cssText = 'position:absolute;right:6px;bottom:6px';
+      del.addEventListener('click', async () => {
+        try {
+          await adminApi('/reservations/' + r.id + '/photos/' + ph.id, { method: 'DELETE' });
+          await renderVisitPhotos(r, bd);
+        } catch (err) { showToast('削除に失敗しました: ' + err.message); }
+      });
+      box.append(img, del);
+      grid.appendChild(box);
+    });
+    bd.appendChild(grid);
+  }
+
+  const add = document.createElement('label');
+  add.className = 'sbtn pri';
+  add.style.cssText = 'justify-self:start;cursor:pointer';
+  add.textContent = photos.length >= MAX_VISIT_PHOTOS ? '上限' + MAX_VISIT_PHOTOS + '枚です' : '写真を追加';
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.multiple = true;
+  input.style.display = 'none';
+  input.disabled = photos.length >= MAX_VISIT_PHOTOS;
+  if (input.disabled) add.style.opacity = '.5';
+  input.addEventListener('change', async () => {
+    const files = [...input.files].slice(0, MAX_VISIT_PHOTOS - photos.length);
+    add.textContent = '送信中…';
+    for (const f of files) {
+      try {
+        // SNS 投稿と同じくブラウザ側で JPEG に正規化してから送る（サーバに変換を持ち込まない）
+        const jpeg = await snsNormalizeToJpeg(f, { pad: false });
+        await adminApi('/reservations/' + r.id + '/photos', {
+          method: 'POST', headers: { 'Content-Type': 'image/jpeg' }, body: jpeg,
+        });
+      } catch (err) { showToast('アップロードに失敗しました: ' + err.message); break; }
+    }
+    await renderVisitPhotos(r, bd);
+  });
+  add.appendChild(input);
+  bd.appendChild(add);
+}
+
 // 状態変更。実運用モードでは取り消しできないため、実行前に confirm で確認する
 async function rvAct(r, status, demoMsg, confirmMsg){
   if (!adminLive) { rvSetStatus(r, status, demoMsg); return; }
@@ -3593,6 +3690,9 @@ function renderResv(){
       mk('無断', 'warn', () => rvAct(r, 'no_show',
         r.name + 'の予約を無断キャンセルにしました',
         '「' + r.name + '」の予約を無断キャンセルにしますか？'));
+    } else if (r.status === 'visited') {
+      // 写真を付けた来店だけが 19:00 のお礼配信の対象になる（R9）
+      mk('写真', '', () => openVisitPhotos(r));
     }
     tr.appendChild(td);
     rvrows.appendChild(tr);
