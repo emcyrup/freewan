@@ -42,8 +42,24 @@ export function createAdminRouter({
   approvalQueue = null,
   planService = null,
   thanksDataDir = null,
+  changeFeed = null,
 }) {
   const router = express.Router();
+
+  // 変更を他の端末へ知らせる。
+  // 個々のルートに書いて回ると足し忘れるので、更新系が成功したらまとめて配る
+  if (changeFeed) {
+    router.use((req, res, next) => {
+      if (req.method === 'GET' || req.method === 'HEAD') return next();
+      res.on('finish', () => {
+        if (res.statusCode < 400) changeFeed.publish('admin');
+      });
+      next();
+    });
+
+    // 端末はこの接続を開いたまま、変更の合図を待つ
+    router.get('/events', (req, res) => changeFeed.subscribe(req, res));
+  }
 
   // ---- ダッシュボードの集計 ----
   // 画面にサンプルの数字を残すと実績と誤解されるため、出せる数だけをここで返す。

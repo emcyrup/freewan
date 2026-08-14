@@ -320,6 +320,18 @@ button.trow2:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
 .pbtn:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
 .pbtn.cancel{border-color:var(--warn); color:var(--warn)}
 .pbtn.del{border-color:transparent; background:none; color:var(--crit); font-size:12px}
+.calsum{display:flex; flex-wrap:wrap; gap:8px; margin:-4px 0 12px}
+.calsum span{font-size:12.5px; background:var(--surface2); border:1px solid var(--line);
+  border-radius:99px; padding:4px 11px}
+.calsum span b{margin-left:5px}
+.calsum i{display:inline-block; width:9px; height:9px; border-radius:3px; margin-right:6px; vertical-align:-1px}
+.freerow{display:flex; flex-wrap:wrap; gap:8px; align-items:center}
+.freerow input{font:inherit; font-size:13px; padding:7px 9px; border:1px solid var(--line);
+  border-radius:8px; background:var(--surface); color:var(--ink)}
+.freeday{border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-top:8px}
+.freeday .fd{display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:13px; font-weight:700}
+.freeday .fl{margin:6px 0 0; font-size:12.5px; color:var(--muted); display:grid; gap:3px}
+.freeday.closed{opacity:.6}
 .legend{display:flex; flex-wrap:wrap; gap:14px; font-size:12px; color:var(--muted); margin-top:10px}
 .legend i{display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; vertical-align:-1px}
 
@@ -701,6 +713,22 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
       <button data-n="1" aria-label="次へ">&#9654;</button>
     </div>
     <span class="vrange" id="vrange"></span>
+  </div>
+
+  <div class="calsum" id="calsum"></div>
+
+  <div class="card" id="freecard">
+    <div class="hd"><h2>空き状況をさがす</h2><span class="pill mut">日付を3つまで</span></div>
+    <div class="bd">
+      <div class="freerow">
+        <input type="date" class="freedate" aria-label="候補日1">
+        <input type="date" class="freedate" aria-label="候補日2">
+        <input type="date" class="freedate" aria-label="候補日3">
+        <button class="sbtn pri" id="freego">検索</button>
+      </div>
+      <p class="hint" style="margin:8px 0 0">お客様から候補日をいただいたときに、まとめて空きを確認できます。日付をタップするとその日のカレンダーへ移動します。</p>
+      <div id="freeout"></div>
+    </div>
   </div>
 
   <div class="card">
@@ -1967,6 +1995,17 @@ const DEMO_TRIM = [
   { n:'爪切り・耳掃除', d:0.5 }, { n:'部分カット', d:0.5 },
 ];
 const DEMO_SRC = ['LINE','EPARK','電話'];
+// 帯には「ペット名（飼い主名）」を出す。同じ名前の子がいても取り違えないため
+function ownerOf(petName){
+  for (const f of FAMILIES) {
+    if ((f.members || []).some(m => m.n === petName)) return f.name;
+  }
+  return null;
+}
+function petLabel(petName){
+  const o = ownerOf(petName);
+  return o ? petName + '（' + o + '）' : petName;
+}
 const CAL_ROWS = [
   { name:'送迎',   role:'5頭まで' },
   { name:'佐藤',   role:'トリマー', st:true },
@@ -2003,7 +2042,8 @@ function demoDay(date){
       const nc = rnd() < 0.15 ? 1 : 0;
       evs.push({
         row, s:t, d:menu.d, cls:'', cat:'trimming', pet, nc,
-        html:'<b>' + pet + ' ' + menu.n + '</b>' + (nc ? '初回 ' : '') + '<span class="src">' + pick(DEMO_SRC) + '</span>',
+        html:'<b>' + petLabel(pet) + '</b>' + menu.n + (nc ? '・初回' : '')
+          + ' <span class="src">' + pick(DEMO_SRC) + '</span>',
       });
       t += menu.d + (nc ? 0.5 : 0) + 0.5 + Math.floor(rnd() * 2) * 0.5;
     }
@@ -2019,19 +2059,27 @@ function demoDay(date){
       let p = pick(DEMO_PETS);
       while (used.has(p)) p = pick(DEMO_PETS);
       used.add(p);
-      const e = { n:p };
+      // 入園（通っている子）と体験の混在。件数の内訳表示に使う
+      const e = { n:p, stage: rnd() < 0.75 ? 'enrolled' : 'trial' };
       if (rnd() < 0.3) e.in = 9;
       else if (rnd() < 0.2) e.out = 18.5;
       pets.push(e);
     }
+    const enrolled = pets.filter(p => p.stage === 'enrolled').length;
     evs.push({
       row:schoolRow, s:10, d:8, cls:'school', cat:'school', pets,
-      html:'<b>ペットスクール ' + n + '頭</b>' + pets.slice(0, 2).map(p => p.n).join('・') + (n > 2 ? ' ほか' : ''),
+      html:'<b>' + pets.slice(0, 2).map(p => petLabel(p.n)).join('・') + (n > 2 ? ' ほか' : '') + '</b>'
+        + 'ペットスクール ' + n + '頭（うち入園 ' + enrolled + '）',
     });
-    if (rnd() < 0.4) {
-      const p = pick(DEMO_PETS);
-      evs.push({ row:schoolRow === 4 ? 3 : 4, s:11 + Math.floor(rnd() * 4), d:1.5, cls:'trial', cat:'school', pet:p,
-        html:'<b>' + p + ' 体験入園</b><span class="src">' + pick(DEMO_SRC) + '</span>' });
+  }
+
+  // カウンセリング（入園前の面談）。スクール担当の空いている方に入れる
+  if (rnd() < 0.45) {
+    const p = pick(DEMO_PETS);
+    const row = dayOff(date, 3) ? 4 : 3;
+    if (!dayOff(date, row)) {
+      evs.push({ row, s:11 + Math.floor(rnd() * 4), d:1.5, cls:'trial', cat:'school', pet:p, stage:'counseling',
+        html:'<b>' + petLabel(p) + '</b>カウンセリング <span class="src">' + pick(DEMO_SRC) + '</span>' });
     }
   }
 
@@ -2040,7 +2088,7 @@ function demoDay(date){
   for (let i = 0; i < hotelCount; i++) {
     const p = pick(DEMO_PETS);
     evs.push({ row:5, s:9 + i * 0.5, d:10, cls:'hotel', cat:'hotel', pet:p,
-      html:'<b>' + p + ' ホテル</b>お預かり <span class="src">' + pick(DEMO_SRC) + '</span>' });
+      html:'<b>' + petLabel(p) + '</b>ホテル・お預かり <span class="src">' + pick(DEMO_SRC) + '</span>' });
   }
   return { closed:false, evs };
 }
@@ -2232,8 +2280,111 @@ function calRange(){
   }
   return calState.date.getFullYear() + '年' + (calState.date.getMonth() + 1) + '月';
 }
+// ---- 件数サマリー（表示中の期間の内訳）----
+// 「何件あるか」だけでなく「うち初回・入園が何件か」まで出す。準備の量が変わるため
+function countRange(dates){
+  const t = { trim:0, first:0, school:0, enrolled:0, counseling:0, hotel:0, days:0 };
+  dates.forEach(date => {
+    const day = demoDay(date);
+    if (day.closed) return;
+    t.days++;
+    day.evs.forEach(e => {
+      if (e.cat === 'trimming') { t.trim++; if (e.nc) t.first++; }
+      else if (e.cls === 'school') {
+        t.school += (e.pets || []).length;
+        t.enrolled += (e.pets || []).filter(p => p.stage === 'enrolled').length;
+      } else if (e.stage === 'counseling') t.counseling++;
+      else if (e.cat === 'hotel') t.hotel++;
+    });
+  });
+  return t;
+}
+function rangeDates(){
+  if (calState.view === 'day') return [calState.date];
+  if (calState.view === 'week') {
+    const a = startOfWeek(calState.date);
+    return Array.from({ length: 7 }, (_, i) => calAddDays(a, i));
+  }
+  const base = calState.date, last = new Date(base.getFullYear(), base.getMonth() + 1, 0).getDate();
+  return Array.from({ length: last }, (_, i) => new Date(base.getFullYear(), base.getMonth(), i + 1));
+}
+function renderCalSum(){
+  const t = countRange(rangeDates());
+  const chip = (color, label, main, sub) =>
+    '<span><i style="background:' + color + '"></i>' + label + '<b>' + main + '</b>'
+      + (sub ? '<span style="color:var(--muted)">（' + sub + '）</span>' : '') + '</span>';
+  document.getElementById('calsum').innerHTML =
+    chip('var(--accent)', 'トリミング', t.trim + '件', t.first ? '内 初回 ' + t.first : '')
+    + chip('var(--honey)', 'スクール', t.school + '頭', 'うち入園 ' + t.enrolled)
+    + chip('var(--good)', 'カウンセリング', t.counseling + '件', '')
+    + chip('var(--hotel)', 'ホテル', t.hotel + '件', '');
+}
+
+// ---- 空き状況の検索 ----
+// お客様から候補日をもらったときに、3日ぶんまとめて見られるようにする
+const SCHOOL_CAPACITY = 8;          // スクールの1日の定員
+const OPEN_FROM = 9, OPEN_TO = 19;  // 空きを探す時間帯
+function freeSlots(date, row){
+  if (dayOff(date, row)) return [];
+  const day = demoDay(date);
+  const busy = day.evs.filter(e => e.row === row).map(e => [e.s, e.s + e.d + (e.nc ? 0.5 : 0)])
+    .sort((a, b) => a[0] - b[0]);
+  const slots = [];
+  let t = OPEN_FROM;
+  busy.forEach(([s, e]) => {
+    if (s - t >= 1) slots.push([t, s]);
+    t = Math.max(t, e);
+  });
+  if (OPEN_TO - t >= 1) slots.push([t, OPEN_TO]);
+  return slots;
+}
+function renderFree(){
+  const out = document.getElementById('freeout');
+  const dates = [...document.querySelectorAll('.freedate')].map(i => i.value).filter(Boolean);
+  if (!dates.length) { out.innerHTML = '<p class="hint" style="margin:10px 0 0">日付を選んでから検索してください。</p>'; return; }
+  out.innerHTML = '';
+  dates.sort().forEach(iso => {
+    const [y, m, d] = iso.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    const day = demoDay(date);
+    const box = document.createElement('div');
+    box.className = 'freeday' + (day.closed ? ' closed' : '');
+    const head = document.createElement('div');
+    head.className = 'fd';
+    const link = document.createElement('button');
+    link.type = 'button'; link.className = 'sbtn';
+    link.textContent = dateLabel(date);
+    link.addEventListener('click', () => { calState.date = date; setView('day'); window.scrollTo(0, 0); });
+    head.appendChild(link);
+    if (day.closed) {
+      head.insertAdjacentHTML('beforeend', '<span class="pill mut">定休日</span>');
+      box.appendChild(head); out.appendChild(box); return;
+    }
+    const school = day.evs.filter(e => e.cls === 'school')
+      .reduce((a, e) => a + (e.pets || []).length, 0);
+    const left = Math.max(0, SCHOOL_CAPACITY - school);
+    head.insertAdjacentHTML('beforeend',
+      '<span class="pill ' + (left ? 'good' : 'crit') + '">スクール 残り' + left + '頭</span>');
+    box.appendChild(head);
+    const lines = document.createElement('div');
+    lines.className = 'fl';
+    [1, 2].forEach(row => {
+      const name = CAL_ROWS[row].name;
+      const off = dayOff(date, row);
+      const slots = freeSlots(date, row);
+      lines.insertAdjacentHTML('beforeend',
+        '<span>' + name + '：' + (off ? off[2]
+          : slots.length ? slots.map(([a, b]) => fmt(a) + '〜' + fmt(b)).join('／')
+          : '空きなし') + '</span>');
+    });
+    box.appendChild(lines);
+    out.appendChild(box);
+  });
+}
+document.getElementById('freego').addEventListener('click', renderFree);
+
 function renderCalendar(){
-  renderDay(); renderWeek(); renderMonth();
+  renderDay(); renderWeek(); renderMonth(); renderCalSum();
   document.getElementById('vrange').textContent = calRange();
   document.getElementById('calsub').innerHTML = VIEW_SUB[calState.view];
 }
@@ -4394,6 +4545,60 @@ function editPet(o, p, tr = null){   // p が null なら追加
   });
 }
 
+// ---- 複数端末での同期 ----
+// 誰かが別の端末で承認・登録すると、サーバから合図が届いてこの端末も読み直す。
+// 合図を取りこぼしても置いていかれないよう、ゆっくりした定期更新も併走させる。
+let syncTimer = null, syncSource = null, syncPending = false;
+const SYNC_FALLBACK_MS = 30000;
+
+// 入力中に画面を作り直すと、打ちかけの内容が消える。編集中は更新を保留する
+function isEditing(){
+  return !!document.querySelector('.mback, .erow')
+    || ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName);
+}
+async function refreshShared(){
+  if (!adminLive) return;
+  if (isEditing()) { syncPending = true; return; }   // 編集が終わったら追いつく
+  syncPending = false;
+  try {
+    await Promise.all([
+      rvReload(),
+      loadShiftReqs(),
+      renderDashboardLive(),
+      loadApprovalLive(),
+    ]);
+  } catch (err) {
+    // 一時的な失敗で画面を壊さない。次の更新で取り戻す
+    console.error('[sync] 更新に失敗: ' + err.message);
+  }
+}
+// 立て続けの変更で何度も読み直さないよう、少し待ってからまとめて更新する
+let syncDebounce = null;
+function scheduleRefresh(){
+  clearTimeout(syncDebounce);
+  syncDebounce = setTimeout(refreshShared, 400);
+}
+function startLiveSync(){
+  if (!adminLive) return;
+  // サーバからの合図（接続を張りっぱなしにして待つ）
+  try {
+    syncSource = new EventSource(ADMIN_API + '/events');
+    syncSource.onmessage = () => scheduleRefresh();
+    syncSource.onerror = () => { /* 自動で再接続される。定期更新が保険になる */ };
+  } catch {
+    // EventSource が使えない環境でも、下の定期更新だけで動く
+  }
+  clearInterval(syncTimer);
+  syncTimer = setInterval(() => {
+    if (document.hidden) return;          // 裏に回っているタブは更新しない
+    refreshShared();
+  }, SYNC_FALLBACK_MS);
+  // 別画面から戻ったときは、その場で最新にする
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) scheduleRefresh(); });
+  // 編集が終わった直後に、保留していた更新を反映する
+  document.addEventListener('focusout', () => { if (syncPending) scheduleRefresh(); });
+}
+
 // ================= 実運用モードの初期化 =================
 // 管理 API に疎通できたら、この画面全体を実データの管理画面として動かす。
 async function loadStaffLive(){
@@ -4495,6 +4700,7 @@ const bootReveal = () => document.documentElement.classList.remove('booting');
   }
   renderMenus(); fillMenuSelect();
   renderOwners(qEl.value);
+  startLiveSync();
 
   // 週のシフト表そのものはまだ実データを持たないため、承認結果は下の一覧に出ることを明示する
   document.getElementById('shift-approve-note').innerHTML =
