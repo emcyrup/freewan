@@ -333,12 +333,22 @@ button.trow2:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
 .calsum i{display:inline-block; width:9px; height:9px; border-radius:3px; margin-right:6px; vertical-align:-1px}
 .freerow{display:flex; flex-wrap:wrap; gap:8px; align-items:center}
 .freerow input{font:inherit; font-size:13px; padding:7px 9px; border:1px solid var(--line);
-  border-radius:8px; background:var(--surface); color:var(--ink)}
+  border-radius:8px; background:var(--surface); color:var(--ink);
+  /* 3つの候補日を同じ幅で並べる。中身の有無で幅が変わると入力欄に見えなくなる */
+  flex:1 1 130px; min-width:0}
+.freerow .sbtn{flex:0 0 auto}
 .freeday{border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-top:8px}
 .freeday .fd{display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:13px; font-weight:700}
-.freeday .fl{margin:6px 0 0; font-size:12.5px; color:var(--muted); display:grid; gap:6px}
-.freeday .fl .fr{display:flex; flex-wrap:wrap; gap:6px; align-items:center}
-.freeday .fl .fn{min-width:5.5em; color:var(--ink); font-weight:700}
+/* 店として空いている時間。折り返す前提の行なので、丸バッジ（折り返せない）にはしない */
+.freeday .fsum{margin:8px 0 0; font-size:12.5px; line-height:1.6; display:flex; gap:6px; align-items:baseline}
+.freeday .fsum .fk{flex:none; color:var(--muted); font-weight:700}
+.freeday .fsum .fv{font-weight:700; color:var(--good)}
+.freeday .fsum .fv.none{color:var(--crit)}
+.freeday .fl{margin:8px 0 0; font-size:12.5px; color:var(--muted); display:grid; gap:6px}
+/* 担当ごとの空き。名前の列を固定して、時間が折り返しても名前の下へ潜り込まないようにする */
+.freeday .fl .fr{display:grid; grid-template-columns:4.5em 1fr; gap:8px; align-items:start}
+.freeday .fl .fn{color:var(--ink); font-weight:700; line-height:26px}
+.freeday .fl .fs{display:flex; flex-wrap:wrap; gap:6px}
 .freeday.closed{opacity:.6}
 /* 空いている時間。押すとその時間から予約を入れられる */
 .fslot{font:inherit; font-size:12px; font-weight:700; padding:4px 9px; border-radius:99px; cursor:pointer;
@@ -483,10 +493,31 @@ textarea{width:100%; border:1px solid var(--line); border-radius:8px; background
 #s-resv thead th{white-space:nowrap}
 .rvat{white-space:nowrap}
 .rvnote{font-size:12px; color:var(--muted)}
+/* 予約一覧。列が7つあるので、狭くなったら潰さず横に流す（.tscroll の中に置く）。
+   行の区切りが分かるよう1行おきに薄く敷き、上下は詰めすぎない */
+.rvtable{min-width:880px}
+.rvtable thead th{position:sticky; top:0; background:var(--surface); z-index:2}
+.rvtable td{vertical-align:top}
+.rvtable tbody tr:nth-child(even) td{background:var(--surface2)}
+.rvtable td.rvat,.rvtable th:first-child{position:sticky; left:0; background:var(--surface); z-index:1;
+  box-shadow:1px 0 0 var(--line)}
+.rvtable tbody tr:nth-child(even) td.rvat{background:var(--surface2)}
+.rvtable thead th:first-child{z-index:3}
+/* ご要望は長さがまちまち。2行で打ち切り、全文はマウスを乗せると出す */
+.rvtable td.rvnote{max-width:240px}
+.rvtable td.rvnote span{display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+  overflow:hidden; line-height:1.5}
+.rvtable td.rvacts{width:1%}          /* ボタンぶんだけ使い、余った幅は他の列へ回す */
 /* 承認待ちは見落とすと顧客を待たせるため、行ごと強調する */
 tr.await td{background:var(--warn-soft)}
-/* 時間が重なっている予約。見落とすと当日ぶつかるので行ごと赤くする */
-tr.clash td{background:var(--crit-soft); box-shadow:inset 2px 0 0 var(--crit)}
+.rvtable tr.await td.rvat{background:var(--warn-soft)}
+/* 時間が重なっている予約。見落とすと当日ぶつかるので行ごと赤くする。
+   縦線は行の左端だけに出す（セルごとに出すと赤い格子になって逆に読みにくい） */
+tr.clash td{background:var(--crit-soft)}
+tr.clash td:first-child{box-shadow:inset 3px 0 0 var(--crit)}
+.rvtable tr.clash td.rvat{background:var(--crit-soft)}
+/* 操作ボタンは1行に収める。行ごとに高さが変わると一覧として目で追いにくい */
+.rvtable .rowacts{flex-wrap:nowrap}
 .rowacts{display:flex; flex-wrap:wrap; gap:5px}
 .sbtn{border:1px solid var(--line); background:var(--surface); color:var(--ink); font:inherit;
   font-size:11.5px; font-weight:700; border-radius:7px; padding:4px 9px; cursor:pointer; white-space:nowrap}
@@ -570,24 +601,13 @@ tr.clash td{background:var(--crit-soft); box-shadow:inset 2px 0 0 var(--crit)}
   /* 編集欄は横スクロールせずに使えるよう、画面幅に収めて左端に置く */
   .erow>td{position:sticky; left:0; width:1px}
   .erow .efit{width:calc(100vw - 60px); max-width:440px}
-  /* 7列の予約一覧は潰れて読めないため、1予約=1カードに組み替える。
-     同じ画面にある料金表・店舗情報まで組み替えると逆に読めなくなるので、
-     対象は予約一覧のテーブルだけに限る */
-  .rvtable,.rvtable tbody,.rvtable tr,.rvtable td{display:block}
-  .rvtable thead{display:none}
-  .rvtable tr{border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-bottom:10px}
-  .rvtable tr.await{background:var(--warn-soft)}
-  .rvtable tr.await td{background:none}
-  .rvtable tr.clash{background:var(--crit-soft)}
-  .rvtable tr.clash td{background:none}
-  .rvtable td{border:0; padding:2px 0; white-space:normal}
-  .rvtable td::before{content:attr(data-label)"： "; color:var(--muted); font-size:11px}
-  .rvtable td.rvat{font-weight:700; font-size:14px; margin-bottom:2px}
-  .rvtable td.rvat::before,.rvtable td.rowacts::before{content:none}
-  .rvtable .rowacts{margin-top:8px}
-  /* 操作ボタンは文字幅に収める。横いっぱいに伸ばすと画面が間延びして、
-     一度に見える情報が減ってしまう */
+  /* 予約一覧は表のまま横スクロールさせる（顧客一覧と同じ考え方）。
+     1予約=1カードに崩すと1件が縦に伸び、一度に見える件数が減って探しにくくなる。
+     日時の列は position:sticky で残し、スクロールしても「いつの予約か」を見失わない */
+  .rvtable{font-size:12.5px}
+  .rvtable th,.rvtable td{padding:8px 6px}
   .rvtable .sbtn{flex:0 0 auto; padding:5px 9px}
+  .rvtable td.rvnote{max-width:180px}
   /* 期間の指定は「開始日・終了日・表示」を1行に収める。
      幅を割合で決めるとボタンのぶんが入らず折り返すため、残り幅を分け合わせる */
   .frow{gap:6px}
@@ -758,6 +778,31 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
 
   <div class="calsum" id="calsum"></div>
 
+  <div class="card" id="newresv">
+    <div class="hd"><h2>新規予約</h2><span class="pill mut">スタッフ入力</span></div>
+    <div class="bd">
+      <p class="hint">お電話・ご来店時のご予約用。承認不要で確定します。登録したご予約は「予約管理」の一覧に入ります。</p>
+      <div class="frow" style="margin-bottom:8px">
+        <input type="text" id="nr-q" placeholder="飼い主名・わんちゃん名 or 電話番号で検索">
+        <button class="btn sub" id="nr-search" type="button">検索</button>
+      </div>
+      <div class="frow" style="margin-bottom:8px">
+        <select id="nr-cust"><option value="">わんちゃんを選択</option></select>
+      </div>
+      <div class="frow" style="margin-bottom:8px">
+        <input type="datetime-local" id="nr-at" value="2026-07-28T10:00" aria-label="日時">
+        <select id="nr-menu"><option value="">コースを選択</option></select>
+      </div>
+      <div class="frow">
+        <select id="nr-staff">
+          <option value="">担当（任意）</option>
+          <option>佐藤</option><option>高橋</option><option>伊藤</option><option>中村</option><option>山本</option>
+        </select>
+        <button class="btn" id="nr-submit" type="button">予約を登録</button>
+      </div>
+    </div>
+  </div>
+
   <div class="card" id="freecard">
     <div class="hd"><h2>空き状況をさがす</h2><span class="pill mut">日付を3つまで</span></div>
     <div class="bd">
@@ -831,14 +876,16 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
 
   <div class="card">
     <div class="hd"><h2>予約一覧</h2><span class="pill warn" id="awaitcnt">承認待ち 2件</span></div>
-    <div class="bd">
+    <div class="bd" style="padding-bottom:4px">
       <div class="frow" style="margin-bottom:12px">
         <input type="date" id="rv-from" value="2026-07-24" aria-label="開始日">
         <span style="font-size:13px;color:var(--muted)">〜</span>
         <input type="date" id="rv-to" value="2026-07-31" aria-label="終了日">
         <button class="btn sub" id="rv-reload" type="button">表示</button>
       </div>
-      <p class="hint">承認待ちは期間に関わらず先頭に出ます。</p>
+      <p class="hint" style="margin:0">承認待ちは期間に関わらず先頭に出ます。狭い画面では横にスクロールできます（日時の列は固定）。</p>
+    </div>
+    <div class="bd tscroll" style="padding:6px 0 0">
       <table class="rvtable">
         <thead>
           <tr><th>日時</th><th>わんちゃん</th><th>コース</th><th>担当</th><th>状態</th><th>ご要望</th><th>操作</th></tr>
@@ -846,34 +893,6 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
         <tbody id="rvrows"></tbody>
       </table>
     </div>
-  </div>
-
-  <div class="grid resv2">
-    <div class="card">
-      <div class="hd"><h2>新規予約</h2><span class="pill mut">スタッフ入力</span></div>
-      <div class="bd">
-        <p class="hint">お電話・ご来店時のご予約用。承認不要で確定します。</p>
-        <div class="frow" style="margin-bottom:8px">
-          <input type="text" id="nr-q" placeholder="飼い主名・わんちゃん名 or 電話番号で検索">
-          <button class="btn sub" id="nr-search" type="button">検索</button>
-        </div>
-        <div class="frow" style="margin-bottom:8px">
-          <select id="nr-cust"><option value="">わんちゃんを選択</option></select>
-        </div>
-        <div class="frow" style="margin-bottom:8px">
-          <input type="datetime-local" id="nr-at" value="2026-07-28T10:00" aria-label="日時">
-          <select id="nr-menu"><option value="">コースを選択</option></select>
-        </div>
-        <div class="frow">
-          <select id="nr-staff">
-            <option value="">担当（任意）</option>
-            <option>佐藤</option><option>高橋</option><option>伊藤</option><option>中村</option><option>山本</option>
-          </select>
-          <button class="btn" id="nr-submit" type="button">予約を登録</button>
-        </div>
-      </div>
-    </div>
-
   </div>
 
   <div class="grid resv2">
@@ -1486,8 +1505,11 @@ function renderOwners(q = ''){
     line.innerHTML = o.line
       ? '<span class="pill good">連携済み</span>'
       : '<span class="pill mut">未連携</span>';
+    // td 自体を flex にすると表のセルでなくなるため、入れ物を1枚かませる
     const acts = document.createElement('td');
-    acts.className = 'rowacts';
+    const actsbox = document.createElement('div');
+    actsbox.className = 'rowacts';
+    acts.appendChild(actsbox);
     tr.append(name, pets, tel, line, acts);
 
     if (adminLive) {   // 実運用モードでは一覧から直接編集・追加できる
@@ -1495,7 +1517,7 @@ function renderOwners(q = ''){
         const b = document.createElement('button');
         b.type = 'button'; b.className = 'sbtn mut'; b.textContent = label;
         b.addEventListener('click', fn);
-        acts.appendChild(b);
+        actsbox.appendChild(b);
       };
       mk('編集', () => editOwner(o, tr));
       mk('＋ わんちゃん', () => editPet(o, null, tr));
@@ -1585,11 +1607,13 @@ function renderCarteList(q = ''){
     last.className = 'num';
     last.textContent = d.last || '—';
     const acts = document.createElement('td');
-    acts.className = 'rowacts';
+    const actsbox = document.createElement('div');
+    actsbox.className = 'rowacts';
+    acts.appendChild(actsbox);
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'sbtn'; b.textContent = 'カルテ';
     b.addEventListener('click', () => openCarte(d, o));
-    acts.appendChild(b);
+    actsbox.appendChild(b);
     tr.append(name, breed, owner, last, acts);
     cresEl.appendChild(tr);
   });
@@ -2404,12 +2428,16 @@ function renderFree(){
     const left = Math.max(0, SCHOOL_CAPACITY - school);
     head.insertAdjacentHTML('beforeend',
       '<span class="pill ' + (left ? 'good' : 'crit') + '">スクール 残り' + left + '頭</span>');
-    // 電話口で即答できるよう、担当を問わず「入れられる時間」を先に出す
-    const open = mergeSlots([1, 2].flatMap(row => freeSlots(date, row)));
-    head.insertAdjacentHTML('beforeend',
-      '<span class="pill ' + (open.length ? 'good' : 'crit') + '">トリミング '
-        + (open.length ? slotText(open) : '空きなし') + '</span>');
     box.appendChild(head);
+
+    // 電話口で即答できるよう、担当を問わず「入れられる時間」を先に出す。
+    // 時間が3つ4つと並ぶ行なので、見出しの丸バッジではなく折り返せる行にする
+    const open = mergeSlots([1, 2].flatMap(row => freeSlots(date, row)));
+    box.insertAdjacentHTML('beforeend',
+      '<div class="fsum"><span class="fk">トリミング</span>'
+        + '<span class="fv' + (open.length ? '' : ' none') + '">'
+        + (open.length ? slotText(open) : '空きなし') + '</span></div>');
+
     const lines = document.createElement('div');
     lines.className = 'fl';
     [1, 2].forEach(row => {
@@ -2418,10 +2446,12 @@ function renderFree(){
       const line = document.createElement('div');
       line.className = 'fr';
       line.insertAdjacentHTML('beforeend', '<span class="fn">' + CAL_ROWS[row].name + '</span>');
+      const box2 = document.createElement('div');
+      box2.className = 'fs';
       if (off) {
-        line.insertAdjacentHTML('beforeend', '<span class="fslot none">' + off[2] + '</span>');
+        box2.insertAdjacentHTML('beforeend', '<span class="fslot none">' + off[2] + '</span>');
       } else if (!slots.length) {
-        line.insertAdjacentHTML('beforeend', '<span class="fslot none">空きなし</span>');
+        box2.insertAdjacentHTML('beforeend', '<span class="fslot none">空きなし</span>');
       } else {
         slots.forEach(([a, b]) => {
           const chip = document.createElement('button');
@@ -2431,9 +2461,10 @@ function renderFree(){
           chip.addEventListener('click', () => {
             calState.date = date; setView('day'); window.scrollTo(0, 0);
           });
-          line.appendChild(chip);
+          box2.appendChild(chip);
         });
       }
+      line.appendChild(box2);
       lines.appendChild(line);
     });
     box.appendChild(lines);
@@ -3881,6 +3912,11 @@ const SCHOOL_STAGES = [
 ];
 const CAT_LABELS = { trimming:'トリミング', school:'スクール', hotel:'ホテル' };
 // 予定の開始を分に直す。同じ年内で比べられれば十分なので月日から組み立てる
+/** 飼い主様が入力した文字をそのまま HTML に混ぜないための逃がし（名前・コース名・ご要望） */
+function esc(v){
+  return String(v ?? '').replace(/[&<>"']/g, (c) =>
+    ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
 function rvStartMin(r){
   const m = /(\d+)\/(\d+).*?(\d+):(\d+)/.exec(r.at);
   if (!m) return null;
@@ -4074,24 +4110,34 @@ function renderResv(){
     tr.className = (r.status === 'requested' ? 'await' : '') + (dup ? ' clash' : '');
     const stage = r.cat === 'school' && r.stage
       ? ' <span class="pill hny">' + (SCHOOL_STAGES.find(x => x.v === r.stage) || {}).label + '</span>' : '';
-    tr.innerHTML = '<td class="num rvat" data-label="日時">' + r.at
-      + (dup ? ' <span class="pill crit">時間が重複</span>' : '') + '</td>'
-      + '<td class="rvname" data-label="わんちゃん">' + r.name + '</td>'
-      + '<td data-label="コース">' + r.menu
+    // 重複の警告は日時の下に置く。横に並べると日時の列がその幅まで広がってしまう
+    tr.innerHTML = '<td class="num rvat" data-label="日時">' + esc(r.at)
+      + (dup ? '<span class="pill crit" style="display:block;margin-top:3px">時間が重複</span>' : '') + '</td>'
+      + '<td class="rvname" data-label="わんちゃん">' + esc(r.name) + '</td>'
+      + '<td data-label="コース">' + esc(r.menu)
       + (r.cat ? ' <span class="pill mut">' + CAT_LABELS[r.cat] + '</span>' : '') + stage + '</td>'
-      + '<td class="rvname" data-label="担当">' + (r.staff || '指名なし') + '</td>'
+      + '<td class="rvname" data-label="担当">' + esc(r.staff || '指名なし') + '</td>'
       + '<td data-label="状態"><span class="pill ' + cls + '">' + label + '</span>'
       + (r.status === 'confirmed' && r.ok ? ' <span class="pill good">本人確認済</span>' : '') + '</td>'
-      + '<td class="rvnote" data-label="ご要望">' + (r.note || '—') + '</td>';
+      // ご要望は飼い主様が自由に書ける欄なので、タグとして解釈させない
+      + '<td class="rvnote" data-label="ご要望"><span></span></td>';
+    tr.querySelector('.rvnote span').textContent = r.note || '—';
+    // 打ち切った本文は、マウスを乗せる／長押しで全文が読めるようにしておく
+    if (r.note) tr.querySelector('.rvnote').title = r.note;
+    // td 自体を flex にすると表のセルでなくなり、行の色が最後の列だけ抜ける。
+    // セルはセルのまま置き、中の入れ物でボタンを並べる
     const td = document.createElement('td');
-    td.className = 'rowacts';
+    td.className = 'rvacts';
     td.dataset.label = '操作';
+    const acts = document.createElement('div');
+    acts.className = 'rowacts';
+    td.appendChild(acts);
     const mk = (label2, cls2, fn) => {
       const b = document.createElement('button');
       b.className = 'sbtn' + (cls2 ? ' ' + cls2 : '');
       b.innerHTML = label2;
       b.addEventListener('click', fn);
-      td.appendChild(b);
+      acts.appendChild(b);
     };
     if (r.status === 'requested') {
       mk('承認', 'pri', () => rvAct(r, 'confirmed',
@@ -4118,7 +4164,9 @@ function renderResv(){
     if (r.cat === 'school' && r.status !== 'cancelled' && r.status !== 'no_show') {
       const now = SCHOOL_STAGES.findIndex(x => x.v === r.stage);
       const next = SCHOOL_STAGES[(now + 1) % SCHOOL_STAGES.length];
-      mk(next.label + 'にする', 'mut', () => setSchoolStage(r, next.v));
+      // 「〜にする」まで入れると操作の列が広がって他の列を圧迫するため、矢印で表す
+      mk('&rarr; ' + next.label, 'mut', () => setSchoolStage(r, next.v));
+      acts.lastChild.title = '「' + next.label + '」にする';
     }
     tr.appendChild(td);
     rvrows.appendChild(tr);
@@ -4128,6 +4176,16 @@ function renderResv(){
   awaitcnt.className = 'pill ' + (waiting ? 'warn' : 'mut');
 }
 renderResv();
+// 日付の初期値は開いた日を起点にする。HTML に書いた固定日のままだと、
+// デモでも実運用でも「過去の日付が入った入力欄」から始まってしまう
+(function initResvDates(){
+  const pad = n => String(n).padStart(2, '0');
+  const iso = dt => dt.getFullYear() + '-' + pad(dt.getMonth() + 1) + '-' + pad(dt.getDate());
+  const today = new Date(), week = new Date(Date.now() + 7 * 86400 * 1000);
+  document.getElementById('rv-from').value = iso(today);
+  document.getElementById('rv-to').value = iso(week);
+  document.getElementById('nr-at').value = iso(today) + 'T10:00';
+})();
 document.getElementById('rv-reload').addEventListener('click', () => {
   if (adminLive) {
     rvReload().then(() => showToast('予約を読み込みました')).catch(err => showToast('エラー: ' + err.message));
@@ -4752,14 +4810,6 @@ const bootReveal = () => document.documentElement.classList.remove('booting');
     await adminApi('/staff');   // Basic 認証込みで疎通確認
     adminLive = true;
   } catch { bootReveal(); return; }   // 届かなければデモ動作のまま（デモはすぐ出してよい）
-
-  // 日付の初期値をデモ用の固定日から実際の今日に差し替える
-  const pad = n => String(n).padStart(2, '0');
-  const iso = dt => dt.getFullYear() + '-' + pad(dt.getMonth() + 1) + '-' + pad(dt.getDate());
-  const today = new Date(), week = new Date(Date.now() + 7 * 86400 * 1000);
-  document.getElementById('rv-from').value = iso(today);
-  document.getElementById('rv-to').value = iso(week);
-  document.getElementById('nr-at').value = iso(today) + 'T10:00';
 
   // シフト申請のカードを、デモの会話例からスタッフ連携の操作 UI に差し替える
   document.getElementById('shift-line-bd').innerHTML =
