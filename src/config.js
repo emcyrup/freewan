@@ -76,6 +76,17 @@ export function loadConfig(env = process.env) {
 
   const liffId = env.LIFF_ID || null;
 
+  // Claude API キーが無いと、シフト変更申請の解釈（自由記述→申請）と
+  // 来店フォロー返信の分類が黙って効かなくなる。使わない店舗もあるため起動は止めないが、
+  // 「動いているのに何も起きない」に気付けるよう起動時に警告する
+  const anthropicApiKey = env.ANTHROPIC_API_KEY || null;
+  if (!anthropicApiKey) {
+    console.warn(
+      '[config] ANTHROPIC_API_KEY が未設定です。' +
+        'スタッフのシフト変更申請は解釈されず、来店フォロー返信の自動分類も行われません。'
+    );
+  }
+
   return {
     databaseUrl: env.DATABASE_URL,
     line: {
@@ -92,7 +103,7 @@ export function loadConfig(env = process.env) {
     slackWebhookUrl: env.SLACK_WEBHOOK_URL || null,
     staffNotifyChannel,
     staffLineGroupId: env.STAFF_LINE_GROUP_ID || null,
-    anthropicApiKey: env.ANTHROPIC_API_KEY || null,
+    anthropicApiKey,
     sendMode,
     testLineUserId: env.TEST_LINE_USER_ID || null,
     dormantDailyLimit: Number(env.DORMANT_DAILY_LIMIT || 50),

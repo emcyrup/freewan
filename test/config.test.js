@@ -93,3 +93,31 @@ test('配信の日数の書き間違いは起動時に落とす', () => {
   assert.throws(() => loadConfig({ ...baseEnv, DORMANT_DAYS: '90日' }), /DORMANT_DAYS/);
   assert.throws(() => loadConfig({ ...baseEnv, AFTER_VISIT_DAYS_AFTER: '1.5' }), /AFTER_VISIT_DAYS_AFTER/);
 });
+
+test('ANTHROPIC_API_KEY が無いときは警告するが起動は止めない', () => {
+  const warnings = [];
+  const original = console.warn;
+  console.warn = (msg) => warnings.push(String(msg));
+  try {
+    const config = loadConfig({ ...baseEnv });
+    assert.equal(config.anthropicApiKey, null);
+    assert.equal(warnings.length, 1, 'キーが無いことに気付けるよう1回だけ警告する');
+    assert.match(warnings[0], /ANTHROPIC_API_KEY/);
+    assert.match(warnings[0], /シフト変更申請/, '何が動かなくなるかを書く');
+  } finally {
+    console.warn = original;
+  }
+});
+
+test('ANTHROPIC_API_KEY があれば警告しない', () => {
+  const warnings = [];
+  const original = console.warn;
+  console.warn = (msg) => warnings.push(String(msg));
+  try {
+    const config = loadConfig({ ...baseEnv, ANTHROPIC_API_KEY: 'sk-ant-xxx' });
+    assert.equal(config.anthropicApiKey, 'sk-ant-xxx');
+    assert.deepEqual(warnings, []);
+  } finally {
+    console.warn = original;
+  }
+});
