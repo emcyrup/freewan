@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="format-detection" content="telephone=no">
 <meta name="robots" content="noindex, nofollow">
-<title>ここっとベール 管理システム モック</title>
+<title>FREE WAN 管理システム モック</title>
 <style>
 button{font:inherit; color:inherit}
 :root{
@@ -116,7 +116,8 @@ body{
 .screen.on{display:block}
 .crumb{font-size:12px; color:var(--muted); margin-bottom:2px}
 h1{font-size:20px; margin:0 0 4px; font-weight:700}
-.sub{color:var(--muted); font-size:13px; margin:0 0 20px}
+/* 説明文は画面幅いっぱいまで伸ばすと1行が長くなり、目が戻る先を見失う */
+.sub{color:var(--muted); font-size:13px; margin:0 0 20px; max-width:78ch}
 h2{font-size:14.5px; margin:0 0 10px; font-weight:700}
 
 .card{background:var(--surface); border:1px solid var(--line); border-radius:12px; box-shadow:var(--shadow)}
@@ -124,6 +125,11 @@ h2{font-size:14.5px; margin:0 0 10px; font-weight:700}
 .card .hd h2{margin:0}
 .card .bd{padding:16px}
 .grid{display:grid; gap:16px}
+/* グリッドの子は既定で「中身の最小幅」まで広がる。中に最低幅を持つ表があると
+   カードごと画面からはみ出し、ページ全体が横スクロールしてしまうため明示的に潰す
+   （表は .card .bd 側で横スクロールさせる） */
+.grid>*{min-width:0}
+.card{min-width:0}
 .num{font-variant-numeric:tabular-nums}
 
 .pill{display:inline-block; padding:1px 9px; border-radius:99px; font-size:11.5px; font-weight:600; white-space:nowrap}
@@ -186,7 +192,7 @@ button.trow2:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
 .bar .n{font-size:12px; text-align:right}
 
 /* ---------- calendar (横タイムライン / レストランボード型) ---------- */
-.calwrap{overflow-x:auto}
+.calscroll{overflow-x:auto}
 .tgrid{min-width:1100px; user-select:none}
 .thead{display:flex; border-bottom:2px solid var(--line)}
 .thead .rlab{border-bottom:0}
@@ -511,6 +517,33 @@ tr.clash td{background:var(--crit-soft); box-shadow:inset 2px 0 0 var(--crit)}
   .kpis{grid-template-columns:repeat(2,1fr)}
   .dash2,.cust2,.snswrap,.shift2,.resv2{grid-template-columns:1fr}
   .card .bd{overflow-x:auto}          /* 幅を超える表はカード内でスクロール */
+
+  /* 横スクロールする表・カレンダーは、左端の見出し列を貼り付けたままにする。
+     スクロールした先で「誰の行か」を見失うのが一番困るため。
+     カレンダーはカードの左右余白ぶんだけ広げてから貼り付ける
+     （余白を残すと、そこへ予定が潜り込んで名前の左にはみ出して見える） */
+  .calscroll{margin-left:-16px; margin-right:-16px}
+  .calscroll .rlab{position:sticky; left:0; z-index:3; background:var(--surface)}
+  .calscroll .thead .rlab{z-index:4}
+  /* 表は左右の余白を外して、代わりに端のセルへ余白を戻す。
+     枠に余白を残したままだと、そこへ中身が潜り込んで見出し列の左にはみ出す */
+  .sticky-scroll{padding-left:0; padding-right:0}
+  .sticky-scroll th:first-child,.sticky-scroll td:first-child{padding-left:16px}
+  .sticky-scroll th:last-child,.sticky-scroll td:last-child{padding-right:16px}
+  .sticky-scroll .legend{padding:0 16px}
+  .sticky-scroll table th:first-child,.sticky-scroll table td:first-child{
+    position:sticky; left:0; background:var(--surface); z-index:1;
+    /* 貼り付いた列であることが分かるよう、右に境目を出す */
+    box-shadow:1px 0 0 var(--line), 4px 0 6px -4px rgba(0,0,0,.18)}
+
+  /* まだ右に続くことが分かるよう、右端に影を出す。
+     手前の「隠し」は local（中身と一緒に動く）、影は scroll（枠に貼り付く）。
+     右端まで送ると隠しが影に重なって消えるので、スクロールしない表では出ない */
+  .calscroll,.card .bd{
+    background:
+      linear-gradient(to left, var(--surface) 60%, rgba(0,0,0,0)) right center / 20px 100% no-repeat local,
+      linear-gradient(to left, rgba(0,0,0,.13), rgba(0,0,0,0)) right center / 16px 100% no-repeat scroll;
+  }
   .follow3{grid-template-columns:1fr}
   .main{padding:16px}
   .photos{grid-template-columns:repeat(4,1fr)}
@@ -594,6 +627,7 @@ tr.clash td{background:var(--crit-soft); box-shadow:inset 2px 0 0 var(--crit)}
   /* 編集モーダルは画面いっぱいに使う */
   .mback{padding:12px}
   .mwin{width:100%; max-height:92vh}
+
 }
 @media (prefers-reduced-motion: reduce){ *{transition:none !important} }
 /* 起動直後のチラつき防止: 実運用モードでは店舗情報の反映が終わるまで画面を出さない */
@@ -627,7 +661,7 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
     <button data-s="sns"><span class="ic">&#9633;</span>SNS投稿</button>
     <button data-s="test"><span class="ic">&#9633;</span>テスト送信</button>
   </nav>
-  <div class="foot">ここっとベール 管理システム<br>モック <b>v1.0</b>（更新 2026-08-06）<br>サンプルデータのみ・実データ未接続</div>
+  <div class="foot">FREE WAN 管理システム<br>モック <b>v1.0</b>（更新 2026-08-06）<br>サンプルデータのみ・実データ未接続</div>
 </aside>
 
 <main class="main">
@@ -665,7 +699,7 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
   <div class="grid dash2" id="dash2">
     <div class="card">
       <div class="hd"><h2>トリマー実績（7月）</h2><span class="pill mut">トリマーのみ表示</span></div>
-      <div class="bd" style="padding-top:6px">
+      <div class="bd sticky-scroll" style="padding-top:6px">
         <table>
           <tr><th>担当</th><th class="r">トリミング数</th><th class="r">新規</th><th class="r">既存</th><th class="r">貢献売上</th></tr>
           <tr><td>佐藤</td><td class="r num">58</td><td class="r num">9</td><td class="r num">49</td><td class="r num">¥412,300</td></tr>
@@ -688,7 +722,7 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
 
   <div class="card" style="margin-top:16px">
     <div class="hd"><h2>本日の自動リマインド</h2><span class="pill acc" id="dash-remind-pill">12件 送信予定</span></div>
-    <div class="bd" style="padding-top:6px">
+    <div class="bd sticky-scroll" style="padding-top:6px">
       <table>
         <tr><th>種別</th><th>対象</th><th>チャネル</th><th>時刻</th><th></th></tr>
         <tr><td><span class="pill acc">前々日確認</span></td><td id="dash-r1">7/26 ご予約の 5頭</td><td><span class="src line">LINE</span></td><td class="num">10:00</td><td><span class="pill good">実装済</span></td></tr>
@@ -740,26 +774,30 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
   </div>
 
   <div class="card">
-    <div class="bd calwrap">
-      <!-- 日表示 -->
-      <div id="v-day">
-        <div class="tgrid">
-          <div class="thead">
-            <div class="rlab"></div>
-            <div class="tax" id="tax"></div>
+    <div class="bd">
+      <!-- 横に長いのは時間軸の2つだけ。ここだけを横スクロールさせ、
+           月表示と凡例はカードの余白の中に収める -->
+      <div class="calscroll">
+        <!-- 日表示 -->
+        <div id="v-day">
+          <div class="tgrid">
+            <div class="thead">
+              <div class="rlab"></div>
+              <div class="tax" id="tax"></div>
+            </div>
+            <div id="tl"></div>
           </div>
-          <div id="tl"></div>
         </div>
-      </div>
 
-      <!-- 週表示 -->
-      <div id="v-week" style="display:none">
-        <div class="tgrid wk">
-          <div class="thead">
-            <div class="rlab"></div>
-            <div class="tax" id="wtax"></div>
+        <!-- 週表示 -->
+        <div id="v-week" style="display:none">
+          <div class="tgrid wk">
+            <div class="thead">
+              <div class="rlab"></div>
+              <div class="tax" id="wtax"></div>
+            </div>
+            <div id="wtl"></div>
           </div>
-          <div id="wtl"></div>
         </div>
       </div>
 
@@ -1093,7 +1131,7 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
   </div>
 
   <div class="card">
-    <div class="bd" style="overflow-x:auto">
+    <div class="bd sticky-scroll" style="overflow-x:auto">
       <table class="sh" style="min-width:640px" id="shtable">
         <tr><th style="width:90px">7/27週</th><th>月 27</th><th>火 28</th><th>水 29</th><th>木 30<br><span style="font-weight:600">定休</span></th><th>金 31</th><th>土 1</th><th>日 2</th></tr>
         <tr><td style="white-space:nowrap">佐藤<button class="star" data-star="佐藤" aria-label="佐藤の新人マーク">&#9734;</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell koukyu">公休</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell work">出勤</button></td><td><button class="shcell am">AM半休</button></td></tr>
@@ -1197,7 +1235,7 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
 
   <div class="card" style="margin-top:16px">
     <div class="hd"><h2>投稿履歴</h2><span class="pill mut">直近20件</span></div>
-    <div class="bd" style="padding-top:6px">
+    <div class="bd sticky-scroll" style="padding-top:6px">
       <table>
         <thead><tr><th>日時</th><th>投稿先</th><th class="r">枚数</th><th>状態</th><th>本文</th><th></th></tr></thead>
         <tbody id="snshist"></tbody>
