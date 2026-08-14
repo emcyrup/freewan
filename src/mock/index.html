@@ -434,6 +434,15 @@ tr.rowlink:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
 tr.rowlink:hover td.cn{background:var(--accent-soft)}   /* 貼り付いた列も一緒に色を変える */
 .erow>td{background:var(--surface2); border-top:0}
 .erow .ehd{font-size:12px; font-weight:700; padding:10px 18px 0}
+/* 編集フォーム（顧客・わんちゃん）。見た目はここに置き、要素へ直接書かない */
+.edbd{padding:14px 18px; display:grid; gap:10px; overflow-y:auto}
+.edlab{display:grid; gap:4px; font-size:12px; color:var(--muted)}
+.edchk{display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer}
+.edfld{border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--ink);
+  font:inherit; font-size:13px; padding:9px 10px; resize:vertical; min-width:0}
+.edfld:focus-visible{outline:2px solid var(--accent); outline-offset:-1px}
+.edacts{display:flex; gap:8px; justify-content:flex-end; padding:0 0 4px; flex-wrap:wrap}
+.edacts .eddel{margin-right:auto}
 .cres{display:none; gap:8px; flex-wrap:wrap; background:var(--surface); border:1px solid var(--line);
   border-radius:12px; box-shadow:var(--shadow); padding:12px 14px; margin-bottom:18px}
 .cres.on{display:flex}
@@ -694,6 +703,20 @@ tr.clash td:first-child{box-shadow:inset 3px 0 0 var(--crit)}
   .mback{padding:12px}
   .mwin{width:100%; max-height:92vh}
 
+}
+/* 指で触る端末（スマートフォン・タブレット）では、入力欄の文字を16pxより小さくしない。
+   小さいと iOS が入力欄をタップした拍子に画面を勝手に拡大し、毎回手で縮め直すことになる */
+@media (hover: none) and (pointer: coarse){
+  input, select, textarea,
+  .frow input, .frow select, .edfld, .search input, .stagesel,
+  .card.tight .frow input, .card.tight .frow select,
+  /* 狭い画面用に小さくしてある期間の日付も、拡大の原因になるので戻す */
+  .frow input[type="date"], #shweek input[type="date"]{font-size:16px}
+  /* 16px にすると日付が横に収まらず、年の桁から欠ける。
+     指で押せばどのみち標準の日付選択が開くので、カレンダーのアイコンを隠して桁を優先する */
+  input[type="date"],input[type="datetime-local"]{padding-left:6px; padding-right:6px}
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="datetime-local"]::-webkit-calendar-picker-indicator{display:none}
 }
 @media (prefers-reduced-motion: reduce){ *{transition:none !important} }
 /* 起動直後のチラつき防止: 実運用モードでは店舗情報の反映が終わるまで画面を出さない */
@@ -4681,18 +4704,20 @@ const EDIT_ERRORS = {
 // 入力欄と保存・削除ボタンを組み立てる。モーダルとインライン編集で中身を共有する
 // （見せ方だけを変えたいので、検証やエラー文言を2箇所に分けない）
 function buildEditForm(rows, { onSave, onDelete, after, close }){
+  // 見た目は CSS 側（.ed*）に置く。要素に直接書くと CSS より強く、
+  // 「指で触る端末では文字を16px以上にする」といった後からの調整が効かなくなる
   const bd = document.createElement('div');
-  bd.style.cssText = 'padding:14px 18px;display:grid;gap:10px;overflow-y:auto';
+  bd.className = 'edbd';
   const inputs = {};
   rows.forEach(r => {
     const lab = document.createElement('label');
     let inp;
     if (r.type === 'checkbox') {
-      lab.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer';
+      lab.className = 'edchk';
       inp = document.createElement('input'); inp.type = 'checkbox'; inp.checked = !!r.value;
       lab.append(inp, r.label);
     } else if (r.type === 'select') {
-      lab.style.cssText = 'display:grid;gap:4px;font-size:12px;color:var(--muted)';
+      lab.className = 'edlab';
       inp = document.createElement('select');
       (r.options || []).forEach(([value, text]) => {
         const opt = document.createElement('option');
@@ -4700,14 +4725,14 @@ function buildEditForm(rows, { onSave, onDelete, after, close }){
         inp.appendChild(opt);
       });
       if (r.value != null) inp.value = r.value;
-      inp.style.cssText = 'border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:13px;padding:9px 10px';
+      inp.className = 'edfld';
       lab.append(r.label, inp);
     } else {
-      lab.style.cssText = 'display:grid;gap:4px;font-size:12px;color:var(--muted)';
+      lab.className = 'edlab';
       inp = document.createElement(r.type === 'textarea' ? 'textarea' : 'input');
       if (r.type === 'textarea') inp.rows = 3; else inp.type = r.type || 'text';
       inp.value = r.value || '';
-      inp.style.cssText = 'border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font:inherit;font-size:13px;padding:9px 10px;resize:vertical';
+      inp.className = 'edfld';
       lab.append(r.label, inp);
     }
     inputs[r.key] = inp;
@@ -4715,14 +4740,13 @@ function buildEditForm(rows, { onSave, onDelete, after, close }){
   });
 
   const acts = document.createElement('div');
-  acts.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;padding:0 0 4px;flex-wrap:wrap';
+  acts.className = 'edacts';
   const collect = () => Object.fromEntries(Object.entries(inputs).map(([k, el2]) =>
     [k, el2.type === 'checkbox' ? el2.checked : el2.value.trim()]));
 
   if (onDelete) {
     const del = document.createElement('button');
-    del.className = 'sbtn warn'; del.textContent = '削除';
-    del.style.marginRight = 'auto';
+    del.className = 'sbtn warn eddel'; del.textContent = '削除';
     del.addEventListener('click', async () => {
       del.disabled = true;
       try {
