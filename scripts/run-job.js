@@ -25,6 +25,7 @@ const { createSlackNotifier } = await import('../src/notify/slack.js');
 const { createStaffNotifier } = await import('../src/notify/staffNotifier.js');
 const { createSettings } = await import('../src/settings.js');
 const { createReminderSettings } = await import('../src/reminders.js');
+const { createApprovalQueue } = await import('../src/approvalQueue.js');
 const { createJobRunner } = await import('../src/jobs/runner.js');
 const { createPreReminderJob } = await import('../src/jobs/preReminder.js');
 const { createAfterVisitJob } = await import('../src/jobs/afterVisit.js');
@@ -36,11 +37,17 @@ const { createPlanNudgeJob } = await import('../src/jobs/planNudge.js');
 const config = loadConfig();
 console.log(`[run-job] job=${jobName} SEND_MODE=${config.sendMode}`);
 
-const lineClient = createLineClient({ config, pool });
+const settings = createSettings({ pool });
+// 手動実行でも承認モード（スタッフ確認付き送信）を同じに効かせる（経路によって挙動を変えない）
+const approvalQueue = createApprovalQueue({
+  pool,
+  settings,
+  deliver: (args) => lineClient.deliver(args),
+});
+const lineClient = createLineClient({ config, pool, approval: approvalQueue });
 const slackChannel = config.slackWebhookUrl
   ? createSlackNotifier({ webhookUrl: config.slackWebhookUrl })
   : null;
-const settings = createSettings({ pool });
 const slack = createStaffNotifier({ config, slack: slackChannel, lineClient, settings });
 // 管理画面で OFF にしたリマインドは手動実行でも送らない（経路によって挙動が変わらないように）
 const runner = createJobRunner({ slack, settings, reminders: createReminderSettings({ settings }) });

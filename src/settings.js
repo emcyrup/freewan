@@ -13,6 +13,8 @@ export const SETTING_KEYS = {
   threadsTokenRefreshedAt: 'threads_token_refreshed_at',
   // 日次リマインド4種の ON/OFF（JSON）。行が無ければ全 ON
   remindersEnabled: 'reminders_enabled',
+  // リマインドの承認モード: auto（そのまま送信・既定） | manual（スタッフ承認後に送信）
+  reminderApproval: 'reminder_approval',
 };
 
 export function createSettings({ pool }) {

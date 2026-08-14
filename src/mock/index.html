@@ -935,8 +935,8 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
       <div class="row" data-job="dormant"><span class="rid">R3</span><div><div class="nm">休眠フォロー <span class="pill good">実装済</span></div><div class="cond">最終来店から90日 10:00｜同じ方へは90日に1回まで・配信停止の導線つき</div></div><span class="src line">LINE</span><button class="sw" aria-checked="true" role="switch" aria-label="R3 有効"><i></i></button></div>
       <div class="row" data-job="birthday"><span class="rid">R4</span><div><div class="nm">誕生日メッセージ <span class="pill good">実装済</span></div><div class="cond">お誕生日 当日 10:00｜クーポンを添付（2/29 生まれは平年 2/28）</div></div><span class="src line">LINE</span><button class="sw" aria-checked="true" role="switch" aria-label="R4 有効"><i></i></button></div>
       <div class="row"><span class="rid">R5</span><div><div class="nm">初回ご来店後の追客 <span class="pill mut">構想</span></div><div class="cond">次回のご予約が未定の方のみ（下の3パターンで自動判定）</div></div><span class="src line">LINE</span><button class="sw" aria-checked="true" role="switch" aria-label="R5 有効"><i></i></button></div>
-      <div class="row"><span class="rid">R6</span><div><div class="nm">回数券 残回数のご案内 <span class="pill mut">構想</span></div><div class="cond">2週間ご来店なし＋残回数ありで通知</div></div><span class="src line">LINE</span><button class="sw" aria-checked="true" role="switch" aria-label="R6 有効"><i></i></button></div>
-      <div class="row"><span class="rid">R7</span><div><div class="nm">保育コース 残回数のご案内 <span class="pill mut">構想</span></div><div class="cond">月4回・月8回の保育コースで1週間ご来店なしのとき月内残回数を通知</div></div><span class="src line">LINE</span><button class="sw" aria-checked="true" role="switch" aria-label="R7 有効"><i></i></button></div>
+      <div class="row" data-job="ticketNudge"><span class="rid">R6</span><div><div class="nm">回数券の来店促し <span class="pill good">実装済</span></div><div class="cond">2週間ご来店なし＋残回数ありで通知</div></div><span class="src line">LINE</span><button class="sw" aria-checked="true" role="switch" aria-label="R6 有効"><i></i></button></div>
+      <div class="row" data-job="planNudge"><span class="rid">R7</span><div><div class="nm">コース残回数のご案内 <span class="pill good">実装済</span></div><div class="cond">月4回・月8回の保育コースで1週間ご来店なしのとき月内残回数を通知</div></div><span class="src line">LINE</span><button class="sw" aria-checked="true" role="switch" aria-label="R7 有効"><i></i></button></div>
       <div class="row"><span class="rid">R8</span><div><div class="nm">ワクチン更新のご案内 <span class="pill mut">構想</span></div><div class="cond">期限30日前・直近半年以内にご利用の方のみ｜スタッフにも通知</div></div><span class="src line">LINE</span><button class="sw" aria-checked="true" role="switch" aria-label="R8 有効"><i></i></button></div>
     </div>
   </div>
@@ -2374,6 +2374,7 @@ window.addEventListener('pageshow', e => { if (e.persisted) checkStaleScreen(); 
 // 日次ジョブも手動実行も同じ設定を見るため、OFF にすればどの経路でも送られない。
 // 未実装の4種は触れると誤解を招くので、状態表示に置き換える。
 const remindEnabled = {};   // ジョブ名 → true/false（カルテ側の表示にも使う）
+let remindJobs = [];        // サーバーの REMINDER_JOBS（承認待ち一覧のラベルに使う）
 function renderRemindLive(){
   document.querySelectorAll('#remrows .row').forEach(row => {
     const sw = row.querySelector('.sw');
@@ -2391,7 +2392,7 @@ function renderRemindLive(){
     row.querySelector('.nm .pill')?.remove();
   });
   document.querySelector('#s-rem .sub').innerHTML =
-    '実装済みの4種はここで止められます（毎朝10:00に自動送信）。'
+    '実装済みの配信はここで止められます（毎朝10:00に自動送信）。'
     + 'お客様ごとに止めるときは、カルテの「飼い主様情報を編集」で配信停止にしてください。';
 
   // 初回フォローの状況は実データを持っていないため、カードごと出さない
@@ -2408,7 +2409,8 @@ function paintRemindRows(){
 
 async function loadRemindLive(){
   try {
-    const { enabled } = await adminApi('/reminders');
+    const { jobs, enabled } = await adminApi('/reminders');
+    remindJobs = jobs || [];
     Object.assign(remindEnabled, enabled);
     paintRemindRows();
   } catch (err) {
@@ -2433,6 +2435,85 @@ async function saveRemind(patch, label){
     paintRemindRows();
     showToast('保存に失敗しました: ' + err.message);
   }
+}
+
+// ---- スタッフ確認付き送信（承認モードと承認待ちの一覧）----
+function ensureApprovalCard(){
+  if (document.getElementById('approval-card')) return;
+  const firstCard = document.querySelector('#s-rem .card');
+  const div = document.createElement('div');
+  div.className = 'card'; div.id = 'approval-card'; div.style.marginBottom = '16px';
+  div.innerHTML = '<div class="hd"><h2>スタッフ確認付き送信</h2><span class="pill mut" id="ap-count"></span>'
+    + '<span style="margin-left:auto;display:flex;gap:12px;align-items:center;font-size:12.5px">'
+    + '<label style="display:flex;align-items:center;gap:4px"><input type="radio" name="ap-mode" value="auto">自動送信</label>'
+    + '<label style="display:flex;align-items:center;gap:4px"><input type="radio" name="ap-mode" value="manual">承認後に送信</label></span></div>'
+    + '<div id="ap-list"></div>'
+    + '<div class="bd" style="border-top:1px solid var(--line)"><p class="hint" id="ap-note" style="margin:0"></p></div>';
+  firstCard.parentNode.insertBefore(div, firstCard);
+  div.querySelectorAll('input[name="ap-mode"]').forEach(r => r.addEventListener('change', async () => {
+    try {
+      await adminApi('/reminder-approval', { method: 'PUT', body: JSON.stringify({ mode: r.value }) });
+      showToast(r.value === 'manual'
+        ? '承認後に送信するモードにしました。次回の配信から下に積まれます'
+        : '自動送信に戻しました');
+      loadApprovalLive();
+    } catch (err) { showToast('変更に失敗しました: ' + err.message); }
+  }));
+}
+async function apAct(path, okMsg){
+  try {
+    const r = await adminApi(path, { method: 'POST' });
+    const sendNote = r.send === 'dry_run' ? '（dry_runのため実送信なし）'
+      : r.send === 'skipped' ? '（送信済みのためスキップ）'
+      : r.send === 'failed' ? '（⚠ 送信に失敗。失敗一覧に残ります）' : '';
+    showToast(okMsg + sendNote);
+  } catch (err) {
+    showToast('操作に失敗しました: ' + err.message);
+  }
+  loadApprovalLive();
+}
+async function loadApprovalLive(){
+  let data;
+  try { data = await adminApi('/reminder-approval'); }
+  catch { return; }   // 未対応サーバーではカードを出さない
+  ensureApprovalCard();
+  const { mode, pending } = data;
+  document.querySelectorAll('#approval-card input[name="ap-mode"]').forEach(r => { r.checked = r.value === mode; });
+  const cnt = document.getElementById('ap-count');
+  cnt.textContent = pending.length ? '承認待ち ' + pending.length + '件' : '承認待ちなし';
+  cnt.className = pending.length ? 'pill warn' : 'pill mut';
+  const jobLabel = Object.fromEntries((remindJobs || []).map(j => [j.key, j.id + ' ' + j.label]));
+  const list = document.getElementById('ap-list');
+  list.innerHTML = '';
+  if (pending.length) {
+    const all = document.createElement('div');
+    all.className = 'sreq';
+    all.innerHTML = '<div><div class="sn">すべて承認して送信</div><div class="sd">文面を確認済みのときにまとめて送れます</div></div>';
+    const acts = document.createElement('div'); acts.className = 'acts2';
+    const b = document.createElement('button'); b.className = 'abtn'; b.textContent = '一括承認';
+    b.addEventListener('click', () => {
+      if (confirm('承認待ち ' + pending.length + '件をすべて送信します。よろしいですか？')) {
+        apAct('/pending-deliveries/approve-all', '一括承認しました');
+      }
+    });
+    acts.appendChild(b); all.appendChild(acts); list.appendChild(all);
+  }
+  for (const it of pending) {
+    const row = document.createElement('div');
+    row.className = 'sreq';
+    const when = new Date(it.created_at).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    row.innerHTML = '<div><div class="sn">' + (jobLabel[it.job_type] || it.job_type) + '　' + it.customer_name + ' 様</div>'
+      + '<div class="sd">' + (it.preview || '（本文プレビューなし）') + '｜' + when + ' に抽出</div></div>';
+    const acts = document.createElement('div'); acts.className = 'acts2';
+    const ok = document.createElement('button'); ok.className = 'abtn'; ok.textContent = '承認して送信';
+    ok.addEventListener('click', () => apAct('/pending-deliveries/' + it.id + '/approve', it.customer_name + ' 様へ送信しました'));
+    const ng = document.createElement('button'); ng.className = 'abtn ng'; ng.textContent = '見送り';
+    ng.addEventListener('click', () => apAct('/pending-deliveries/' + it.id + '/reject', '見送りました（送信しません）'));
+    acts.append(ok, ng); row.appendChild(acts); list.appendChild(row);
+  }
+  document.getElementById('ap-note').innerHTML = mode === 'manual'
+    ? '毎朝10:00の配信は送信されず、ここに積まれます。<b>承認したものだけが送信されます</b>（SEND_MODE のガードは承認後も有効）。'
+    : '配信は毎朝10:00に自動送信されます。試験運用の間は「承認後に送信」への切り替えをおすすめします。';
 }
 
 // ---- ダッシュボード（実運用モードのみ実データ）----
@@ -4012,6 +4093,7 @@ const bootReveal = () => document.documentElement.classList.remove('booting');
       loadShiftReqs(), renderStaffInfo(), renderShiftTable(), renderDashboardLive(),
     ]);
     renderRemindLive();
+    loadApprovalLive();
     await applyStoreProfile();
     bootReveal();   // 店名・実データの反映が済んでから画面を出す
     checkStaleScreen();

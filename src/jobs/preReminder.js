@@ -24,7 +24,7 @@ export function createPreReminderJob({ pool, lineClient, daysBefore = 2 }) {
       [daysBefore]
     );
 
-    const summary = { total: rows.length, sent: 0, dryRun: 0, skipped: 0, failed: 0, errors: [] };
+    const summary = { total: rows.length, sent: 0, dryRun: 0, queued: 0, skipped: 0, failed: 0, errors: [] };
 
     for (const row of rows) {
       // 1件のエラーで他の対象者の処理を止めない
@@ -43,9 +43,11 @@ export function createPreReminderJob({ pool, lineClient, daysBefore = 2 }) {
           dedupeKey: `pre_reminder:res:${row.id}`,
           reservationId: row.id,
           messages: [message],
+          approvable: true,   // 承認モード（スタッフ確認付き送信）の対象
         });
         if (result.status === 'sent') summary.sent++;
         else if (result.status === 'dry_run') summary.dryRun++;
+        else if (result.status === 'queued') summary.queued++;
         else if (result.status === 'skipped') summary.skipped++;
         else {
           summary.failed++;

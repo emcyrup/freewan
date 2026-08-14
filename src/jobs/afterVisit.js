@@ -24,7 +24,7 @@ export function createAfterVisitJob({ pool, lineClient, daysAfter = 7 }) {
       [daysAfter]
     );
 
-    const summary = { total: rows.length, sent: 0, dryRun: 0, skipped: 0, failed: 0, errors: [] };
+    const summary = { total: rows.length, sent: 0, dryRun: 0, queued: 0, skipped: 0, failed: 0, errors: [] };
 
     for (const row of rows) {
       try {
@@ -39,9 +39,11 @@ export function createAfterVisitJob({ pool, lineClient, daysAfter = 7 }) {
           dedupeKey: `after_visit:res:${row.id}`,
           reservationId: row.id,
           messages: [message],
+          approvable: true,   // 承認モード（スタッフ確認付き送信）の対象
         });
         if (result.status === 'sent') summary.sent++;
         else if (result.status === 'dry_run') summary.dryRun++;
+        else if (result.status === 'queued') summary.queued++;
         else if (result.status === 'skipped') summary.skipped++;
         else {
           summary.failed++;

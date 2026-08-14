@@ -147,3 +147,59 @@ test('送信失敗時は message_logs を failed に更新する', async () => {
   assert.ok(update, '失敗時に status 更新クエリが実行される');
   assert.match(update.params[1], /LINE API error/);
 });
+
+// ---- スタッフ確認付き送信（承認モード）----
+import { createLineClient as createLineClientForApproval } from '../src/line/client.js';
+
+test('承認モードが manual のとき approvable な配信はキューに積み、送信も記録もしない', async () => {
+  const queued = [];
+  const dbQueries = [];
+  const approval = {
+    isManual: async () => true,
+    queue: async (args) => { queued.push(args); return { status: 'queued', duplicate: false }; },
+  };
+  const client = createLineClientForApproval({
+    config: { sendMode: 'test', testLineUserId: 'Utest', line: {} },
+    pool: { query: async (sql, params) => { dbQueries.push({ sql, params }); return { rows: [{ id: 1 }] }; } },
+    api: { pushMessage: async () => { throw new Error('送信してはいけない'); } },
+    approval,
+  });
+
+  const result = await client.deliver({
+    customerId: 7, lineUserId: 'U7', jobType: 'dormant', dedupeKey: 'k',
+    messages: [{ type: 'text', text: 'x' }], approvable: true,
+  });
+  assert.equal(result.status, 'queued');
+  assert.equal(queued.length, 1);
+  assert.equal(dbQueries.length, 0, 'message_logs にはまだ書かない（承認後の送信時に書く）');
+});
+
+test('approvable なし（予約確定連絡など）は manual でもそのまま送信される', async () => {
+  const pushed = [];
+  const client = createLineClientForApproval({
+    config: { sendMode: 'test', testLineUserId: 'Utest', line: {} },
+    pool: { query: async () => ({ rows: [{ id: 1 }] }) },
+    api: { pushMessage: async (args) => pushed.push(args) },
+    approval: { isManual: async () => true, queue: async () => { throw new Error('積んではいけない'); } },
+  });
+
+  const result = await client.deliver({
+    customerId: 7, lineUserId: 'U7', jobType: 'reservation_confirmed', dedupeKey: 'k2',
+    messages: [{ type: 'text', text: 'x' }],
+  });
+  assert.equal(result.status, 'sent');
+  assert.equal(pushed.length, 1);
+});
+
+test('dry_run は承認モードでもキューに積まず、ログ出力のみ', async () => {
+  const client = createLineClientForApproval({
+    config: { sendMode: 'dry_run', line: {} },
+    pool: { query: async () => { throw new Error('DB に触らない'); } },
+    approval: { isManual: async () => true, queue: async () => { throw new Error('積んではいけない'); } },
+  });
+  const result = await client.deliver({
+    customerId: 7, lineUserId: 'U7', jobType: 'dormant', dedupeKey: 'k3',
+    messages: [], approvable: true,
+  });
+  assert.equal(result.status, 'dry_run');
+});

@@ -4,8 +4,9 @@
 //   2. message_logs.dedupe_key の UNIQUE 制約（挿入成功時のみ送信）
 import { messagingApi } from '@line/bot-sdk';
 
-// テストから config / pool / api を差し替えられるようファクトリにしている
-export function createLineClient({ config, pool, api }) {
+// テストから config / pool / api を差し替えられるようファクトリにしている。
+// approval はリマインドの「スタッフ確認付き送信」（approvalQueue）。無くても動く
+export function createLineClient({ config, pool, api, approval = null }) {
   const client =
     api ||
     new messagingApi.MessagingApiClient({
@@ -24,9 +25,14 @@ export function createLineClient({ config, pool, api }) {
    * @param {string} p.dedupeKey       二重送信防止キー
    * @param {number} [p.reservationId]
    * @param {object[]} p.messages      LINE メッセージオブジェクトの配列
-   * @returns {Promise<{status: 'dry_run'|'sent'|'skipped'|'failed', error?: string}>}
+   * @param {boolean} [p.approvable]   日次リマインドの一括配信のみ true。承認モードが manual の
+   *                                   とき送信せず承認待ちへ積む。予約確定連絡などの取引上の
+   *                                   通知には付けない（承認で止めてよい性質の配信ではないため）
+   * @returns {Promise<{status: 'dry_run'|'queued'|'sent'|'skipped'|'failed', error?: string}>}
    */
-  async function deliver({ customerId, lineUserId, jobType, dedupeKey, reservationId, messages }) {
+  async function deliver({
+    customerId, lineUserId, jobType, dedupeKey, reservationId, messages, approvable = false,
+  }) {
     if (config.sendMode === 'dry_run') {
       // dry_run は DB にも書かない。本実行時に dedupe されてしまうため
       console.log(
@@ -34,6 +40,18 @@ export function createLineClient({ config, pool, api }) {
           JSON.stringify(messages, null, 2)
       );
       return { status: 'dry_run' };
+    }
+
+    // スタッフ確認付き送信: 承認されるまで送らない（承認時は approvable なしで再度ここを通る）
+    if (approvable && approval && (await approval.isManual())) {
+      const q = await approval.queue({
+        customerId, lineUserId, jobType, dedupeKey, reservationId, messages,
+      });
+      console.log(
+        `[queued] job=${jobType} customer=${customerId} dedupe=${dedupeKey}` +
+          (q.duplicate ? '（承認待ちに既にあるため追加せず）' : '（スタッフ承認待ち）')
+      );
+      return { status: 'queued', duplicate: q.duplicate };
     }
 
     const inserted = await pool.query(

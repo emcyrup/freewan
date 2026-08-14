@@ -106,9 +106,32 @@ CREATE TABLE app_settings (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- リマインドの「スタッフ確認付き送信」の承認待ち（migration 012）。
+-- 承認モード（app_settings.reminder_approval = manual）のとき、日次ジョブは
+-- 送信せずここへ積み、管理画面で承認されたものだけが送信される
+CREATE TABLE pending_deliveries (
+  id             BIGSERIAL PRIMARY KEY,
+  job_type       TEXT NOT NULL,
+  customer_id    BIGINT NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+  reservation_id BIGINT REFERENCES reservations(id) ON DELETE SET NULL,
+  line_user_id   TEXT NOT NULL,
+  dedupe_key     TEXT NOT NULL,
+  messages       JSONB NOT NULL,
+  status         TEXT NOT NULL DEFAULT 'pending'
+                 CHECK (status IN ('pending', 'approved', 'rejected', 'failed')),
+  error          TEXT,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  decided_at     TIMESTAMPTZ
+);
+CREATE UNIQUE INDEX pending_deliveries_pending_uniq
+  ON pending_deliveries (job_type, customer_id) WHERE status = 'pending';
+CREATE INDEX pending_deliveries_status_idx ON pending_deliveries (status, created_at);
+
 -- dedupe_key の命名規則
 --   pre_reminder          : pre_reminder:res:{reservation_id}
 --   after_visit           : after_visit:res:{reservation_id}
 --   dormant               : dormant:cust:{customer_id}:{YYYY-MM-DD}
 --   birthday              : birthday:cust:{customer_id}:{YYYY}
+--   ticketNudge           : ticket_nudge:cust:{customer_id}:{YYYY-MM-DD}
+--   planNudge             : plan_nudge:cust:{customer_id}:{YYYY-MM-DD}
 --   reservation_confirmed : reservation_{confirmed|cancelled}:res:{reservation_id}

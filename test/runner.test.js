@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createJobRunner } from '../src/jobs/runner.js';
+import { createJobRunner, summaryLine } from '../src/jobs/runner.js';
 
 // 実行結果は Push せず app_settings に保存する運用のため、保存先も差し替えられるようにする
 function makeSettings() {
@@ -203,4 +203,11 @@ test('ジョブ全体の異常終了は notifyError され null が返る', asyn
 
   assert.equal(result, null);
   assert.match(notifications[0], /ERROR:ジョブ異常終了: preReminder:db down/);
+});
+
+test('summaryLine: 承認待ち（queued）の件数が出る', () => {
+  const line = summaryLine('dormant', {
+    total: 5, sent: 0, dryRun: 0, queued: 5, skipped: 0, failed: 0,
+  });
+  assert.match(line, /承認待ち 5/);
 });

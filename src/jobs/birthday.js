@@ -27,7 +27,7 @@ export function createBirthdayJob({ pool, lineClient, couponUrl = null }) {
       [today.month, today.day, withLeapDay]
     );
 
-    const summary = { total: rows.length, sent: 0, dryRun: 0, skipped: 0, failed: 0, errors: [] };
+    const summary = { total: rows.length, sent: 0, dryRun: 0, queued: 0, skipped: 0, failed: 0, errors: [] };
 
     for (const row of rows) {
       try {
@@ -39,9 +39,11 @@ export function createBirthdayJob({ pool, lineClient, couponUrl = null }) {
           // 年に1回まで。同年内の再実行は dedupe される
           dedupeKey: `birthday:cust:${row.id}:${today.year}`,
           messages: [message],
+          approvable: true,   // 承認モード（スタッフ確認付き送信）の対象
         });
         if (result.status === 'sent') summary.sent++;
         else if (result.status === 'dry_run') summary.dryRun++;
+        else if (result.status === 'queued') summary.queued++;
         else if (result.status === 'skipped') summary.skipped++;
         else {
           summary.failed++;

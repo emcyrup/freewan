@@ -22,6 +22,7 @@ export function summaryLine(name, summary) {
   const parts = [`対象 ${summary.total}`];
   if (summary.sent > 0) parts.push(`送信 ${summary.sent}`);
   if (summary.dryRun > 0) parts.push(`dry_run ${summary.dryRun}`);
+  if (summary.queued > 0) parts.push(`⏸ 承認待ち ${summary.queued}`);
   if (summary.skipped > 0) parts.push(`スキップ ${summary.skipped}`);
   if (summary.failed > 0) parts.push(`⚠️ 失敗 ${summary.failed}`);
   return `・${label}: ${parts.join(' / ')}`;

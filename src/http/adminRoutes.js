@@ -32,6 +32,7 @@ export function createAdminRouter({
   shiftService = null,
   reminderSettings = null,
   customerReminders = null,
+  approvalQueue = null,
   planService = null,
 }) {
   const router = express.Router();
@@ -712,6 +713,58 @@ export function createAdminRouter({
     try {
       if (!reminderSettings) return res.status(503).json({ error: 'not_configured' });
       res.json({ jobs: REMINDER_JOBS, enabled: await reminderSettings.getAll() });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // ---- スタッフ確認付き送信（承認モードと承認待ちの配信）----
+  router.get('/reminder-approval', async (_req, res, next) => {
+    try {
+      if (!approvalQueue) return res.status(503).json({ error: 'not_configured' });
+      res.json({ mode: await approvalQueue.getMode(), pending: await approvalQueue.list() });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.put('/reminder-approval', async (req, res, next) => {
+    try {
+      if (!approvalQueue) return res.status(503).json({ error: 'not_configured' });
+      const mode = await approvalQueue.setMode(req.body?.mode);
+      console.log(`[approval] 承認モードを ${mode} に変更`);
+      res.json({ mode });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.post('/pending-deliveries/:id/approve', async (req, res, next) => {
+    try {
+      if (!approvalQueue) return res.status(503).json({ error: 'not_configured' });
+      const result = await approvalQueue.decide(Number(req.params.id), true);
+      if (!result.ok) return res.status(404).json(result);
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.post('/pending-deliveries/:id/reject', async (req, res, next) => {
+    try {
+      if (!approvalQueue) return res.status(503).json({ error: 'not_configured' });
+      const result = await approvalQueue.decide(Number(req.params.id), false);
+      if (!result.ok) return res.status(404).json(result);
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.post('/pending-deliveries/approve-all', async (_req, res, next) => {
+    try {
+      if (!approvalQueue) return res.status(503).json({ error: 'not_configured' });
+      res.json(await approvalQueue.approveAll());
     } catch (err) {
       next(err);
     }

@@ -11,6 +11,7 @@ import { createIdTokenVerifier } from './line/verifyIdToken.js';
 import { createSlackNotifier } from './notify/slack.js';
 import { createStaffNotifier } from './notify/staffNotifier.js';
 import { createSettings } from './settings.js';
+import { createApprovalQueue } from './approvalQueue.js';
 import { createReminderSettings, createCustomerReminders } from './reminders.js';
 import { createLinkService } from './customers/linkService.js';
 import { createWebhookHandler } from './webhook/handler.js';
@@ -38,8 +39,15 @@ import cron from 'node-cron';
 
 const config = loadConfig();
 const store = loadStoreProfile();
-const lineClient = createLineClient({ config, pool });
 const settings = createSettings({ pool });
+// 承認キューと LINE クライアントは相互に参照する（キュー→承認時の送信、送信→manual時の積み込み）。
+// deliver は呼び出し時に解決されるため、この宣言順で問題ない
+const approvalQueue = createApprovalQueue({
+  pool,
+  settings,
+  deliver: (args) => lineClient.deliver(args),
+});
+const lineClient = createLineClient({ config, pool, approval: approvalQueue });
 const reminderSettings = createReminderSettings({ settings });
 const customerReminders = createCustomerReminders({ pool });
 // スタッフ通知は staffNotifier に集約（Slack / LINE グループ / 両方を設定で切替）
@@ -250,6 +258,7 @@ app.use(
     reminderSettings,
     customerReminders,
     planService,
+    approvalQueue,
   })
 );
 
