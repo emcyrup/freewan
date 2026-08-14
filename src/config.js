@@ -23,7 +23,14 @@ export function loadConfig(env = process.env) {
     );
   }
   if (sendMode === 'test' && !env.TEST_LINE_USER_ID) {
-    throw new Error('SEND_MODE=test には TEST_LINE_USER_ID が必要です');
+    // 起動を止める以上、その場で直せる情報まで書く（これが無いと復旧に時間がかかる）
+    throw new Error(
+      'SEND_MODE=test には TEST_LINE_USER_ID が必要です。\n' +
+        '  取得: 送信先にしたい人が公式アカウントを友だち追加したうえで\n' +
+        '        docker compose exec db psql -U postgres -d cocotte_vert \\\n' +
+        '          -c "SELECT line_user_id FROM staff WHERE line_user_id IS NOT NULL"\n' +
+        '  すぐ戻したいときは SEND_MODE=dry_run にしてください'
+    );
   }
 
   // 日付比較を JST 前提で書いているため、TZ ずれは静かなバグになる。起動時に検知する
