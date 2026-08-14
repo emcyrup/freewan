@@ -368,6 +368,8 @@ button.trow2:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
 /* 顧客情報。基本情報の下にリマインド設定のカードを置く */
 .cpbd{padding:14px 18px; overflow-y:auto}
 .custkv{margin:0 0 12px; font-size:12.5px}
+.custkv .cpets{display:flex; flex-wrap:wrap; gap:5px}
+.custkv .nopet{font-size:11.5px; color:var(--muted)}
 .panelrem .card{box-shadow:none}
 .meter{background:var(--surface2); border-radius:99px; height:8px; overflow:hidden; margin:6px 0 2px}
 .meter i{display:block; height:100%; background:var(--accent); border-radius:99px}
@@ -404,10 +406,11 @@ button.trow2:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
 .ctable td{vertical-align:top}
 .ctable .cname{font-weight:700; font-size:13.5px}
 .ctable .cpets{display:flex; flex-wrap:wrap; gap:4px}
-.ctable .petlink{background:var(--accent-soft); border:1px solid var(--line); border-radius:99px;
-  padding:3px 9px; font:inherit; font-size:12px; color:var(--ink); cursor:pointer}
-.ctable .petlink:hover{border-color:var(--accent)}
-.ctable .petlink:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+/* 名前は途中で折り返さない。列が狭いと1文字ずつ縦に割れて読めなくなる */
+.petlink{background:var(--accent-soft); border:1px solid var(--line); border-radius:99px;
+  padding:3px 9px; font:inherit; font-size:12px; color:var(--ink); cursor:pointer; white-space:nowrap}
+.petlink:hover{border-color:var(--accent)}
+.petlink:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
 .ctable .nopet{font-size:11.5px; color:var(--muted)}
 /* 名前そのものを押してもカルテが開く（顧客一覧のわんちゃん名と同じ操作感） */
 .ctable button.cnlink{background:none; border:0; padding:0; font:inherit; font-weight:700; font-size:13.5px;
@@ -614,8 +617,13 @@ tr.clash td:first-child{box-shadow:inset 3px 0 0 var(--crit)}
 @media (max-width:640px){
   /* 顧客一覧は表のまま横スクロールさせる（カードに崩すと一覧性が落ちるため）。
      飼い主様の列は position:sticky で残し、誰の行かを見失わないようにする */
-  .ctable{min-width:560px; font-size:12.5px}
+  /* 列が5つ（飼い主様・わんちゃん・電話番号・LINE・操作）。
+     縮めると、わんちゃんの名前が1文字ずつ縦に割れて読めなくなるので最低幅を確保する */
+  .ctable{min-width:660px; font-size:12.5px}
   .ctable th,.ctable td{padding:8px 6px}
+  .ctable th{white-space:nowrap}      /* 見出しが「わんち／ゃん」と割れないように */
+  .ctable td.cn{min-width:104px}
+  .ctable td.cpetcell{min-width:120px}
   .ctable td.num{white-space:nowrap}
   /* ボタンが2段になると行の高さが倍になり、一覧として見づらくなる */
   .ctable .rowacts{flex-wrap:nowrap}
@@ -1508,6 +1516,7 @@ function renderOwners(q = ''){
       + (o.optOut ? ' <span class="pill crit">配信停止中</span>' : '');
     const pets = document.createElement('td');
     pets.dataset.label = 'わんちゃん';
+    pets.className = 'cpetcell';
     const petbox = document.createElement('div'); petbox.className = 'cpets';
     members.forEach(d => {
       const b = document.createElement('button');
@@ -4741,19 +4750,30 @@ function openCustomerPanel(o){
   const back = document.createElement('div'); back.className = 'mback';
   back.addEventListener('click', e => { if (e.target === back) closeEdit(); });
   const win = document.createElement('div'); win.className = 'mwin';
-  const pets = (o.members || []).map(m => m.n).join('・') || 'わんちゃん未登録';
+  const members = o.members || [];
   win.innerHTML = '<div class="mhd"><h2></h2><button class="mx" aria-label="閉じる">&#10005;</button></div>'
     + '<div class="cpbd">'
     + '<dl class="kv custkv">'
     + '<dt>電話番号</dt><dd>' + esc(o.tel) + '</dd>'
     + '<dt>LINE</dt><dd>' + (o.line ? '<span class="pill good">連携済み</span>'
         : '<span class="pill mut">未連携</span>　未連携の間は配信されません') + '</dd>'
-    + '<dt>わんちゃん</dt><dd>' + esc(pets) + '</dd>'
+    + '<dt>わんちゃん</dt><dd class="cpets"></dd>'
     + '<dt>配信</dt><dd>' + (o.optOut ? '<span class="pill crit">配信停止中</span>' : '通常') + '</dd>'
     + '</dl>'
     + '<div class="panelrem"></div></div>';
   win.querySelector('h2').textContent = o.name + ' 様の顧客情報';
   win.querySelector('.mx').addEventListener('click', closeEdit);
+  // わんちゃんを押したらその子のカルテへ（顧客一覧の名前と同じ操作感）
+  const petbox = win.querySelector('.cpets');
+  members.forEach(m => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'petlink';
+    b.textContent = m.n;
+    b.title = dogSub(m) + '｜カルテを開く';
+    b.addEventListener('click', () => { closeEdit(); openCarte(m, o); });
+    petbox.appendChild(b);
+  });
+  if (!members.length) petbox.innerHTML = '<span class="nopet">わんちゃん未登録</span>';
   back.appendChild(win);
   document.body.appendChild(back);
   editBack = back;
