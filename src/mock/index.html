@@ -368,8 +368,17 @@ button.trow2:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
 /* 顧客情報。基本情報の下にリマインド設定のカードを置く */
 .cpbd{padding:14px 18px; overflow-y:auto}
 .custkv{margin:0 0 12px; font-size:12.5px}
-.custkv .cpets{display:flex; flex-wrap:wrap; gap:5px}
+/* わんちゃんは1頭1行。名前・犬種・編集を横に並べ、行ごとに区切る */
+.custkv .cpets{display:grid; gap:6px; justify-items:start}
+.custkv .petrow{display:flex; align-items:center; gap:8px; width:100%}
+.custkv .petrow .psub{font-size:11.5px; color:var(--muted); flex:1 1 auto; min-width:0;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.custkv .petrow .sbtn{flex:0 0 auto; margin-left:auto}
 .custkv .nopet{font-size:11.5px; color:var(--muted)}
+/* 顧客情報の見出しに置く編集。閉じるボタンの手前に寄せる
+   （余白を吸うのは編集の側。閉じるにも auto が残ると2つの間が開いてしまう） */
+.mwin .mhd .cpedit{margin-left:auto}
+.mwin .mhd .cpedit + .mx{margin-left:0}
 .panelrem .card{box-shadow:none}
 .meter{background:var(--surface2); border-radius:99px; height:8px; overflow:hidden; margin:6px 0 2px}
 .meter i{display:block; height:100%; background:var(--accent); border-radius:99px}
@@ -4804,7 +4813,16 @@ function openCustomerPanel(o){
   back.addEventListener('click', e => { if (e.target === back) closeEdit(); });
   const win = document.createElement('div'); win.className = 'mwin';
   const members = o.members || [];
-  win.innerHTML = '<div class="mhd"><h2></h2><button class="mx" aria-label="閉じる">&#10005;</button></div>'
+  // 保存したら顧客情報に戻す
+  // （一覧やカルテへ飛ばされると、続けて設定を見たいときに戻り直しになる）
+  const reopen = async () => {
+    await refreshListAfterEdit();
+    const fresh = FAMILIES.find(f => String(f.id) === String(o.id));
+    if (fresh) openCustomerPanel(fresh);
+  };
+  win.innerHTML = '<div class="mhd"><h2></h2>'
+    + (adminLive ? '<button class="sbtn cpedit" type="button">編集</button>' : '')
+    + '<button class="mx" aria-label="閉じる">&#10005;</button></div>'
     + '<div class="cpbd">'
     + '<dl class="kv custkv">'
     + '<dt>電話番号</dt><dd>' + esc(o.tel) + '</dd>'
@@ -4816,39 +4834,41 @@ function openCustomerPanel(o){
     + '<div class="panelrem"></div></div>';
   win.querySelector('h2').textContent = o.name + ' 様の顧客情報';
   win.querySelector('.mx').addEventListener('click', closeEdit);
-  // わんちゃんを押したらその子のカルテへ（顧客一覧の名前と同じ操作感）
+  const editBtn = win.querySelector('.cpedit');
+  if (editBtn) editBtn.addEventListener('click', () => editOwner(o, null, reopen));
+
+  // わんちゃんは1頭ずつ縦に並べる。名前を押すとその子のカルテ、右の編集でその子の情報。
+  // 横に並べると、頭数が増えたときにどの編集がどの子のものか分からなくなる
   const petbox = win.querySelector('.cpets');
   members.forEach(m => {
+    const row = document.createElement('div');
+    row.className = 'petrow';
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'petlink';
     b.textContent = m.n;
     b.title = dogSub(m) + '｜カルテを開く';
     b.addEventListener('click', () => { closeEdit(); openCarte(m, o); });
-    petbox.appendChild(b);
+    row.appendChild(b);
+    row.insertAdjacentHTML('beforeend', '<span class="psub">' + esc(dogSub(m) || '') + '</span>');
+    if (adminLive) {
+      const e = document.createElement('button');
+      e.type = 'button'; e.className = 'sbtn mut';
+      e.textContent = '編集';
+      e.title = m.n + ' の情報を編集';
+      e.addEventListener('click', () => editPet(o, m, null, reopen));
+      row.appendChild(e);
+    }
+    petbox.appendChild(row);
   });
   if (!members.length) petbox.innerHTML = '<span class="nopet">わんちゃん未登録</span>';
-  // 編集・わんちゃん追加もここから。保存したら顧客情報に戻す
-  // （一覧やカルテへ飛ばされると、続けて設定を見たいときに戻り直しになる）
   if (adminLive) {
-    const reopen = async () => {
-      await refreshListAfterEdit();
-      const fresh = FAMILIES.find(f => String(f.id) === String(o.id));
-      if (fresh) openCustomerPanel(fresh);
-    };
-    const acts = document.createElement('div');
-    acts.className = 'frow';
-    acts.style.marginTop = '12px';
-    const mk = (label, fn) => {
-      const b = document.createElement('button');
-      b.type = 'button'; b.className = 'sbtn'; b.textContent = label;
-      b.addEventListener('click', fn);
-      acts.appendChild(b);
-    };
-    mk('編集', () => editOwner(o, null, reopen));
-    mk('＋ わんちゃん', () => editPet(o, null, null, reopen));
-    members.forEach(m => mk(m.n + ' を編集', () => editPet(o, m, null, reopen)));
-    win.querySelector('.cpbd').insertBefore(acts, win.querySelector('.panelrem'));
+    const add = document.createElement('button');
+    add.type = 'button'; add.className = 'sbtn';
+    add.textContent = '＋ わんちゃんを追加';
+    add.addEventListener('click', () => editPet(o, null, null, reopen));
+    petbox.appendChild(add);
   }
+
   back.appendChild(win);
   document.body.appendChild(back);
   editBack = back;
