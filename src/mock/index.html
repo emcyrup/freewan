@@ -17,7 +17,7 @@ button{font:inherit; color:inherit}
   --warn:#B4741F; --warn-soft:#F6EBD6;
   --crit:#B4453C; --crit-soft:#F7E3E1;
   --side:#24443B; --side-ink:#D8E5DF; --side-active:#3A7263;
-  --early:#3E6FA8; --late:#7B58A8;
+  --early:#3E6FA8; --late:#7B58A8; --hotel:#2E7D6B;
   --shadow:0 1px 3px rgba(43,39,35,.08);
 }
 @media (prefers-color-scheme: dark){
@@ -30,7 +30,7 @@ button{font:inherit; color:inherit}
     --warn:#D3A050; --warn-soft:#3C321C;
     --crit:#D08078; --crit-soft:#40251F;
     --side:#141F1B; --side-ink:#A9BDB4; --side-active:#2A4A40;
-    --early:#7FA6D2; --late:#A98BD6;
+    --early:#7FA6D2; --late:#A98BD6; --hotel:#5FB3A1;
     --shadow:0 1px 3px rgba(0,0,0,.4);
   }
 }
@@ -43,7 +43,7 @@ button{font:inherit; color:inherit}
   --warn:#B4741F; --warn-soft:#F6EBD6;
   --crit:#B4453C; --crit-soft:#F7E3E1;
   --side:#24443B; --side-ink:#D8E5DF; --side-active:#3A7263;
-  --early:#3E6FA8; --late:#7B58A8;
+  --early:#3E6FA8; --late:#7B58A8; --hotel:#2E7D6B;
   --shadow:0 1px 3px rgba(43,39,35,.08);
 }
 :root[data-theme="dark"]{
@@ -55,7 +55,7 @@ button{font:inherit; color:inherit}
   --warn:#D3A050; --warn-soft:#3C321C;
   --crit:#D08078; --crit-soft:#40251F;
   --side:#141F1B; --side-ink:#A9BDB4; --side-active:#2A4A40;
-  --early:#7FA6D2; --late:#A98BD6;
+  --early:#7FA6D2; --late:#A98BD6; --hotel:#5FB3A1;
   --shadow:0 1px 3px rgba(0,0,0,.4);
 }
 *{box-sizing:border-box}
@@ -217,6 +217,7 @@ button.trow2:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
 .tev.rsz{outline:2px solid rgba(255,255,255,.6); outline-offset:-2px; cursor:ew-resize}
 .tbadge{position:absolute; top:-12px; z-index:10; background:var(--ink); color:var(--bg); font-size:11px; font-weight:700; padding:2px 8px; border-radius:6px; white-space:nowrap; pointer-events:none; box-shadow:var(--shadow)}
 .tev.school{background:var(--honey)}
+.tev.hotel{background:var(--hotel)}
 .tev.trial{background:var(--good)}
 .tev.pickup{background:color-mix(in srgb, var(--accent) 55%, var(--muted))}
 .tev.early{background:var(--early)}
@@ -459,6 +460,8 @@ textarea{width:100%; border:1px solid var(--line); border-radius:8px; background
 .rvnote{font-size:12px; color:var(--muted)}
 /* 承認待ちは見落とすと顧客を待たせるため、行ごと強調する */
 tr.await td{background:var(--warn-soft)}
+/* 時間が重なっている予約。見落とすと当日ぶつかるので行ごと赤くする */
+tr.clash td{background:var(--crit-soft); box-shadow:inset 2px 0 0 var(--crit)}
 .rowacts{display:flex; flex-wrap:wrap; gap:5px}
 .sbtn{border:1px solid var(--line); background:var(--surface); color:var(--ink); font:inherit;
   font-size:11.5px; font-weight:700; border-radius:7px; padding:4px 9px; cursor:pointer; white-space:nowrap}
@@ -523,6 +526,8 @@ tr.await td{background:var(--warn-soft)}
   .rvtable tr{border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-bottom:10px}
   .rvtable tr.await{background:var(--warn-soft)}
   .rvtable tr.await td{background:none}
+  .rvtable tr.clash{background:var(--crit-soft)}
+  .rvtable tr.clash td{background:none}
   .rvtable td{border:0; padding:2px 0; white-space:normal}
   .rvtable td::before{content:attr(data-label)"： "; color:var(--muted); font-size:11px}
   .rvtable td.rvat{font-weight:700; font-size:14px; margin-bottom:2px}
@@ -690,6 +695,11 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
       <button data-v="week">週</button>
       <button data-v="month">月</button>
     </div>
+    <div class="seg" id="vnav">
+      <button data-n="-1" aria-label="前へ">&#9664;</button>
+      <button data-n="0">今日</button>
+      <button data-n="1" aria-label="次へ">&#9654;</button>
+    </div>
     <span class="vrange" id="vrange"></span>
   </div>
 
@@ -726,6 +736,7 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
       <div class="legend">
         <span><i style="background:var(--accent)"></i>トリミング</span>
         <span><i style="background:var(--honey)"></i>ペットスクール</span>
+        <span><i style="background:var(--hotel)"></i>ホテル</span>
         <span><i style="background:var(--good)"></i>初めてのわんちゃん</span>
         <span><i style="background:var(--early)"></i>&#11088; 10:00前にくる子</span>
         <span><i style="background:var(--late)"></i>&#11088; 18:00以降に帰る子</span>
@@ -1923,50 +1934,146 @@ for (let h = 0; h <= DAY_HOURS; h++) {
   s.textContent = (DAY_START + h) + ':00';
   tax.appendChild(s);
 }
-const rows = [
-  {name:'送迎',    role:'5頭まで'},
-  {name:'佐藤',    role:'トリマー', st:true},
-  {name:'高橋',    role:'トリマー・AM半休', st:true, off:[8,13,'AM半休']},
-  {name:'中村',    role:'スクール担当・公休', st:true, off:[8,21,'公休']},
-  {name:'山本',    role:'スクール担当', st:true},
+// ---- 日付の扱い ----
+// カレンダーは calState.date を基準に描く。固定日のサンプルを貼るのをやめ、
+// 前へ/次へで実際に日が動くようにする（実データ接続後も同じ枠組みで動かせる）
+const CLOSED_DOW = 4;                                // 木曜定休
+function ymd(d){ return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function calAddDays(d, n){ const x = new Date(d); x.setDate(x.getDate() + n); return x; }
+function calAddMonths(d, n){ const x = new Date(d); x.setDate(1); x.setMonth(x.getMonth() + n); return x; }
+function startOfWeek(d){ const x = new Date(d); const w = (x.getDay() + 6) % 7; return calAddDays(x, -w); }  // 月曜始まり
+function isClosed(d){ return d.getDay() === CLOSED_DOW; }
+function sameDay(a, b){ return ymd(a) === ymd(b); }
+const DOW_JP = ['日','月','火','水','木','金','土'];
+function dateLabel(d){ return d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日（' + DOW_JP[d.getDay()] + '）'; }
+function todayJst(){
+  // 端末の時計が JST でなくても店舗の「今日」で開く
+  const s = new Intl.DateTimeFormat('en-CA', { timeZone:'Asia/Tokyo', year:'numeric', month:'2-digit', day:'2-digit' }).format(new Date());
+  const [y, m, dd] = s.split('-').map(Number);
+  return new Date(y, m - 1, dd);
+}
+const calState = { view:'day', date: todayJst() };
+
+// ---- デモ用の予定（日付から決まるので、同じ日を開けば必ず同じ内容になる）----
+// 実運用モードで予約カレンダーを実データ化するときは、この生成部分だけを差し替える
+function seededRandom(key){
+  let h = 2166136261;
+  for (const ch of key) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+  return () => { h += 0x6D2B79F5; let t = h; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+const DEMO_PETS = ['マロン','ソラ','レオ','ココ','モカ','プリン','ベル','ラテ','きなこ','ムギ','チョコ','ハナ'];
+const DEMO_TRIM = [
+  { n:'シャンプー', d:1 }, { n:'シャンプー＆カット', d:2 }, { n:'カット', d:1.5 },
+  { n:'爪切り・耳掃除', d:0.5 }, { n:'部分カット', d:0.5 },
 ];
-const evs = [
-  {row:0, s:9,    d:1,   cls:'pickup', html:'<b>お迎え 3件</b>マロン・ソラ・レオ'},
-  {row:0, s:17.5, d:1,   cls:'pickup', html:'<b>お送り 3件</b>'},
-  {row:1, s:9,    d:1.5, cls:'',  pet:'ラテ',   html:'<b>ラテ シャンプー</b>早朝枠 <span class="src">電話</span>'},
-  {row:1, s:10.5, d:2,   cls:'',  pet:'マロン', html:'<b>マロン シャンプー＆カット</b><span class="src">EPARK</span>'},
-  {row:1, s:13,   d:1,   cls:'',  pet:'ココ',   html:'<b>ココ シャンプー</b><span class="src">LINE</span>'},
-  {row:1, s:14.5, d:2,   cls:'', nc:1, html:'<b>ルナ シャンプー＆カット</b>初回 <span class="src">EPARK</span>'},
-  {row:1, s:17,   d:1,   cls:'trial', pet:'チョコ', html:'<b>チョコ 初回相談</b><span class="src">LINE</span>'},
-  {row:2, s:13,   d:2,   cls:'',  pet:'プリン', html:'<b>プリン シャンプー＆カット</b><span class="src">EPARK</span>'},
-  {row:2, s:15.5, d:0.5, cls:'',  pet:'レオ',   html:'<b>レオ 爪切り・耳掃除</b><span class="src">電話</span>'},
-  {row:2, s:18,   d:1,   cls:'',  pet:'ベル',   html:'<b>ベル 夕方お迎え対応</b><span class="src">LINE</span>'},
-  // スクールの帯には複数の子が入る。pets の in/out は帯の時間と違う子だけ書く
-  // （タップでペット一覧→カルテを開ける。早い時間にくる子・遅くまでいる子は一覧に⭐で出る）
-  {row:4, s:10,   d:8,   cls:'school', html:'<b>ペットスクール 6頭</b>マロン・ソラ ほか',
-    pets:[
-      {n:'マロン', in:9}, {n:'ソラ', in:9}, {n:'レオ', in:9},
-      {n:'きなこ'}, {n:'モカ'}, {n:'ベル', out:18.5},
-    ]},
+const DEMO_SRC = ['LINE','EPARK','電話'];
+const CAL_ROWS = [
+  { name:'送迎',   role:'5頭まで' },
+  { name:'佐藤',   role:'トリマー', st:true },
+  { name:'高橋',   role:'トリマー', st:true },
+  { name:'中村',   role:'スクール担当', st:true },
+  { name:'山本',   role:'スクール担当', st:true },
+  { name:'ホテル', role:'お預かり' },
 ];
+// スタッフの休みも日付から決める（曜日で固定。デモとして分かりやすい形にしてある）
+function dayOff(date, rowIndex){
+  const dow = date.getDay();
+  if (rowIndex === 2 && dow === 3) return [8, 13, 'AM半休'];
+  if (rowIndex === 3 && (dow === 0 || dow === 1)) return [8, 21, '公休'];
+  return null;
+}
+function demoDay(date){
+  if (isClosed(date)) return { closed:true, evs:[] };
+  const rnd = seededRandom(ymd(date));
+  const pick = (arr) => arr[Math.floor(rnd() * arr.length)];
+  const evs = [];
+
+  // 送迎
+  evs.push({ row:0, s:9, d:1, cls:'pickup', cat:null, html:'<b>お迎え ' + (2 + Math.floor(rnd() * 3)) + '件</b>' });
+  evs.push({ row:0, s:17.5, d:1, cls:'pickup', cat:null, html:'<b>お送り ' + (2 + Math.floor(rnd() * 3)) + '件</b>' });
+
+  // トリミング（担当ごとに時間が重ならないよう順に置く）
+  [1, 2].forEach((row) => {
+    if (dayOff(date, row)) return;
+    let t = 9 + Math.floor(rnd() * 2) * 0.5;
+    const count = 2 + Math.floor(rnd() * 3);
+    for (let i = 0; i < count; i++) {
+      const menu = pick(DEMO_TRIM), pet = pick(DEMO_PETS);
+      if (t + menu.d > 20) break;
+      const nc = rnd() < 0.15 ? 1 : 0;
+      evs.push({
+        row, s:t, d:menu.d, cls:'', cat:'trimming', pet, nc,
+        html:'<b>' + pet + ' ' + menu.n + '</b>' + (nc ? '初回 ' : '') + '<span class="src">' + pick(DEMO_SRC) + '</span>',
+      });
+      t += menu.d + (nc ? 0.5 : 0) + 0.5 + Math.floor(rnd() * 2) * 0.5;
+    }
+  });
+
+  // ペットスクール（複数頭が入る帯。早く来る子・遅くまでいる子を混ぜる）
+  const schoolRow = dayOff(date, 4) ? 3 : 4;
+  if (!dayOff(date, schoolRow)) {
+    const n = 3 + Math.floor(rnd() * 4);
+    const pets = [];
+    const used = new Set();
+    for (let i = 0; i < n; i++) {
+      let p = pick(DEMO_PETS);
+      while (used.has(p)) p = pick(DEMO_PETS);
+      used.add(p);
+      const e = { n:p };
+      if (rnd() < 0.3) e.in = 9;
+      else if (rnd() < 0.2) e.out = 18.5;
+      pets.push(e);
+    }
+    evs.push({
+      row:schoolRow, s:10, d:8, cls:'school', cat:'school', pets,
+      html:'<b>ペットスクール ' + n + '頭</b>' + pets.slice(0, 2).map(p => p.n).join('・') + (n > 2 ? ' ほか' : ''),
+    });
+    if (rnd() < 0.4) {
+      const p = pick(DEMO_PETS);
+      evs.push({ row:schoolRow === 4 ? 3 : 4, s:11 + Math.floor(rnd() * 4), d:1.5, cls:'trial', cat:'school', pet:p,
+        html:'<b>' + p + ' 体験入園</b><span class="src">' + pick(DEMO_SRC) + '</span>' });
+    }
+  }
+
+  // ホテル（お預かり。1日中の帯になる）
+  const hotelCount = rnd() < 0.5 ? 0 : 1 + Math.floor(rnd() * 2);
+  for (let i = 0; i < hotelCount; i++) {
+    const p = pick(DEMO_PETS);
+    evs.push({ row:5, s:9 + i * 0.5, d:10, cls:'hotel', cat:'hotel', pet:p,
+      html:'<b>' + p + ' ホテル</b>お預かり <span class="src">' + pick(DEMO_SRC) + '</span>' });
+  }
+  return { closed:false, evs };
+}
+
+// ---- 日表示の描画 ----
 const tl = document.getElementById('tl');
 const bodies = [];
-rows.forEach(r => {
-  const tr = document.createElement('div'); tr.className = 'trow';
-  const lb = document.createElement('div'); lb.className = 'rlab';
-  lb.innerHTML = '<span style="display:flex;align-items:center;gap:2px">' + r.name
-    + (r.st ? '<button class="star" data-star="' + r.name + '" aria-label="' + r.name + 'の新人マーク">&#9734;</button>' : '')
-    + '</span><span class="role">' + r.role + '</span>';
-  const bd = document.createElement('div'); bd.className = 'rbody';
-  if (r.off) {
-    const h = document.createElement('div'); h.className = 'hatch';
-    h.style.left  = ((r.off[0] - DAY_START) / DAY_HOURS * 100) + '%';
-    h.style.width = ((r.off[1] - r.off[0]) / DAY_HOURS * 100) + '%';
-    h.textContent = r.off[2];
-    bd.appendChild(h);
-  }
-  tr.append(lb, bd); tl.appendChild(tr); bodies.push(bd);
-});
+function renderDay(){
+  const date = calState.date;
+  const day = demoDay(date);
+  tl.innerHTML = '';
+  bodies.length = 0;
+  CAL_ROWS.forEach((r, i) => {
+    const tr = document.createElement('div'); tr.className = 'trow';
+    const lb = document.createElement('div'); lb.className = 'rlab';
+    lb.innerHTML = '<span style="display:flex;align-items:center;gap:2px">' + r.name
+      + (r.st ? '<button class="star" data-star="' + r.name + '" aria-label="' + r.name + 'の新人マーク">&#9734;</button>' : '')
+      + '</span><span class="role">' + r.role + '</span>';
+    const bd = document.createElement('div'); bd.className = 'rbody';
+    const off = day.closed ? [DAY_START, DAY_START + DAY_HOURS, '定休日'] : dayOff(date, i);
+    if (off) {
+      const h = document.createElement('div'); h.className = 'hatch';
+      h.style.left  = ((off[0] - DAY_START) / DAY_HOURS * 100) + '%';
+      h.style.width = ((off[1] - off[0]) / DAY_HOURS * 100) + '%';
+      h.textContent = off[2];
+      bd.appendChild(h);
+    }
+    tr.append(lb, bd); tl.appendChild(tr); bodies.push(bd);
+  });
+  day.evs.forEach(makeEv);
+  updateStars();
+}
+
 function fmt(t){ const h = Math.floor(t), m = Math.round((t - h) * 60); return h + ':' + String(m).padStart(2, '0'); }
 // 帯の実際の在店時間。スクールのように複数の子が入る帯では、
 // 早く来る子・遅くまでいる子を含めた幅で見る（帯の枠内に収まっていても⭐を出すため）
@@ -1998,46 +2105,9 @@ function makeEv(e){
   d.addEventListener('contextmenu', ev => ev.preventDefault());
   bodies[e.row].appendChild(d);
 }
-evs.forEach(makeEv);
+
 
 // ================= 週表示 =================
-const WEEK = [
-  { d:'7/20', w:'月', evs:[
-      {s:10,  dur:8,   cls:'school', t:'ペットスクール 5頭'},
-      {s:11,  dur:2,   cls:'',       t:'ベル シャンプー＆カット'},
-      {s:14,  dur:1,   cls:'',       t:'ココ シャンプー'},
-      {s:16,  dur:2,   cls:'',       t:'モカ シャンプー＆カット'}] },
-  { d:'7/21', w:'火', evs:[
-      {s:10,  dur:8,   cls:'school', t:'ペットスクール 6頭'},
-      {s:11,  dur:1.5, cls:'trial',  t:'ソラ スクール（体験）'},
-      {s:14,  dur:1.5, cls:'trial',  t:'ハナ スクール（体験）'},
-      {s:16.5,dur:0.5, cls:'',       t:'レオ 爪切り'}] },
-  { d:'7/22', w:'水', evs:[
-      {s:10,  dur:8,   cls:'school', t:'ペットスクール 4頭'},
-      {s:10.5,dur:2,   cls:'',       t:'プリン シャンプー＆カット'},
-      {s:14,  dur:1.5, cls:'',       t:'ムギ シャンプー'},
-      {s:17,  dur:0.5, cls:'',       t:'ラテ 爪切り'}] },
-  { d:'7/23', w:'木', closed:true, evs:[] },
-  { d:'7/24', w:'金', today:true, evs:[
-      {s:10,  dur:8,   cls:'school', t:'ペットスクール 6頭'},
-      {s:9,   dur:1.5, cls:'',       t:'ラテ シャンプー'},
-      {s:10.5,dur:2,   cls:'',       t:'マロン シャンプー＆カット'},
-      {s:13,  dur:1,   cls:'',       t:'ココ シャンプー'},
-      {s:13,  dur:2,   cls:'',       t:'プリン シャンプー＆カット'},
-      {s:15,  dur:2,   cls:'',       t:'モカ シャンプー＆カット'},
-      {s:17,  dur:1,   cls:'trial',  t:'チョコ 初回相談'},
-      {s:19,  dur:1.5, cls:'',       t:'ベル 夜間のお迎え対応'}] },
-  { d:'7/25', w:'土', evs:[
-      {s:10,  dur:2,   cls:'',       t:'マロン シャンプー＆カット'},
-      {s:11,  dur:1.5, cls:'',       t:'ムギ シャンプー'},
-      {s:12.5,dur:2,   cls:'',       t:'チョコ シャンプー'},
-      {s:15,  dur:2,   cls:'',       t:'レオ シャンプー＆カット'},
-      {s:17,  dur:1.5, cls:'',       t:'きなこ シャンプー'}] },
-  { d:'7/26', w:'日', evs:[
-      {s:10,  dur:8,   cls:'school', t:'ペットスクール 3頭'},
-      {s:11,  dur:2,   cls:'',       t:'ベル シャンプー＆カット'},
-      {s:14,  dur:2,   cls:'',       t:'ラテ シャンプー＆カット'}] },
-];
 const wtax = document.getElementById('wtax'), wtl = document.getElementById('wtl');
 for (let h = 0; h <= DAY_HOURS; h++) {
   const s = document.createElement('span');
@@ -2046,98 +2116,148 @@ for (let h = 0; h <= DAY_HOURS; h++) {
   s.textContent = (DAY_START + h) + ':00';
   wtax.appendChild(s);
 }
-WEEK.forEach(day => {
-  const tr = document.createElement('div'); tr.className = 'trow';
-  const lb = document.createElement('button'); lb.className = 'rlab' + (day.w === '土' ? ' sat' : day.w === '日' ? ' sun' : '');
-  lb.type = 'button';
-  lb.innerHTML = day.d + '（' + day.w + '）<span class="role">' + (day.closed ? '定休日' : day.evs.length + ' 件') + (day.today ? '・本日' : '') + '</span>';
-  lb.addEventListener('click', () => setView('day'));
-  const bd = document.createElement('div'); bd.className = 'rbody';
-  if (day.closed) {
-    const h = document.createElement('div'); h.className = 'hatch';
-    h.style.left = '0'; h.style.width = '100%'; h.textContent = '定休日';
-    bd.appendChild(h);
+function renderWeek(){
+  const monday = startOfWeek(calState.date);
+  const today = todayJst();
+  wtl.innerHTML = '';
+  for (let i = 0; i < 7; i++) {
+    const date = calAddDays(monday, i);
+    const day = demoDay(date);
+    const dow = date.getDay();
+    const tr = document.createElement('div'); tr.className = 'trow';
+    const lb = document.createElement('button');
+    lb.className = 'rlab' + (dow === 6 ? ' sat' : dow === 0 ? ' sun' : '');
+    lb.type = 'button';
+    lb.innerHTML = (date.getMonth() + 1) + '/' + date.getDate() + '（' + DOW_JP[dow] + '）'
+      + '<span class="role">' + (day.closed ? '定休日' : day.evs.length + ' 件')
+      + (sameDay(date, today) ? '・本日' : '') + '</span>';
+    // 日付をタップしたらその日の詳細へ。移動先の日を選んでから切り替える
+    lb.addEventListener('click', () => { calState.date = date; setView('day'); });
+    const bd = document.createElement('div'); bd.className = 'rbody';
+    if (day.closed) {
+      const h = document.createElement('div'); h.className = 'hatch';
+      h.style.left = '0'; h.style.width = '100%'; h.textContent = '定休日';
+      bd.appendChild(h);
+    }
+    day.evs.filter(e => e.cls !== 'pickup').forEach(e => {
+      const el = document.createElement('div');
+      const wide = e.cls === 'school' || e.cls === 'hotel';
+      const span = evSpan(e.s, e.d, e.pets);
+      const pc = periodCls(span.arr, span.dep);
+      // 長い帯は上段、短い予定は下段に分けて重なりを避ける
+      el.className = 'tev ' + e.cls + (pc ? ' ' + pc : '') + (wide ? ' laneA' : ' laneB');
+      el.style.left  = ((e.s - DAY_START) / DAY_HOURS * 100) + '%';
+      el.style.width = (e.d / DAY_HOURS * 100) + '%';
+      const label = (e.html.match(/<b>(.*?)<\/b>/) || [, ''])[1];
+      el.innerHTML = '<b>' + label + '</b>' + (wide ? '　' : '') + fmt(e.s) + '〜' + fmt(e.s + e.d);
+      el.title = (date.getMonth() + 1) + '/' + date.getDate() + ' ' + fmt(e.s) + '〜' + fmt(e.s + e.d) + '　' + label;
+      bd.appendChild(el);
+    });
+    tr.append(lb, bd); wtl.appendChild(tr);
   }
-  day.evs.forEach(e => {
-    const el = document.createElement('div');
-    const school = e.cls === 'school';
-    const pc = periodCls(e.s, e.s + e.dur);
-    el.className = 'tev ' + e.cls + (pc ? ' ' + pc : '') + (school ? ' laneA' : ' laneB');   // ペットスクールは上段、トリミングは下段
-    el.style.left  = ((e.s - DAY_START) / DAY_HOURS * 100) + '%';
-    el.style.width = (e.dur / DAY_HOURS * 100) + '%';
-    el.innerHTML = school
-      ? '<b>' + e.t + '</b>　' + fmt(e.s) + '〜' + fmt(e.s + e.dur)
-      : '<b>' + e.t + '</b>' + fmt(e.s) + '〜' + fmt(e.s + e.dur);
-    el.title = day.d + ' ' + fmt(e.s) + '〜' + fmt(e.s + e.dur) + '　' + e.t;
-    bd.appendChild(el);
-  });
-  tr.append(lb, bd); wtl.appendChild(tr);
-});
+}
 
 // ================= 月表示 =================
-// [日, トリミング件数, ペットスクール頭数, 初回のわんちゃん]（0 = 定休日）
-// 木曜定休（2026年7月は 2・9・16・23・30 日）。20〜26日は週表示の内容と一致
-const MONTH = [
-  [1,6,5,1],[2,0,0,0],[3,8,6,0],[4,9,0,1],[5,5,3,0],[6,4,5,0],[7,6,6,1],
-  [8,7,4,0],[9,0,0,0],[10,8,6,1],[11,11,0,0],[12,4,3,0],[13,5,5,0],[14,6,6,2],
-  [15,6,4,0],[16,0,0,0],[17,9,6,1],[18,10,0,1],[19,3,3,0],[20,3,5,0],[21,1,6,2],
-  [22,3,4,0],[23,0,0,0],[24,6,6,1],[25,5,0,0],[26,2,3,0],[27,4,5,0],[28,6,6,1],
-  [29,7,4,0],[30,0,0,0],[31,8,6,0],
-];
 const mgrid = document.getElementById('mgrid');
-['月','火','水','木','金','土','日'].forEach((w, i) => {
-  const d = document.createElement('div');
-  d.className = 'dow' + (i === 5 ? ' sat' : i === 6 ? ' sun' : '');
-  d.textContent = w;
-  mgrid.appendChild(d);
-});
-for (let i = 0; i < 2; i++) {                       // 2026/7/1 は水曜 → 月・火は前月分
-  const c = document.createElement('div'); c.className = 'mcell out';
-  c.innerHTML = '<span class="dnum">' + (29 + i) + '</span>';
-  mgrid.appendChild(c);
-}
-MONTH.forEach(([day, salon, school, trial]) => {
-  const dow = (day + 1) % 7;                        // 0=月 … 5=土, 6=日
-  const c = document.createElement('button'); c.type = 'button';
-  c.className = 'mcell' + (day === 24 ? ' today' : '') + (salon === 0 ? ' out' : '');
-  let html = '<span class="dnum' + (dow === 5 ? ' sat' : dow === 6 ? ' sun' : '') + '">' + day + '</span>';
-  if (salon === 0) {
-    html += '<span class="closed">定休日</span>';
-  } else {
-    html += '<span class="mline"><i style="background:var(--accent)"></i><span>トリミング</span><b>' + salon + '</b></span>';
-    if (school) html += '<span class="mline"><i style="background:var(--honey)"></i><span>スクール</span><b>' + school + '</b></span>';
-    if (trial)  html += '<span class="mline"><i style="background:var(--good)"></i><span>初回</span><b>' + trial + '</b></span>';
+function renderMonth(){
+  const base = calState.date;
+  const first = new Date(base.getFullYear(), base.getMonth(), 1);
+  const last = new Date(base.getFullYear(), base.getMonth() + 1, 0);
+  const today = todayJst();
+  mgrid.innerHTML = '';
+  ['月','火','水','木','金','土','日'].forEach((w, i) => {
+    const d = document.createElement('div');
+    d.className = 'dow' + (i === 5 ? ' sat' : i === 6 ? ' sun' : '');
+    d.textContent = w;
+    mgrid.appendChild(d);
+  });
+  // 月初の前に、前月末の日を並べて曜日を合わせる
+  const lead = (first.getDay() + 6) % 7;
+  for (let i = lead; i > 0; i--) {
+    const d = calAddDays(first, -i);
+    const c = document.createElement('div'); c.className = 'mcell out';
+    c.innerHTML = '<span class="dnum">' + d.getDate() + '</span>';
+    mgrid.appendChild(c);
   }
-  c.innerHTML = html;
-  if (salon) c.addEventListener('click', () => setView('day'));
-  mgrid.appendChild(c);
-});
-for (let i = 0; i < 2; i++) {                       // 7/31 は金曜 → 土・日は翌月分
-  const c = document.createElement('div'); c.className = 'mcell out';
-  c.innerHTML = '<span class="dnum">' + (1 + i) + '</span>';
-  mgrid.appendChild(c);
+  let totals = [0, 0, 0], openDays = 0;
+  for (let dnum = 1; dnum <= last.getDate(); dnum++) {
+    const date = new Date(base.getFullYear(), base.getMonth(), dnum);
+    const day = demoDay(date);
+    const dow = date.getDay();
+    const trim = day.evs.filter(e => e.cat === 'trimming').length;
+    const school = day.evs.filter(e => e.cls === 'school').reduce((a, e) => a + (e.pets ? e.pets.length : 0), 0);
+    const trial = day.evs.filter(e => e.cls === 'trial').length + day.evs.filter(e => e.nc).length;
+    const hotel = day.evs.filter(e => e.cat === 'hotel').length;
+    if (!day.closed) { totals = [totals[0] + trim, totals[1] + school, totals[2] + trial]; openDays++; }
+    const c = document.createElement('button'); c.type = 'button';
+    c.className = 'mcell' + (sameDay(date, today) ? ' today' : '') + (day.closed ? ' out' : '');
+    let html = '<span class="dnum' + (dow === 6 ? ' sat' : dow === 0 ? ' sun' : '') + '">' + dnum + '</span>';
+    if (day.closed) {
+      html += '<span class="closed">定休日</span>';
+    } else {
+      html += '<span class="mline"><i style="background:var(--accent)"></i><span>トリミング</span><b>' + trim + '</b></span>';
+      if (school) html += '<span class="mline"><i style="background:var(--honey)"></i><span>スクール</span><b>' + school + '</b></span>';
+      if (hotel)  html += '<span class="mline"><i style="background:var(--hotel)"></i><span>ホテル</span><b>' + hotel + '</b></span>';
+      if (trial)  html += '<span class="mline"><i style="background:var(--good)"></i><span>初回</span><b>' + trial + '</b></span>';
+    }
+    c.innerHTML = html;
+    if (!day.closed) c.addEventListener('click', () => { calState.date = date; setView('day'); });
+    mgrid.appendChild(c);
+  }
+  // 月末のあとに、翌月頭の日を並べて7列を埋める
+  const tail = (7 - ((lead + last.getDate()) % 7)) % 7;
+  for (let i = 1; i <= tail; i++) {
+    const d = calAddDays(last, i);
+    const c = document.createElement('div'); c.className = 'mcell out';
+    c.innerHTML = '<span class="dnum">' + d.getDate() + '</span>';
+    mgrid.appendChild(c);
+  }
+  document.getElementById('msum').innerHTML =
+    (base.getMonth() + 1) + '月合計　トリミング <b>' + totals[0] + ' 件</b>　ペットスクール延べ <b>' + totals[1]
+    + ' 頭</b>　初回 <b>' + totals[2] + ' 件</b>　営業 <b>' + openDays + ' 日</b>（木曜定休）';
 }
-const mt = MONTH.reduce((a, x) => [a[0] + x[1], a[1] + x[2], a[2] + x[3]], [0, 0, 0]);
-document.getElementById('msum').innerHTML =
-  '7月合計　トリミング <b>' + mt[0] + ' 件</b>　ペットスクール延べ <b>' + mt[1] + ' 頭</b>　初回 <b>' + mt[2] + ' 件</b>　営業 <b>' + MONTH.filter(x => x[1]).length + ' 日</b>（木曜定休）';
 
-// ---- 表示切替 ----
-const VIEWS = {
-  day:   { range:'2026年7月24日（金）8:00〜21:00', sub:'横軸が時間（8:00〜21:00）・縦が担当の表示。<b>10:00以前の予定は青、19:00以降は紫、両方にまたがる予定はグラデーション</b>で色分けされます。<b>初めてのわんちゃんは自動で+30分の枠（斜線）を確保</b>。スタッフ名の☆で新人マーク&#11088;を付与。タップで詳細、長押し（PCはドラッグ）でコピー、両端スライドで時間変更ができます（30分単位）。' },
-  week:  { range:'2026年7月20日（月）〜 7月26日（日）', sub:'1週間の予約を一覧で確認できます。日付をタップするとその日の詳細（日表示）に切り替わります。' },
-  month: { range:'2026年7月', sub:'日ごとの件数を俯瞰できます。日付をタップするとその日の詳細（日表示）に切り替わります。' },
+// ---- 表示切替と日付移動 ----
+const VIEW_SUB = {
+  day:  '横軸が時間（8:00〜21:00）・縦が担当の表示。<b>10:00以前の予定は青、19:00以降は紫、両方にまたがる予定はグラデーション</b>で色分けされます。<b>初めてのわんちゃんは自動で+30分の枠（斜線）を確保</b>。スタッフ名の☆で新人マーク&#11088;を付与。タップで詳細、長押し（PCはドラッグ）でコピー、両端スライドで時間変更ができます（30分単位）。',
+  week: '1週間の予約を一覧で確認できます。日付をタップするとその日の詳細（日表示）に切り替わります。',
+  month:'日ごとの件数を俯瞰できます。日付をタップするとその日の詳細（日表示）に切り替わります。',
 };
+function calRange(){
+  if (calState.view === 'day') return dateLabel(calState.date) + ' 8:00〜21:00';
+  if (calState.view === 'week') {
+    const a = startOfWeek(calState.date), b = calAddDays(a, 6);
+    return a.getFullYear() + '年' + (a.getMonth() + 1) + '月' + a.getDate() + '日（月）〜 '
+      + (b.getMonth() + 1) + '月' + b.getDate() + '日（日）';
+  }
+  return calState.date.getFullYear() + '年' + (calState.date.getMonth() + 1) + '月';
+}
+function renderCalendar(){
+  renderDay(); renderWeek(); renderMonth();
+  document.getElementById('vrange').textContent = calRange();
+  document.getElementById('calsub').innerHTML = VIEW_SUB[calState.view];
+}
 function setView(v){
+  calState.view = v;
   document.querySelectorAll('#vseg button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
   ['day', 'week', 'month'].forEach(x => document.getElementById('v-' + x).style.display = x === v ? '' : 'none');
-  document.getElementById('vrange').textContent = VIEWS[v].range;
-  document.getElementById('calsub').innerHTML = VIEWS[v].sub;
+  renderCalendar();
 }
 document.getElementById('vseg').addEventListener('click', e => {
   const b = e.target.closest('button[data-v]');
   if (b) setView(b.dataset.v);
 });
-setView('day');
+// 前へ/次へは表示中の単位で動く（日表示なら1日、週表示なら1週、月表示なら1ヶ月）
+document.getElementById('vnav').addEventListener('click', e => {
+  const b = e.target.closest('button[data-n]');
+  if (!b) return;
+  const n = Number(b.dataset.n);
+  if (n === 0) calState.date = todayJst();
+  else if (calState.view === 'day') calState.date = calAddDays(calState.date, n);
+  else if (calState.view === 'week') calState.date = calAddDays(calState.date, n * 7);
+  else calState.date = calAddMonths(calState.date, n);
+  renderCalendar();
+});
 
 // ---- 新人スタッフの⭐マーク（カレンダー・シフトで共通） ----
 const ROOKIE = new Set(['伊藤', '山本']);
@@ -2149,6 +2269,8 @@ function updateStars(){
     b.setAttribute('aria-pressed', on);
   });
 }
+setView('day');   // 初回描画。updateStars を使うので ROOKIE の定義後に行う
+
 document.addEventListener('click', e => {
   const b = e.target.closest('.star');
   if (!b) return;
@@ -2893,7 +3015,7 @@ function findFamilyPet(petName){
 }
 function openPop(ev, x, y){
   closePop();
-  const row = rows[bodies.indexOf(ev.parentElement)];
+  const row = CAL_ROWS[bodies.indexOf(ev.parentElement)];
   const s = parseFloat(ev.dataset.s), d = parseFloat(ev.dataset.d);
   const title = (ev.querySelector('b') || {}).textContent || '予約';
   const petList = ev.dataset.pets ? JSON.parse(ev.dataset.pets) : null;
@@ -3065,7 +3187,7 @@ function endDrag(commit){
   const sameSpot = target === ev.parentElement && t === parseFloat(ev.dataset.s);
   if (commit && target && !sameSpot) {
     makeEvIn(target, { s: t, d: parseFloat(ev.dataset.d), cls: ev.dataset.cls, html: ev.dataset.html, nc: ev.dataset.nc === '1' ? 1 : 0 });
-    const nm = rows[bodies.indexOf(target)].name;
+    const nm = CAL_ROWS[bodies.indexOf(target)].name;
     showToast('コピーしました：' + nm + ' ' + fmt(t) + '〜');
   }
   g.remove(); ev.classList.remove('lift');
@@ -3497,17 +3619,49 @@ document.getElementById('th-later').addEventListener('click', () => {
 // 実運用モードでは管理 API の実データを表示し、承認・来店登録・テスト送信もすべて本物が動く。
 // API に届かないときは下記のサンプルデータでデモ動作する。
 const RESV = [
-  { id:101, at:'7/26(日) 11:00', name:'ルナ',     menu:'シャンプー＆カットコース', staff:'',     status:'requested', note:'はじめてなので、短くしすぎない仕上がりを希望します。' },
-  { id:102, at:'7/29(水) 14:30', name:'ラテ',     menu:'シャンプーコース',         staff:'伊藤', status:'requested', note:'' },
-  { id:103, at:'7/24(金) 10:30', name:'マロン',   menu:'シャンプー＆カットコース', staff:'佐藤', status:'confirmed', note:'', ok:true },
-  { id:104, at:'7/24(金) 17:00', name:'チョコ',   menu:'初回カウンセリング',       staff:'中村', status:'confirmed', note:'大型犬ですが対応可能でしょうか。' },
-  { id:105, at:'7/25(土) 10:00', name:'ムギ',     menu:'シャンプーコース',         staff:'佐藤', status:'confirmed', note:'', ok:true },
-  { id:106, at:'7/25(土) 12:30', name:'レオ',     menu:'シャンプー＆カットコース', staff:'高橋', status:'confirmed', note:'' },
-  { id:107, at:'7/28(火) 13:00', name:'ベル',     menu:'ペットスクール', staff:'山本', status:'confirmed', note:'お迎えは18時半ごろになります。' },
-  { id:108, at:'7/22(火) 10:00', name:'マロン',   menu:'ペットスクール',               staff:'山本', status:'visited',  note:'' },
-  { id:109, at:'7/21(月) 13:00', name:'ハナ',     menu:'ペットスクール（体験）',       staff:'中村', status:'visited',  note:'' },
-  { id:110, at:'7/20(月) 15:00', name:'きなこ',   menu:'シャンプーコース',         staff:'伊藤', status:'cancelled', note:'' },
+  { id:101, at:'7/26(日) 11:00', name:'ルナ',     menu:'シャンプー＆カットコース', staff:'',     status:'requested', note:'はじめてなので、短くしすぎない仕上がりを希望します。', cat:'trimming', mins:120 },
+  { id:102, at:'7/29(水) 14:30', name:'ラテ',     menu:'シャンプーコース',         staff:'伊藤', status:'requested', note:'', cat:'trimming', mins:60 },
+  { id:103, at:'7/24(金) 10:30', name:'マロン',   menu:'シャンプー＆カットコース', staff:'佐藤', status:'confirmed', note:'', ok:true, cat:'trimming', mins:120 },
+  // 103 と同じ担当・重なる時間。重複の警告表示を確かめるためのサンプル
+  { id:111, at:'7/24(金) 11:30', name:'モカ',     menu:'カットコース',             staff:'佐藤', status:'confirmed', note:'', cat:'trimming', mins:90 },
+  { id:104, at:'7/24(金) 17:00', name:'チョコ',   menu:'体験入園',                 staff:'中村', status:'confirmed', note:'大型犬ですが対応可能でしょうか。', cat:'school', mins:90, stage:'counseling' },
+  { id:105, at:'7/25(土) 10:00', name:'ムギ',     menu:'シャンプーコース',         staff:'佐藤', status:'confirmed', note:'', ok:true, cat:'trimming', mins:60 },
+  { id:106, at:'7/25(土) 12:30', name:'レオ',     menu:'シャンプー＆カットコース', staff:'高橋', status:'confirmed', note:'', cat:'trimming', mins:120 },
+  { id:107, at:'7/28(火) 13:00', name:'ベル',     menu:'ペットホテル',             staff:'',     status:'confirmed', note:'お迎えは18時半ごろになります。', cat:'hotel', mins:1440 },
+  { id:108, at:'7/22(火) 10:00', name:'マロン',   menu:'ペットスクール',           staff:'山本', status:'visited',  note:'', cat:'school', mins:480, stage:'enrolled' },
+  { id:109, at:'7/21(月) 13:00', name:'ハナ',     menu:'体験入園',                 staff:'中村', status:'visited',  note:'', cat:'school', mins:90, stage:'trial' },
+  { id:110, at:'7/20(月) 15:00', name:'きなこ',   menu:'シャンプーコース',         staff:'伊藤', status:'cancelled', note:'', cat:'trimming', mins:60 },
 ];
+// スクールの進み方。体験だけを対象にした配信や追客の絞り込みにも使う
+const SCHOOL_STAGES = [
+  { v:'counseling', label:'カウンセリング' },
+  { v:'trial',      label:'体験' },
+  { v:'enrolled',   label:'入園' },
+];
+const CAT_LABELS = { trimming:'トリミング', school:'スクール', hotel:'ホテル' };
+// 予定の開始を分に直す。同じ年内で比べられれば十分なので月日から組み立てる
+function rvStartMin(r){
+  const m = /(\d+)\/(\d+).*?(\d+):(\d+)/.exec(r.at);
+  if (!m) return null;
+  return ((Number(m[1]) * 31) + Number(m[2])) * 1440 + Number(m[3]) * 60 + Number(m[4]);
+}
+// 時間が重なっている予約の id を集める。
+// サーバ側の重複禁止と同じ条件（同じ担当・1対1の区分・有効な予約）で見る。
+// スクールとホテルは複数頭を同時に受けるため重なっていても問題ない
+function overlappingIds(list){
+  const active = list.filter(r => ['requested', 'confirmed'].includes(r.status)
+    && r.staff && r.cat === 'trimming' && rvStartMin(r) != null);
+  const hit = new Set();
+  for (let i = 0; i < active.length; i++) {
+    for (let j = i + 1; j < active.length; j++) {
+      const a = active[i], b = active[j];
+      if (a.staff !== b.staff) continue;
+      const as = rvStartMin(a), bs = rvStartMin(b);
+      if (as < bs + (b.mins || 60) && bs < as + (a.mins || 60)) { hit.add(a.id); hit.add(b.id); }
+    }
+  }
+  return hit;
+}
 const RV_STATUS = {
   requested: ['承認待ち', 'warn'],
   confirmed: ['確定',     'acc'],
@@ -3518,6 +3672,24 @@ const RV_STATUS = {
 const rvrows = document.getElementById('rvrows');
 const awaitcnt = document.getElementById('awaitcnt');
 
+async function setSchoolStage(r, stage){
+  const label = (SCHOOL_STAGES.find(x => x.v === stage) || {}).label;
+  if (!adminLive) {
+    r.stage = stage; renderResv();
+    showToast(r.name + ' を「' + label + '」にしました');
+    return;
+  }
+  try {
+    await adminApi('/reservations/' + r.id + '/school-stage', {
+      method: 'PATCH', body: JSON.stringify({ stage }),
+    });
+    r.stage = stage; renderResv();
+    showToast(r.name + ' を「' + label + '」にしました');
+  } catch (err) {
+    showToast('エラー: ' + err.message);
+  }
+}
+
 function rvSetStatus(r, status, msg){
   const before = r.status;
   r.status = status;
@@ -3526,8 +3698,9 @@ function rvSetStatus(r, status, msg){
 }
 // 実運用モードの予約読み込み。日時表示は SNS と同じ JST 整形を使う
 function rvMap(r){
-  return { id: r.id, at: snsFmtJst(r.reserved_at), name: r.customer_name, menu: r.menu || '—',
-    staff: r.staff_name || '', status: r.status, note: r.note || '', ok: r.confirmed_by_customer };
+  return { id: r.id, at: snsFmtJst(r.reserved_at), name: r.pet_name || r.customer_name,
+    menu: r.menu || '—', staff: r.staff_name || '', status: r.status, note: r.note || '',
+    ok: r.confirmed_by_customer, cat: r.category, mins: r.duration_minutes, stage: r.school_stage };
 }
 async function rvReload(){
   const params = new URLSearchParams();
@@ -3651,14 +3824,20 @@ async function rvAct(r, status, demoMsg, confirmMsg){
 function renderResv(){
   // 承認待ちは対応漏れを防ぐため、期間の指定に関わらず常に先頭へ出す
   const list = [...RESV].sort((a, b) => (a.status === 'requested' ? 0 : 1) - (b.status === 'requested' ? 0 : 1));
+  const clash = overlappingIds(list);
   rvrows.innerHTML = '';
   list.forEach(r => {
     const [label, cls] = RV_STATUS[r.status];
     const tr = document.createElement('tr');
-    if (r.status === 'requested') tr.className = 'await';
-    tr.innerHTML = '<td class="num rvat" data-label="日時">' + r.at + '</td>'
+    const dup = clash.has(r.id);
+    tr.className = (r.status === 'requested' ? 'await' : '') + (dup ? ' clash' : '');
+    const stage = r.cat === 'school' && r.stage
+      ? ' <span class="pill hny">' + (SCHOOL_STAGES.find(x => x.v === r.stage) || {}).label + '</span>' : '';
+    tr.innerHTML = '<td class="num rvat" data-label="日時">' + r.at
+      + (dup ? ' <span class="pill crit">時間が重複</span>' : '') + '</td>'
       + '<td class="rvname" data-label="わんちゃん">' + r.name + '</td>'
-      + '<td data-label="コース">' + r.menu + '</td>'
+      + '<td data-label="コース">' + r.menu
+      + (r.cat ? ' <span class="pill mut">' + CAT_LABELS[r.cat] + '</span>' : '') + stage + '</td>'
       + '<td class="rvname" data-label="担当">' + (r.staff || '指名なし') + '</td>'
       + '<td data-label="状態"><span class="pill ' + cls + '">' + label + '</span>'
       + (r.status === 'confirmed' && r.ok ? ' <span class="pill good">本人確認済</span>' : '') + '</td>'
@@ -3693,6 +3872,12 @@ function renderResv(){
     } else if (r.status === 'visited') {
       // 写真を付けた来店だけが 19:00 のお礼配信の対象になる（R9）
       mk('写真', '', () => openVisitPhotos(r));
+    }
+    // スクールは「カウンセリング → 体験 → 入園」と進む。押すたびに次へ回す
+    if (r.cat === 'school' && r.status !== 'cancelled' && r.status !== 'no_show') {
+      const now = SCHOOL_STAGES.findIndex(x => x.v === r.stage);
+      const next = SCHOOL_STAGES[(now + 1) % SCHOOL_STAGES.length];
+      mk(next.label + 'にする', 'mut', () => setSchoolStage(r, next.v));
     }
     tr.appendChild(td);
     rvrows.appendChild(tr);

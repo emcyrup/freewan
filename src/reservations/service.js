@@ -11,6 +11,10 @@ import {
 const MAX_PENDING_REQUESTS = 3;
 // これより先の日時は受け付けない
 const MAX_DAYS_AHEAD = 180;
+// 区分が分からない予約の所要時間。重複判定の幅として使う
+const DEFAULT_DURATION_MINUTES = 60;
+// 1対1で対応する区分だけ重複を禁じる。スクールとホテルは複数頭を同時に受けるため対象外
+const EXCLUSIVE_CATEGORIES = ['trimming'];
 
 export function createReservationService({ pool, slack, lineClient = null, planService = null }) {
   async function findOrCreateStaff(client, staffName) {
@@ -32,6 +36,50 @@ export function createReservationService({ pool, slack, lineClient = null, planS
       `:calendar: *新規予約*\n顧客: ${customerName}\n日時: ${formatJstDateTime(new Date(reservedAt))}\n` +
         `メニュー: ${menu ?? '未設定'}\n担当: ${staffName ?? '未定'}`
     );
+  }
+
+  /**
+   * メニューから区分と所要時間を引く。予約側にコピーして持たせるため、
+   * あとでメニューの設定を変えても入っている予約の判定は変わらない
+   */
+  async function menuSpec(client, menuName) {
+    if (!menuName) return { category: null, durationMinutes: null };
+    const { rows } = await client.query(
+      `SELECT category, duration_minutes FROM menus WHERE name = $1`,
+      [menuName]
+    );
+    return {
+      category: rows[0]?.category ?? null,
+      durationMinutes: rows[0]?.duration_minutes ?? null,
+    };
+  }
+
+  /**
+   * 同じ担当者の時間が重なる予約があるかを見る。
+   * 重なりの判定は「開始 < 相手の終了 かつ 終了 > 相手の開始」。
+   * 担当が未定の予約は、誰が受けるか決まっていない＝空いている人が受けられるので対象にしない。
+   * @returns {Promise<object|null>} ぶつかっている予約（無ければ null）
+   */
+  async function findConflict(client, { staffId, reservedAt, durationMinutes, category, excludeId = null }) {
+    if (!staffId) return null;
+    if (!EXCLUSIVE_CATEGORIES.includes(category)) return null;
+    const minutes = durationMinutes || DEFAULT_DURATION_MINUTES;
+    const { rows } = await client.query(
+      `SELECT r.id, r.reserved_at, c.name AS customer_name
+       FROM reservations r
+       JOIN customers c ON c.id = r.customer_id
+       WHERE r.staff_id = $1
+         AND r.status IN ('requested', 'confirmed')
+         AND ($4::bigint IS NULL OR r.id <> $4)
+         -- 相手も1対1の区分のときだけぶつかる（スクールの隣でトリミングは受けられる）
+         AND r.category = ANY($5::text[])
+         AND r.reserved_at < $2::timestamptz + ($3 * INTERVAL '1 minute')
+         AND r.reserved_at + (COALESCE(r.duration_minutes, $6) * INTERVAL '1 minute') > $2::timestamptz
+       ORDER BY r.reserved_at
+       LIMIT 1`,
+      [staffId, reservedAt, minutes, excludeId, EXCLUSIVE_CATEGORIES, DEFAULT_DURATION_MINUTES]
+    );
+    return rows[0] ?? null;
   }
 
   /** ペットが本当にその顧客の子かを確かめる。他人の子への紐付けを防ぐ */
@@ -164,10 +212,16 @@ export function createReservationService({ pool, slack, lineClient = null, planS
       const staffId = await findOrCreateStaff(client, staffName);
       const petId = await findOrCreatePet(client, customerId, petName);
 
+      // 取り込みは重複していても弾かない（外部システム側の予定をそのまま映すのが役目で、
+      // ここで落とすと画面に出ないまま当日を迎える。ぶつかりは一覧の警告表示で気付かせる）
+      const spec = await menuSpec(client, menu);
+
       // xmax = 0 なら INSERT（新規）、そうでなければ UPDATE（更新）
       const { rows } = await client.query(
-        `INSERT INTO reservations (customer_id, staff_id, pet_id, menu, reserved_at, status, external_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `INSERT INTO reservations
+           (customer_id, staff_id, pet_id, menu, reserved_at, status, external_id,
+            category, duration_minutes)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          ON CONFLICT (external_id) DO UPDATE
            SET customer_id = EXCLUDED.customer_id,
                staff_id = EXCLUDED.staff_id,
@@ -175,9 +229,12 @@ export function createReservationService({ pool, slack, lineClient = null, planS
                menu = EXCLUDED.menu,
                reserved_at = EXCLUDED.reserved_at,
                status = EXCLUDED.status,
+               category = EXCLUDED.category,
+               duration_minutes = EXCLUDED.duration_minutes,
                updated_at = now()
          RETURNING id, (xmax = 0) AS inserted`,
-        [customerId, staffId, petId, menu || null, reservedAt, status, externalId]
+        [customerId, staffId, petId, menu || null, reservedAt, status, externalId,
+         spec.category, spec.durationMinutes]
       );
 
       if (status === 'visited') {
@@ -221,10 +278,31 @@ export function createReservationService({ pool, slack, lineClient = null, planS
       if (!pet) return { ok: false, error: 'invalid_pet' };
     }
 
+    const spec = await menuSpec(pool, menu);
+    const conflict = await findConflict(pool, {
+      staffId: staffId || null,
+      reservedAt,
+      durationMinutes: spec.durationMinutes,
+      category: spec.category,
+    });
+    if (conflict) {
+      return {
+        ok: false,
+        error: 'time_conflict',
+        conflict: {
+          reservationId: conflict.id,
+          customerName: conflict.customer_name,
+          reservedAt: conflict.reserved_at,
+        },
+      };
+    }
+
     const { rows } = await pool.query(
-      `INSERT INTO reservations (customer_id, staff_id, pet_id, menu, reserved_at)
-       VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-      [customerId, staffId || null, petId || null, menu || null, reservedAt]
+      `INSERT INTO reservations
+         (customer_id, staff_id, pet_id, menu, reserved_at, category, duration_minutes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+      [customerId, staffId || null, petId || null, menu || null, reservedAt,
+       spec.category, spec.durationMinutes]
     );
 
     let staffName = null;
@@ -271,15 +349,20 @@ export function createReservationService({ pool, slack, lineClient = null, planS
     );
     if (pending[0].n >= MAX_PENDING_REQUESTS) return { ok: false, error: 'too_many_pending' };
 
-    // メニュー名は予約側にコピーする（後でメニューを改名しても過去の予約は変わらない）
+    // メニュー名・区分・所要時間は予約側にコピーする
+    // （後でメニューを改名・設定変更しても、入っている予約は変わらない）
     let menuName = null;
+    let category = null;
+    let durationMinutes = null;
     if (menuId) {
       const { rows } = await pool.query(
-        `SELECT name FROM menus WHERE id = $1 AND active = true`,
+        `SELECT name, category, duration_minutes FROM menus WHERE id = $1 AND active = true`,
         [menuId]
       );
       if (rows.length === 0) return { ok: false, error: 'invalid_menu' };
       menuName = rows[0].name;
+      category = rows[0].category;
+      durationMinutes = rows[0].duration_minutes;
     }
 
     let staffName = null;
@@ -299,11 +382,21 @@ export function createReservationService({ pool, slack, lineClient = null, planS
       petName = pet.name;
     }
 
+    // 担当を指名したリクエストが既存の予約とぶつかるなら、その場でお断りする
+    // （承認待ちに入れてから見送るより、別の時間を選び直してもらう方が早い）
+    const conflict = await findConflict(pool, {
+      staffId: staffId || null, reservedAt, durationMinutes, category,
+    });
+    if (conflict) return { ok: false, error: 'time_conflict' };
+
     const { rows } = await pool.query(
-      `INSERT INTO reservations (customer_id, staff_id, pet_id, menu, reserved_at, status, note)
-       VALUES ($1, $2, $3, $4, $5, 'requested', $6)
+      `INSERT INTO reservations
+         (customer_id, staff_id, pet_id, menu, reserved_at, status, note,
+          category, duration_minutes)
+       VALUES ($1, $2, $3, $4, $5, 'requested', $6, $7, $8)
        RETURNING id`,
-      [customer.id, staffId || null, petId || null, menuName, reservedAt, note || null]
+      [customer.id, staffId || null, petId || null, menuName, reservedAt, note || null,
+       category, durationMinutes]
     );
 
     await slack.notify(
@@ -417,5 +510,29 @@ export function createReservationService({ pool, slack, lineClient = null, planS
     return { ok: true, notifiedCustomer: wasRequested };
   }
 
-  return { upsertExternal, createManual, createRequest, setStatus };
+  /**
+   * スクールの段階（カウンセリング → 体験 → 入園）を記録する。
+   * 体験だけを対象にした配信や追客の絞り込みに使うため、予約に残す。
+   */
+  async function setSchoolStage(reservationId, stage) {
+    const stages = ['counseling', 'trial', 'enrolled'];
+    if (stage !== null && !stages.includes(stage)) return { ok: false, error: 'invalid_stage' };
+    const { rows } = await pool.query(
+      `SELECT category FROM reservations WHERE id = $1`,
+      [reservationId]
+    );
+    if (rows.length === 0) return { ok: false, error: 'not_found' };
+    // 区分が分かる予約ではスクール以外に段階を付けさせない（意味を持たないため）。
+    // 区分未設定の古い予約は、直せるように通す
+    if (rows[0].category && rows[0].category !== 'school') {
+      return { ok: false, error: 'not_school' };
+    }
+    await pool.query(
+      `UPDATE reservations SET school_stage = $2, updated_at = now() WHERE id = $1`,
+      [reservationId, stage]
+    );
+    return { ok: true };
+  }
+
+  return { upsertExternal, createManual, createRequest, setStatus, setSchoolStage };
 }

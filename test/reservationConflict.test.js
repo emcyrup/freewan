@@ -1,0 +1,155 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { createReservationService } from '../src/reservations/service.js';
+
+// メニューの区分・所要時間と、既存予約の有無だけを持つ最小の pool
+function makeFakes({ menu = null, conflictRow = null } = {}) {
+  const queries = [];
+  const query = async (sql, params) => {
+    queries.push({ sql, params });
+    if (/SELECT name FROM customers WHERE id/.test(sql)) return { rows: [{ name: '田中' }] };
+    if (/SELECT category, duration_minutes FROM menus WHERE name/.test(sql)) {
+      return { rows: menu ? [menu] : [] };
+    }
+    if (/FROM reservations r\s+JOIN customers c/.test(sql)) {
+      return { rows: conflictRow ? [conflictRow] : [] };
+    }
+    if (/INSERT INTO reservations/.test(sql)) return { rows: [{ id: 77 }] };
+    if (/SELECT name FROM staff WHERE id/.test(sql)) return { rows: [{ name: '佐藤' }] };
+    return { rows: [] };
+  };
+  const pool = { query, connect: async () => ({ query, release: () => {} }) };
+  const slack = { notify: async () => {} };
+  return { pool, slack, queries };
+}
+
+const input = {
+  customerId: 1,
+  reservedAt: '2026-08-20T02:00:00.000Z',
+  menu: 'カットコース',
+  staffId: 3,
+};
+
+test('同じ担当のトリミングが重なる時間には予約できない', async () => {
+  const f = makeFakes({
+    menu: { category: 'trimming', duration_minutes: 90 },
+    conflictRow: { id: 12, reserved_at: new Date(), customer_name: '山田' },
+  });
+  const service = createReservationService(f);
+
+  const result = await service.createManual({ ...input });
+  assert.equal(result.ok, false);
+  assert.equal(result.error, 'time_conflict');
+  assert.equal(result.conflict.reservationId, 12, 'どの予約とぶつかったかを返す');
+  assert.equal(result.conflict.customerName, '山田');
+
+  assert.ok(
+    !f.queries.some((q) => /INSERT INTO reservations/.test(q.sql)),
+    'ぶつかったときは予約を作らない'
+  );
+});
+
+test('重なりが無ければ、区分と所要時間を予約にコピーして登録する', async () => {
+  const f = makeFakes({ menu: { category: 'trimming', duration_minutes: 90 } });
+  const service = createReservationService(f);
+
+  const result = await service.createManual({ ...input });
+  assert.equal(result.ok, true);
+
+  const insert = f.queries.find((q) => /INSERT INTO reservations/.test(q.sql));
+  assert.equal(insert.params[5], 'trimming', '区分を予約に持たせる');
+  assert.equal(insert.params[6], 90, '所要時間を予約に持たせる（メニュー変更の影響を受けない）');
+});
+
+test('スクールは複数頭を同時に受けるので、重なっていても予約できる', async () => {
+  const f = makeFakes({
+    menu: { category: 'school', duration_minutes: 480 },
+    conflictRow: { id: 12, reserved_at: new Date(), customer_name: '山田' },
+  });
+  const service = createReservationService(f);
+
+  const result = await service.createManual({ ...input, menu: 'ペットスクール' });
+  assert.equal(result.ok, true, 'スクールは重複判定の対象外');
+});
+
+test('ホテルも同時に複数頭を受けるため重複判定しない', async () => {
+  const f = makeFakes({
+    menu: { category: 'hotel', duration_minutes: 1440 },
+    conflictRow: { id: 12, reserved_at: new Date(), customer_name: '山田' },
+  });
+  const service = createReservationService(f);
+  assert.equal((await service.createManual({ ...input, menu: 'ペットホテル' })).ok, true);
+});
+
+test('担当未定の予約は重複判定しない（空いている人が受けられるため）', async () => {
+  const f = makeFakes({
+    menu: { category: 'trimming', duration_minutes: 90 },
+    conflictRow: { id: 12, reserved_at: new Date(), customer_name: '山田' },
+  });
+  const service = createReservationService(f);
+
+  const result = await service.createManual({ ...input, staffId: null });
+  assert.equal(result.ok, true);
+  assert.ok(
+    !f.queries.some((q) => /FROM reservations r\s+JOIN customers c/.test(q.sql)),
+    '担当が無いときは重複を調べにいかない'
+  );
+});
+
+test('重複判定は確定・承認待ちだけを見る（キャンセル済みとは重ならない）', async () => {
+  const f = makeFakes({ menu: { category: 'trimming', duration_minutes: 90 } });
+  const service = createReservationService(f);
+  await service.createManual({ ...input });
+
+  const check = f.queries.find((q) => /FROM reservations r\s+JOIN customers c/.test(q.sql));
+  assert.match(check.sql, /status IN \('requested', 'confirmed'\)/);
+  assert.match(check.sql, /r\.reserved_at </, '開始が相手の終了より前');
+  assert.match(check.sql, /> \$2::timestamptz/, '終了が相手の開始より後');
+});
+
+// ---- スクールの段階 ----
+function makeStagePool(category) {
+  const queries = [];
+  const pool = {
+    query: async (sql, params) => {
+      queries.push({ sql, params });
+      if (/SELECT category FROM reservations/.test(sql)) {
+        return { rows: category === undefined ? [] : [{ category }] };
+      }
+      return { rows: [] };
+    },
+  };
+  return { pool, queries };
+}
+
+test('スクールの予約には段階を設定できる', async () => {
+  const { pool, queries } = makeStagePool('school');
+  const service = createReservationService({ pool, slack: { notify: async () => {} } });
+
+  assert.deepEqual(await service.setSchoolStage(5, 'trial'), { ok: true });
+  const update = queries.find((q) => /UPDATE reservations SET school_stage/.test(q.sql));
+  assert.deepEqual(update.params, [5, 'trial']);
+});
+
+test('スクール以外には段階を付けない。未知の段階も受け付けない', async () => {
+  const school = createReservationService({
+    pool: makeStagePool('trimming').pool, slack: { notify: async () => {} },
+  });
+  assert.deepEqual(await school.setSchoolStage(5, 'trial'), { ok: false, error: 'not_school' });
+
+  const svc = createReservationService({
+    pool: makeStagePool('school').pool, slack: { notify: async () => {} },
+  });
+  assert.deepEqual(await svc.setSchoolStage(5, 'graduated'), { ok: false, error: 'invalid_stage' });
+
+  const missing = createReservationService({
+    pool: makeStagePool(undefined).pool, slack: { notify: async () => {} },
+  });
+  assert.deepEqual(await missing.setSchoolStage(5, 'trial'), { ok: false, error: 'not_found' });
+});
+
+test('区分が未設定の古い予約には段階を付けられる（あとから直せるように）', async () => {
+  const { pool } = makeStagePool(null);
+  const service = createReservationService({ pool, slack: { notify: async () => {} } });
+  assert.deepEqual(await service.setSchoolStage(5, 'counseling'), { ok: true });
+});

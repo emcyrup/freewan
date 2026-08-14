@@ -47,6 +47,10 @@ CREATE TABLE reservations (
   menu          TEXT,                      -- menus.name のコピー。後からメニュー名を変えても過去の予約は変わらない
   note          TEXT,                      -- 予約フォームの「ご要望」欄
   pet_id        BIGINT REFERENCES pets(id) ON DELETE SET NULL,  -- どの子の予約か（visited 時の回数消化に使用）
+  -- 区分と所要時間はメニューからのコピー。メニュー設定を変えても入っている予約は変わらない
+  category      TEXT CHECK (category IN ('hotel', 'trimming', 'school')),
+  duration_minutes INTEGER CHECK (duration_minutes > 0),
+  school_stage  TEXT CHECK (school_stage IN ('counseling', 'trial', 'enrolled')),
   reserved_at   TIMESTAMPTZ NOT NULL,
   status        reservation_status NOT NULL DEFAULT 'confirmed',
   confirmed_by_customer BOOLEAN NOT NULL DEFAULT FALSE,  -- 前々日確認への返答
@@ -90,6 +94,7 @@ CREATE TABLE menus (
   name             TEXT NOT NULL,
   duration_minutes INTEGER,                          -- 任意。顧客への表示と店舗の目安に使う
   consumes         TEXT CHECK (consumes IN ('plan', 'ticket')),  -- 来店時に消化する回数の種類。NULL=都度払い
+  category         TEXT CHECK (category IN ('hotel', 'trimming', 'school')),  -- カレンダーの色分けと重複判定に使う
   active           BOOLEAN NOT NULL DEFAULT TRUE,
   sort_order       INTEGER NOT NULL DEFAULT 0,
   created_at       TIMESTAMPTZ NOT NULL DEFAULT now()

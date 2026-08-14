@@ -28,6 +28,9 @@ export const TEST_MESSAGE_TYPES = [
   { type: 'declined', label: '予約の見送り通知', needs: 'reservation', note: '「見送り」を押したとき' },
 ];
 
+// 予約の区分。カレンダーの色分けと、時間の重複を禁じるかどうかの判断に使う
+export const MENU_CATEGORIES = ['hotel', 'trimming', 'school'];
+
 export function createAdminRouter({
   pool,
   reservationService,
@@ -190,7 +193,8 @@ export function createAdminRouter({
   router.get('/menus', async (_req, res, next) => {
     try {
       const { rows } = await pool.query(
-        `SELECT id, name, duration_minutes, active FROM menus ORDER BY sort_order, id`
+        `SELECT id, name, duration_minutes, active, category, consumes
+         FROM menus ORDER BY sort_order, id`
       );
       res.json({ menus: rows });
     } catch (err) {
@@ -206,11 +210,16 @@ export function createAdminRouter({
       if (duration !== null && (!Number.isInteger(duration) || duration <= 0)) {
         return res.status(400).json({ error: 'invalid_duration' });
       }
+      // 区分はカレンダーの色分けと重複判定に使う。未設定でも登録はできる
+      const category = req.body?.category || null;
+      if (category !== null && !MENU_CATEGORIES.includes(category)) {
+        return res.status(400).json({ error: 'invalid_category' });
+      }
       const { rows } = await pool.query(
-        `INSERT INTO menus (name, duration_minutes, sort_order)
-         VALUES ($1, $2, COALESCE((SELECT max(sort_order) + 1 FROM menus), 0))
-         RETURNING id, name, duration_minutes, active`,
-        [name, duration]
+        `INSERT INTO menus (name, duration_minutes, category, sort_order)
+         VALUES ($1, $2, $3, COALESCE((SELECT max(sort_order) + 1 FROM menus), 0))
+         RETURNING id, name, duration_minutes, category, active`,
+        [name, duration, category]
       );
       res.json({ ok: true, menu: rows[0] });
     } catch (err) {
@@ -218,14 +227,21 @@ export function createAdminRouter({
     }
   });
 
-  // 過去の予約が参照している可能性があるため削除はせず、有効/無効の切り替えにする
+  // 過去の予約が参照している可能性があるため削除はせず、有効/無効の切り替えにする。
+  // 区分は後から設定できる（既存メニューに区分を付けるため）
   router.patch('/menus/:id', async (req, res, next) => {
     try {
       const id = Number(req.params.id);
       if (!Number.isInteger(id)) return res.status(400).json({ error: 'invalid_id' });
+      const category = req.body?.category;
+      if (category !== undefined && category !== null && !MENU_CATEGORIES.includes(category)) {
+        return res.status(400).json({ error: 'invalid_category' });
+      }
       const { rows } = await pool.query(
-        `UPDATE menus SET active = $2 WHERE id = $1 RETURNING id`,
-        [id, Boolean(req.body?.active)]
+        `UPDATE menus SET active = $2,
+                category = CASE WHEN $3::boolean THEN $4 ELSE category END
+         WHERE id = $1 RETURNING id`,
+        [id, Boolean(req.body?.active), category !== undefined, category ?? null]
       );
       if (rows.length === 0) return res.status(404).json({ error: 'not_found' });
       res.json({ ok: true });
@@ -605,10 +621,13 @@ export function createAdminRouter({
       const to = req.query.to || null;
       const { rows } = await pool.query(
         `SELECT r.id, r.reserved_at, r.menu, r.status, r.confirmed_by_customer, r.note,
-                c.id AS customer_id, c.name AS customer_name, s.name AS staff_name
+                r.category, r.duration_minutes, r.school_stage,
+                c.id AS customer_id, c.name AS customer_name, s.name AS staff_name,
+                r.staff_id, p.name AS pet_name
          FROM reservations r
          JOIN customers c ON c.id = r.customer_id
          LEFT JOIN staff s ON s.id = r.staff_id
+         LEFT JOIN pets p ON p.id = r.pet_id
          WHERE (r.reserved_at AT TIME ZONE 'Asia/Tokyo')::date
                BETWEEN COALESCE($1::date, (now() AT TIME ZONE 'Asia/Tokyo')::date)
                    AND COALESCE($2::date, (now() AT TIME ZONE 'Asia/Tokyo')::date + INTERVAL '14 day')
@@ -633,7 +652,10 @@ export function createAdminRouter({
         staffId: staffId ? Number(staffId) : null,
         petId: petId ? Number(petId) : null,
       });
-      if (!result.ok) return res.status(400).json(result);
+      // 時間の重なりは「入力ミス」なので、他の入力エラーと区別して 409 で返す
+      if (!result.ok) {
+        return res.status(result.error === 'time_conflict' ? 409 : 400).json(result);
+      }
       res.json(result);
     } catch (err) {
       next(err);
@@ -645,6 +667,22 @@ export function createAdminRouter({
       const id = Number(req.params.id);
       if (!Number.isInteger(id)) return res.status(400).json({ error: 'invalid_id' });
       const result = await reservationService.setStatus(id, req.body?.status);
+      if (!result.ok) {
+        return res.status(result.error === 'not_found' ? 404 : 400).json(result);
+      }
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // スクールの段階（カウンセリング → 体験 → 入園）
+  router.patch('/reservations/:id/school-stage', async (req, res, next) => {
+    try {
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id)) return res.status(400).json({ error: 'invalid_id' });
+      const stage = req.body?.stage ?? null;
+      const result = await reservationService.setSchoolStage(id, stage);
       if (!result.ok) {
         return res.status(result.error === 'not_found' ? 404 : 400).json(result);
       }

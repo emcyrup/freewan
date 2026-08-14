@@ -1,10 +1,11 @@
 [
-  { "name": "シャンプーコース", "durationMinutes": 60, "consumes": "ticket" },
-  { "name": "カットコース", "durationMinutes": 90, "consumes": null },
-  { "name": "シャンプー＆カットコース", "durationMinutes": 120, "consumes": null },
-  { "name": "部分カット（顔・足まわり）", "durationMinutes": 30, "consumes": null },
-  { "name": "爪切り・耳掃除", "durationMinutes": 15, "consumes": null },
-  { "name": "ペットスクール", "durationMinutes": 480, "consumes": "plan" },
-  { "name": "体験入園", "durationMinutes": 90, "consumes": null },
-  { "name": "送迎", "durationMinutes": 30, "consumes": null }
+  { "name": "シャンプーコース", "durationMinutes": 60, "consumes": "ticket", "category": "trimming" },
+  { "name": "カットコース", "durationMinutes": 90, "consumes": null, "category": "trimming" },
+  { "name": "シャンプー＆カットコース", "durationMinutes": 120, "consumes": null, "category": "trimming" },
+  { "name": "部分カット（顔・足まわり）", "durationMinutes": 30, "consumes": null, "category": "trimming" },
+  { "name": "爪切り・耳掃除", "durationMinutes": 15, "consumes": null, "category": "trimming" },
+  { "name": "ペットスクール", "durationMinutes": 480, "consumes": "plan", "category": "school" },
+  { "name": "体験入園", "durationMinutes": 90, "consumes": null, "category": "school" },
+  { "name": "ペットホテル", "durationMinutes": 1440, "consumes": null, "category": "hotel" },
+  { "name": "送迎", "durationMinutes": 30, "consumes": null, "category": null }
 ]
