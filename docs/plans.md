@@ -54,6 +54,19 @@ docker compose exec app node scripts/run-plan-job.js --job=grant    # 当月分�
 docker compose exec app node scripts/run-plan-job.js --job=expire   # 期限切れの失効
 ```
 
+## 来店登録との連動（2026-08-14〜）
+
+予約に「どの子か」（`reservations.pet_id`）を持たせ、予約を **visited（来店済み）** にすると
+メニューの `menus.consumes` に応じて自動で1回消化する。
+
+- `consumes = 'plan'` … 定額コース（スクール会員）から消化
+- `consumes = 'ticket'` … 回数券から消化
+- `NULL` … 何もしない（都度払いメニュー）
+
+期限内の残りがあるときだけ消化する（都度払いのお客様に「不足」を積まないため）。
+コース加入中なのに残0のときだけスタッフへ通知する。来店を取り消すと消化も戻る
+（`revokeByReservation`）。手動の消化・修正は従来どおりカルテからできる。
+
 ## 画面
 
 ペットカルテに3つのカードが出る（実運用モードのみ）。

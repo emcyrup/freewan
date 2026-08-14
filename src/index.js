@@ -167,7 +167,7 @@ app.post('/liff/register', async (req, res) => {
 });
 
 // ---- 予約データの取り込み（Phase 6）----
-const reservationService = createReservationService({ pool, slack, lineClient });
+const reservationService = createReservationService({ pool, slack, lineClient, planService });
 
 // LIFF 予約フォーム。顧客の特定は ID トークン検証で得た sub のみを信用する
 app.post('/liff/reserve/options', async (req, res) => {
@@ -180,7 +180,7 @@ app.post('/liff/reserve/options', async (req, res) => {
       return res.status(401).json({ error: 'invalid_token' });
     }
     const { rows: customers } = await pool.query(
-      `SELECT name FROM customers WHERE line_user_id = $1 AND is_blocked = false`,
+      `SELECT id, name FROM customers WHERE line_user_id = $1 AND is_blocked = false`,
       [payload.sub]
     );
     if (customers.length === 0) return res.json({ registered: false });
@@ -191,7 +191,12 @@ app.post('/liff/reserve/options', async (req, res) => {
     const { rows: staff } = await pool.query(
       `SELECT id, name FROM staff WHERE active = true ORDER BY id`
     );
-    return res.json({ registered: true, customerName: customers[0].name, menus, staff });
+    // どの子の予約かを選ばせる（回数消化の紐付けに使う）。名前だけ返し、内部メモは出さない
+    const { rows: pets } = await pool.query(
+      `SELECT id, name FROM pets WHERE customer_id = $1 ORDER BY id`,
+      [customers[0].id]
+    );
+    return res.json({ registered: true, customerName: customers[0].name, menus, staff, pets });
   } catch (err) {
     console.error(`[liff/reserve/options] 失敗: ${err.message}`);
     return res.status(500).json({ error: 'internal' });
@@ -201,7 +206,7 @@ app.post('/liff/reserve/options', async (req, res) => {
 app.post('/liff/reserve', async (req, res) => {
   if (!verifyIdToken) return res.status(503).json({ ok: false, error: 'liff_not_configured' });
   try {
-    const { idToken, menuId, staffId, reservedAt, note } = req.body ?? {};
+    const { idToken, menuId, staffId, petId, reservedAt, note } = req.body ?? {};
     let payload;
     try {
       payload = await verifyIdToken(idToken);
@@ -212,6 +217,7 @@ app.post('/liff/reserve', async (req, res) => {
       lineUserId: payload.sub,
       menuId: menuId ? Number(menuId) : null,
       staffId: staffId ? Number(staffId) : null,
+      petId: petId ? Number(petId) : null,
       reservedAt,
       note,
     });

@@ -32,6 +32,7 @@ const ERROR_MESSAGES = {
   too_many_pending: '確認中のご予約が複数あります。店舗からの連絡をお待ちください。',
   invalid_menu: 'メニューをもう一度お選びください。',
   invalid_staff: 'ご指名の担当者をもう一度お選びください。',
+  invalid_pet: 'わんちゃんの選択をもう一度ご確認ください。',
   invalid_reserved_at: '日時の形式をご確認ください。',
   invalid_token: '認証に失敗しました。LINEアプリから開き直してください。',
 };
@@ -79,6 +80,25 @@ async function main() {
     staffSelect.appendChild(opt);
   }
 
+  // どの子のご予約かを選ぶ（回数の管理に使う）。1頭ならその子を自動選択し、欄は出さない
+  const petSelect = document.getElementById('pet');
+  const pets = options.pets ?? [];
+  if (pets.length === 1) {
+    petSelect.innerHTML = `<option value="${pets[0].id}" selected></option>`;
+  } else if (pets.length > 1) {
+    petSelect.innerHTML = '<option value="">お選びください</option>';
+    for (const p of pets) {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.name;
+      petSelect.appendChild(opt);
+    }
+    show('pet-field');
+  } else {
+    // ペット未登録でも予約自体は受け付ける（店舗側でカルテ作成時に紐付ける）
+    petSelect.removeAttribute('required');
+  }
+
   // 当日直前の駆け込み予約を避け、最短でも翌日以降を初期値にする
   const datetime = document.getElementById('datetime');
   datetime.min = jstNowPlusHours(1);
@@ -99,6 +119,7 @@ async function main() {
           idToken,
           menuId: Number(menuSelect.value) || null,
           staffId: Number(staffSelect.value) || null,
+          petId: Number(petSelect.value) || null,
           reservedAt: toJstIso(datetime.value),
           note: document.getElementById('note').value || null,
         }),

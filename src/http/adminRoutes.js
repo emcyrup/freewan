@@ -607,12 +607,13 @@ export function createAdminRouter({
 
   router.post('/reservations', async (req, res, next) => {
     try {
-      const { customerId, reservedAt, menu, staffId } = req.body ?? {};
+      const { customerId, reservedAt, menu, staffId, petId } = req.body ?? {};
       const result = await reservationService.createManual({
         customerId: Number(customerId),
         reservedAt,
         menu,
         staffId: staffId ? Number(staffId) : null,
+        petId: petId ? Number(petId) : null,
       });
       if (!result.ok) return res.status(400).json(result);
       res.json(result);

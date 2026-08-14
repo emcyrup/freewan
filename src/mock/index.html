@@ -560,9 +560,17 @@ tr.await td{background:var(--warn-soft)}
   .mwin{width:100%; max-height:92vh}
 }
 @media (prefers-reduced-motion: reduce){ *{transition:none !important} }
+/* 起動直後のチラつき防止: 実運用モードでは店舗情報の反映が終わるまで画面を出さない */
+html.booting body{visibility:hidden}
 </style>
 </head>
 <body>
+<script>
+// リロード時に、実データへ差し替わる前のデモ表示（別店舗の店名やサンプル数値）が
+// 一瞬見えるのを防ぐ。初期化がどこかで失敗しても5秒後には必ず表示する
+document.documentElement.classList.add('booting');
+setTimeout(function () { document.documentElement.classList.remove('booting'); }, 5000);
+</script>
 
 <div class="app">
 <aside class="side">
@@ -3958,11 +3966,12 @@ async function loadFamiliesLive(){
   FAMILIES.length = 0;
   fams.forEach(f => FAMILIES.push(f));
 }
+const bootReveal = () => document.documentElement.classList.remove('booting');
 (async () => {
   try {
     await adminApi('/staff');   // Basic 認証込みで疎通確認
     adminLive = true;
-  } catch { return; }           // 届かなければデモ動作のまま
+  } catch { bootReveal(); return; }   // 届かなければデモ動作のまま（デモはすぐ出してよい）
 
   // 日付の初期値をデモ用の固定日から実際の今日に差し替える
   const pad = n => String(n).padStart(2, '0');
@@ -3989,10 +3998,12 @@ async function loadFamiliesLive(){
     ]);
     renderRemindLive();
     await applyStoreProfile();
+    bootReveal();   // 店名・実データの反映が済んでから画面を出す
     checkStaleScreen();
     tsRenderState();
     await tsReloadResv({ quiet: true });
   } catch (err) {
+    bootReveal();
     showToast('データの読み込みに失敗しました: ' + err.message);
   }
   renderMenus(); fillMenuSelect();

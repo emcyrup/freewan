@@ -30,15 +30,22 @@ export async function seedMenus(pool, menus = DEMO_MENUS) {
 
   for (const menu of menus) {
     const { rows } = await pool.query(
-      `INSERT INTO menus (name, duration_minutes, sort_order)
-       SELECT $1, $2, $3
+      `INSERT INTO menus (name, duration_minutes, sort_order, consumes)
+       SELECT $1, $2, $3, $4
        WHERE NOT EXISTS (SELECT 1 FROM menus WHERE name = $1)
        RETURNING id`,
-      [menu.name, menu.durationMinutes, sortOrder]
+      [menu.name, menu.durationMinutes, sortOrder, menu.consumes ?? null]
     );
     if (rows.length > 0) {
       result.added.push(menu.name);
       sortOrder++;
+    } else if (menu.consumes !== undefined) {
+      // 既存メニューでも消化対象の設定だけは追従させる（JSON を直して再実行で反映できるように）
+      await pool.query(`UPDATE menus SET consumes = $2 WHERE name = $1`, [
+        menu.name,
+        menu.consumes,
+      ]);
+      result.skipped.push(menu.name);
     } else {
       result.skipped.push(menu.name);
     }
@@ -58,6 +65,9 @@ export async function loadMenusFile(path) {
     }
     if (m.durationMinutes !== null && !Number.isInteger(m.durationMinutes)) {
       throw new Error(`${path}: ${m.name} の durationMinutes は整数か null にしてください`);
+    }
+    if (m.consumes !== undefined && m.consumes !== null && !['plan', 'ticket'].includes(m.consumes)) {
+      throw new Error(`${path}: ${m.name} の consumes は "plan" / "ticket" / null にしてください`);
     }
   }
   return menus;

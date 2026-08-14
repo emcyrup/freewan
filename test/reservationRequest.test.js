@@ -47,8 +47,8 @@ test('承認待ち（requested）で作成され、スタッフへ要対応通�
 
   const insert = f.queries.find((q) => /INSERT INTO reservations/.test(q.sql));
   assert.match(insert.sql, /'requested'/, '確定ではなく承認待ちで入る');
-  assert.equal(insert.params[2], 'カット', 'メニュー名は予約側にコピーする');
-  assert.equal(insert.params[4], '短めで');
+  assert.equal(insert.params[3], 'カット', 'メニュー名は予約側にコピーする');
+  assert.equal(insert.params[5], '短めで');
   assert.equal(f.notifications.length, 1);
   assert.match(f.notifications[0], /要対応/);
   assert.match(f.notifications[0], /山田 花子/);

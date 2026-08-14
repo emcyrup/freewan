@@ -30,6 +30,7 @@ Content-Type: application/json
       "birthday": "1990-04-01",
       "menu": "シャンプー＆カットコース",
       "staff_name": "佐藤",
+      "pet_name": "マロン",
       "reserved_at": "2026-08-01T14:00:00+09:00",
       "status": "confirmed"
     }
@@ -45,6 +46,7 @@ Content-Type: application/json
 | `birthday` | - | `YYYY-MM-DD`。新規顧客作成時のみ反映 |
 | `menu` | - | メニュー名 |
 | `staff_name` | - | 担当者名。存在しなければ staff に自動作成 |
+| `pet_name` | - | わんちゃんの名前。その顧客のペットとして存在しなければ自動作成。visited 時の回数消化の紐付けに使う |
 | `reserved_at` | ○ | ISO 8601。タイムゾーン付き推奨（`+09:00`） |
 | `status` | - | `confirmed`（デフォルト） / `cancelled` / `visited` / `no_show` |
 

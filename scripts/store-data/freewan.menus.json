@@ -1,11 +1,11 @@
 [
-  { "name": "シャンプーコース", "durationMinutes": 60 },
-  { "name": "カットコース", "durationMinutes": 90 },
-  { "name": "シャンプー＆カットコース", "durationMinutes": 120 },
-  { "name": "部分カット（顔・足まわり）", "durationMinutes": 30 },
-  { "name": "爪切り・耳掃除", "durationMinutes": 15 },
-  { "name": "幼稚園（スクール）", "durationMinutes": 480 },
-  { "name": "体験入園", "durationMinutes": 90 },
-  { "name": "一時預かり", "durationMinutes": 60 },
-  { "name": "送迎", "durationMinutes": 30 }
+  { "name": "シャンプーコース", "durationMinutes": 60, "consumes": "ticket" },
+  { "name": "カットコース", "durationMinutes": 90, "consumes": null },
+  { "name": "シャンプー＆カットコース", "durationMinutes": 120, "consumes": null },
+  { "name": "部分カット（顔・足まわり）", "durationMinutes": 30, "consumes": null },
+  { "name": "爪切り・耳掃除", "durationMinutes": 15, "consumes": null },
+  { "name": "幼稚園（スクール）", "durationMinutes": 480, "consumes": "plan" },
+  { "name": "体験入園", "durationMinutes": 90, "consumes": null },
+  { "name": "一時預かり", "durationMinutes": 60, "consumes": null },
+  { "name": "送迎", "durationMinutes": 30, "consumes": null }
 ]

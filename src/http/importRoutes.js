@@ -33,6 +33,7 @@ export function createImportRouter({ reservationService, slack }) {
             birthday: item.birthday,
             menu: item.menu,
             staffName: item.staff_name,
+            petName: item.pet_name,
             reservedAt: item.reserved_at,
             status: item.status || 'confirmed',
           });

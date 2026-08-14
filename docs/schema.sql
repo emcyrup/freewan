@@ -47,6 +47,7 @@ CREATE TABLE reservations (
   staff_id      BIGINT REFERENCES staff(id),
   menu          TEXT,                      -- menus.name のコピー。後からメニュー名を変えても過去の予約は変わらない
   note          TEXT,                      -- 予約フォームの「ご要望」欄
+  pet_id        BIGINT REFERENCES pets(id) ON DELETE SET NULL,  -- どの子の予約か（visited 時の回数消化に使用）
   reserved_at   TIMESTAMPTZ NOT NULL,
   status        reservation_status NOT NULL DEFAULT 'confirmed',
   confirmed_by_customer BOOLEAN NOT NULL DEFAULT FALSE,  -- 前々日確認への返答
@@ -89,6 +90,7 @@ CREATE TABLE menus (
   id               BIGSERIAL PRIMARY KEY,
   name             TEXT NOT NULL,
   duration_minutes INTEGER,                          -- 任意。顧客への表示と店舗の目安に使う
+  consumes         TEXT CHECK (consumes IN ('plan', 'ticket')),  -- 来店時に消化する回数の種類。NULL=都度払い
   active           BOOLEAN NOT NULL DEFAULT TRUE,
   sort_order       INTEGER NOT NULL DEFAULT 0,
   created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
