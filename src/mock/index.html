@@ -269,7 +269,7 @@ button.trow2:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
 .wk .rlab:hover{background:var(--accent-soft)}
 .wk .rlab.sat{color:#3E6FA8} .wk .rlab.sun{color:var(--crit)}
 .wk .rbody{height:64px}
-.wk .tev{font-size:11px; cursor:default}
+.wk .tev{font-size:11px; cursor:pointer}
 .wk .tev b{font-size:11.5px}
 .wk .tev.laneA{top:5px; height:18px; padding:1px 8px; line-height:16px}
 .wk .tev.laneA b{display:inline; font-size:11px}
@@ -486,6 +486,15 @@ textarea{width:100%; border:1px solid var(--line); border-radius:8px; background
 .frow input[type="datetime-local"]{flex:1 1 190px; min-width:0}
 .frow select{flex:1 1 190px}
 .frow input:focus-visible,.frow select:focus-visible{outline:2px solid var(--accent); outline-offset:-1px}
+/* 毎日いちばん上に置く入力カード（新規予約・空き状況）。
+   説明は見出しの行へ回し、入力欄も1段小さくして、カレンダーを画面から押し出さないようにする */
+.card.tight .hd{padding:9px 14px; flex-wrap:wrap}
+.card.tight .bd{padding:10px 14px 12px}
+.card.tight .frow{gap:6px}
+.card.tight .frow+.frow{margin-top:6px}
+.card.tight .frow input,.card.tight .frow select{font-size:12.5px; padding:6px 8px}
+.card.tight .frow input,.card.tight .frow select{flex:1 1 150px}
+.hdnote{font-size:11.5px; color:var(--muted); font-weight:500; line-height:1.5}
 .hint{font-size:12px; color:var(--muted); margin:0 0 12px}
 /* .ghost はドラッグ中のゴースト（position:fixed）用なので、ボタンには使えない */
 .btn.sub{background:var(--surface2); color:var(--ink)}
@@ -771,28 +780,39 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
   <h1>予約カレンダー</h1>
   <p class="sub" id="calsub"></p>
 
-  <div class="card" id="newresv">
-    <div class="hd"><h2>新規予約</h2><span class="pill mut">スタッフ入力</span></div>
+  <div class="card tight" id="newresv">
+    <div class="hd"><h2>新規予約</h2><span class="pill mut">スタッフ入力</span>
+      <span class="hdnote">お電話・ご来店時のご予約用。承認不要で確定し、「予約管理」の一覧に入ります。</span></div>
     <div class="bd">
-      <p class="hint">お電話・ご来店時のご予約用。承認不要で確定します。登録したご予約は「予約管理」の一覧に入ります。</p>
-      <div class="frow" style="margin-bottom:8px">
-        <input type="text" id="nr-q" placeholder="飼い主名・わんちゃん名 or 電話番号で検索">
-        <button class="btn sub" id="nr-search" type="button">検索</button>
-      </div>
-      <div class="frow" style="margin-bottom:8px">
+      <div class="frow">
+        <input type="text" id="nr-q" placeholder="飼い主名・わんちゃん名 or 電話番号">
+        <button class="sbtn" id="nr-search" type="button">検索</button>
         <select id="nr-cust"><option value="">わんちゃんを選択</option></select>
       </div>
-      <div class="frow" style="margin-bottom:8px">
+      <div class="frow">
         <input type="datetime-local" id="nr-at" value="2026-07-28T10:00" aria-label="日時">
         <select id="nr-menu"><option value="">コースを選択</option></select>
-      </div>
-      <div class="frow">
-        <select id="nr-staff">
+        <select id="nr-staff" aria-label="担当">
           <option value="">担当（任意）</option>
           <option>佐藤</option><option>高橋</option><option>伊藤</option><option>中村</option><option>山本</option>
         </select>
-        <button class="btn" id="nr-submit" type="button">予約を登録</button>
+        <button class="sbtn pri" id="nr-submit" type="button">予約を登録</button>
       </div>
+    </div>
+  </div>
+
+  <div class="card tight" id="freecard">
+    <div class="hd"><h2>空き状況をさがす</h2><span class="pill mut">日付を3つまで</span>
+      <span class="hdnote">候補日をまとめて確認できます。日付を押すとその日のカレンダーへ移動します。</span></div>
+    <div class="bd">
+      <div class="frow freerow">
+        <input type="date" class="freedate" aria-label="候補日1">
+        <input type="date" class="freedate" aria-label="候補日2">
+        <input type="date" class="freedate" aria-label="候補日3">
+        <button class="sbtn pri" id="freego">検索</button>
+        <button class="sbtn" id="freeclear" type="button">クリア</button>
+      </div>
+      <div id="freeout"></div>
     </div>
   </div>
 
@@ -811,21 +831,6 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
   </div>
 
   <div class="calsum" id="calsum"></div>
-
-  <div class="card" id="freecard">
-    <div class="hd"><h2>空き状況をさがす</h2><span class="pill mut">日付を3つまで</span></div>
-    <div class="bd">
-      <div class="freerow">
-        <input type="date" class="freedate" aria-label="候補日1">
-        <input type="date" class="freedate" aria-label="候補日2">
-        <input type="date" class="freedate" aria-label="候補日3">
-        <button class="sbtn pri" id="freego">検索</button>
-        <button class="sbtn" id="freeclear" type="button">クリア</button>
-      </div>
-      <p class="hint" style="margin:8px 0 0">お客様から候補日をいただいたときに、まとめて空きを確認できます。日付をタップするとその日のカレンダーへ移動します。</p>
-      <div id="freeout"></div>
-    </div>
-  </div>
 
   <div class="card">
     <div class="bd">
@@ -2275,11 +2280,24 @@ function renderWeek(){
       const label = (e.html.match(/<b>(.*?)<\/b>/) || [, ''])[1];
       el.innerHTML = '<b>' + label + '</b>' + (wide ? '　' : '') + fmt(e.s) + '〜' + fmt(e.s + e.d);
       el.title = (date.getMonth() + 1) + '/' + date.getDate() + ' ' + fmt(e.s) + '〜' + fmt(e.s + e.d) + '　' + label;
+      // 日表示と同じ詳細を出すための情報。週は担当の行が無いので、担当と日付を帯に持たせる
+      el.dataset.s = e.s; el.dataset.d = e.d; el.dataset.cls = e.cls;
+      el.dataset.html = e.html; el.dataset.nc = e.nc ? '1' : '0';
+      el.dataset.row = e.row; el.dataset.date = ymd(date);
+      if (e.pet) el.dataset.pet = e.pet;
+      if (e.pets) el.dataset.pets = JSON.stringify(e.pets);
       bd.appendChild(el);
     });
     tr.append(lb, bd); wtl.appendChild(tr);
   }
 }
+
+// 週の帯をタップしたときも日表示と同じ詳細を出す。
+// 動かす操作（コピー・時間変更）は行が担当を表す日表示だけで受ける
+wtl.addEventListener('click', e => {
+  const ev = e.target.closest('.tev');
+  if (ev) openPop(ev, e.clientX, e.clientY);
+});
 
 // ================= 月表示 =================
 const mgrid = document.getElementById('mgrid');
@@ -2343,9 +2361,10 @@ function renderMonth(){
 
 // ---- 表示切替と日付移動 ----
 const VIEW_SUB = {
-  day:  '横軸が時間（8:00〜21:00）・縦が担当の表示。<b>10:00以前の予定は青、19:00以降は紫、両方にまたがる予定はグラデーション</b>で色分けされます。<b>初めてのわんちゃんは自動で+30分の枠（斜線）を確保</b>。スタッフ名の☆で新人マーク&#11088;を付与。タップで詳細、長押し（PCはドラッグ）でコピー、両端スライドで時間変更ができます（30分単位）。',
-  week: '1週間の予約を一覧で確認できます。日付をタップするとその日の詳細（日表示）に切り替わります。',
-  month:'日ごとの件数を俯瞰できます。日付をタップするとその日の詳細（日表示）に切り替わります。',
+  // 毎日使う画面なので説明は1〜2文に収める。色分けや⭐の意味は下の凡例に出ている
+  day:  '横軸が時間・縦が担当。帯をタップで詳細、長押し（PCはドラッグ）でコピー、両端スライドで時間変更（30分単位）。',
+  week: '1週間ぶんの予定。帯をタップで詳細、日付をタップでその日の表示に切り替わります。',
+  month:'日ごとの件数。日付をタップするとその日の表示に切り替わります。',
 };
 function calRange(){
   if (calState.view === 'day') return dateLabel(calState.date) + ' 8:00〜21:00';
@@ -3288,9 +3307,17 @@ function findFamilyPet(petName){
   }
   return null;
 }
+/** 'YYYY-MM-DD' を「8月14日（金）」に。週の帯から開いたときの日付表示に使う */
+function popDateLabel(iso){
+  const [y, m, d] = iso.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  return m + '月' + d + '日（' + DOW_JP[date.getDay()] + '）';
+}
 function openPop(ev, x, y){
   closePop();
-  const row = CAL_ROWS[bodies.indexOf(ev.parentElement)];
+  // 日表示は行の位置が担当を表す。週表示は行が日付なので、帯に持たせた担当を使う
+  const rowIdx = ev.dataset.row != null ? Number(ev.dataset.row) : bodies.indexOf(ev.parentElement);
+  const row = CAL_ROWS[rowIdx] || { name: '—', role: '' };
   const s = parseFloat(ev.dataset.s), d = parseFloat(ev.dataset.d);
   const title = (ev.querySelector('b') || {}).textContent || '予約';
   const petList = ev.dataset.pets ? JSON.parse(ev.dataset.pets) : null;
@@ -3322,7 +3349,9 @@ function openPop(ev, x, y){
     + (!petList && ev.dataset.pet ? '<div class="meta">わんちゃん: <b>' + ev.dataset.pet + '</b></div>' : '')
     + (groupNote ? '<div class="meta">' + groupNote + '</div>' : '')
     + (consNote ? '<div class="meta">' + consNote + '</div>' : '')
-    + '<div class="meta">担当・枠: <b>' + row.name + '</b>（' + row.role + '）</div>';
+    + '<div class="meta">担当・枠: <b>' + row.name + '</b>（' + row.role + '）</div>'
+    // 週表示は1画面に7日ぶん並ぶので、どの日の予定かを必ず出す
+    + (ev.dataset.date ? '<div class="meta">日付: <b>' + popDateLabel(ev.dataset.date) + '</b></div>' : '');
   el.querySelector('h3').textContent = title;
   const openCarteOf = (petName) => {
     closePop();
