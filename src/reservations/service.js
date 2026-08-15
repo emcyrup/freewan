@@ -18,6 +18,19 @@ export const VISIT_SOURCES = ['epark', 'tel', 'epark_tel', 'line', 'walkin', 'ot
 const normalizeSource = (v, fallback) => (VISIT_SOURCES.includes(v) ? v : fallback);
 // 1対1で対応する区分だけ重複を禁じる。スクールとホテルは複数頭を同時に受けるため対象外
 const EXCLUSIVE_CATEGORIES = ['trimming'];
+// 所要時間の上限。ホテルの連泊でも足りる長さにしつつ、入力ミスは弾く
+const MAX_DURATION_MINUTES = 14 * 24 * 60;
+
+/**
+ * 画面から渡された所要時間を検める。
+ * 未指定（null）はメニューの値を使う合図、NaN は入力が不正という意味で返す。
+ * 終了時刻をスタッフが決められるようにしたため、メニューの既定より優先する
+ */
+function parseDuration(v) {
+  if (v === undefined || v === null || v === '') return null;
+  const n = Number(v);
+  return Number.isInteger(n) && n > 0 && n <= MAX_DURATION_MINUTES ? n : NaN;
+}
 
 export function createReservationService({ pool, slack, lineClient = null, planService = null }) {
   async function findOrCreateStaff(client, staffName) {
@@ -268,7 +281,7 @@ export function createReservationService({ pool, slack, lineClient = null, planS
   }
 
   /** 管理画面からの手入力予約 */
-  async function createManual({ customerId, reservedAt, menu, staffId, petId, source }) {
+  async function createManual({ customerId, reservedAt, menu, staffId, petId, source, durationMinutes }) {
     if (!Number.isInteger(customerId)) return { ok: false, error: 'invalid_customer' };
     if (!reservedAt || Number.isNaN(Date.parse(reservedAt))) {
       return { ok: false, error: 'invalid_reserved_at' };
@@ -285,10 +298,14 @@ export function createReservationService({ pool, slack, lineClient = null, planS
     }
 
     const spec = await menuSpec(pool, menu);
+    // 終了時刻を決めて登録したときは、メニューの既定ではなくそちらを使う
+    const explicit = parseDuration(durationMinutes);
+    if (Number.isNaN(explicit)) return { ok: false, error: 'invalid_duration' };
+    const minutes = explicit ?? spec.durationMinutes;
     const conflict = await findConflict(pool, {
       staffId: staffId || null,
       reservedAt,
-      durationMinutes: spec.durationMinutes,
+      durationMinutes: minutes,
       category: spec.category,
     });
     if (conflict) {
@@ -308,7 +325,7 @@ export function createReservationService({ pool, slack, lineClient = null, planS
          (customer_id, staff_id, pet_id, menu, reserved_at, category, duration_minutes, source)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
       [customerId, staffId || null, petId || null, menu || null, reservedAt,
-       spec.category, spec.durationMinutes, normalizeSource(source, 'tel')]
+       spec.category, minutes, normalizeSource(source, 'tel')]
     );
 
     let staffName = null;
@@ -589,7 +606,7 @@ export function createReservationService({ pool, slack, lineClient = null, planS
     if (!Number.isInteger(reservationId)) return { ok: false, error: 'invalid_id' };
 
     const { rows: current } = await pool.query(
-      `SELECT id, customer_id, staff_id, pet_id, menu, note, reserved_at, status
+      `SELECT id, customer_id, staff_id, pet_id, menu, note, reserved_at, status, duration_minutes
        FROM reservations WHERE id = $1`,
       [reservationId]
     );
@@ -605,6 +622,10 @@ export function createReservationService({ pool, slack, lineClient = null, planS
       return { ok: false, error: 'invalid_reserved_at' };
     }
     const menu = has('menu') ? (patch.menu || null) : now.menu;
+    // 所要時間は「終了時刻を決め直した」ときだけ差し替える。指定が無ければ、コースを
+    // 変えたときはそのコースの既定、変えていなければ今入っている長さのまま
+    const explicit = parseDuration(patch.durationMinutes);
+    if (Number.isNaN(explicit)) return { ok: false, error: 'invalid_duration' };
     const staffId = has('staffId') ? (patch.staffId ?? null) : now.staff_id;
     const note = has('note') ? (patch.note || null) : now.note;
 
@@ -620,10 +641,12 @@ export function createReservationService({ pool, slack, lineClient = null, planS
 
     // コースが変われば区分も所要時間も変わる。重なり判定はその新しい値で行う
     const spec = await menuSpec(pool, menu);
+    const menuChanged = has('menu') && (patch.menu || null) !== now.menu;
+    const minutes = explicit ?? (menuChanged ? spec.durationMinutes : now.duration_minutes);
     const conflict = await findConflict(pool, {
       staffId: staffId || null,
       reservedAt,
-      durationMinutes: spec.durationMinutes,
+      durationMinutes: minutes,
       category: spec.category,
       excludeId: reservationId,
     });
@@ -645,7 +668,7 @@ export function createReservationService({ pool, slack, lineClient = null, planS
            category = $7, duration_minutes = $8, updated_at = now()
        WHERE id = $1`,
       [reservationId, reservedAt, menu, staffId || null, petId, note,
-       spec.category, spec.durationMinutes]
+       spec.category, minutes]
     );
     return { ok: true, reservationId };
   }

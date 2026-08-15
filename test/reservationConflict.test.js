@@ -255,3 +255,34 @@ test('存在しない予約の経路は直せない', async () => {
   const service = createReservationService({ pool, slack: { notify: async () => {} } });
   assert.deepEqual(await service.setSource(5, 'epark'), { ok: false, error: 'not_found' });
 });
+
+test('新規登録でも終了時刻ぶんの長さが入り、重なり判定にも使われる', async () => {
+  const f = makeFakes({ menu: { category: 'trimming', duration_minutes: 60 } });
+  const service = createReservationService(f);
+
+  const result = await service.createManual({ ...input, durationMinutes: 210 });
+  assert.equal(result.ok, true);
+
+  const insert = f.queries.find((q) => /INSERT INTO reservations/.test(q.sql));
+  assert.equal(insert.params[6], 210, 'コースの60分ではなく指定した長さで入る');
+  const check = f.queries.find((q) => /FROM reservations r\s+JOIN customers c/.test(q.sql));
+  assert.equal(check.params[2], 210, '重なりも210分の幅で見る');
+});
+
+test('終了時刻を決めなければ、これまでどおりコースの所要時間が入る', async () => {
+  const f = makeFakes({ menu: { category: 'trimming', duration_minutes: 90 } });
+  const service = createReservationService(f);
+
+  await service.createManual({ ...input });
+  const insert = f.queries.find((q) => /INSERT INTO reservations/.test(q.sql));
+  assert.equal(insert.params[6], 90);
+});
+
+test('おかしな長さでは登録しない', async () => {
+  const f = makeFakes({ menu: { category: 'trimming', duration_minutes: 60 } });
+  const service = createReservationService(f);
+
+  const result = await service.createManual({ ...input, durationMinutes: 0 });
+  assert.deepEqual(result, { ok: false, error: 'invalid_duration' });
+  assert.ok(!f.queries.some((q) => /INSERT INTO reservations/.test(q.sql)));
+});

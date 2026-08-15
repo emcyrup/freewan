@@ -133,3 +133,46 @@ test('無い予約・おかしな日時・おかしな id は弾く', async () =
   );
   assert.deepEqual(await service.updateDetails('5', {}), { ok: false, error: 'invalid_id' });
 });
+
+test('終了時刻を決めたときは、その長さがコースの既定より優先される', async () => {
+  const { fakes, queries } = makeFakes({
+    current: CURRENT, menu: { category: 'trimming', duration_minutes: 60 },
+  });
+  const service = createReservationService(fakes);
+
+  await service.updateDetails(5, { durationMinutes: 150 });
+  assert.equal(upd(queries).params[7], 150);
+
+  // 重なりの判定も、その長さで行う
+  const check = queries.find((q) => /FROM reservations r\s+JOIN customers c/.test(q.sql));
+  assert.equal(check.params[2], 150);
+});
+
+test('長さを渡さなければ、コースを変えない限り今の長さが残る', async () => {
+  const cur = { ...CURRENT, duration_minutes: 150 };
+  const { fakes, queries } = makeFakes({
+    current: cur, menu: { category: 'trimming', duration_minutes: 60 },
+  });
+  const service = createReservationService(fakes);
+
+  // 日時だけ動かしても、伸ばしてあった長さは戻らない
+  await service.updateDetails(5, { reservedAt: '2026-08-25T02:00:00.000Z' });
+  assert.equal(upd(queries).params[7], 150);
+
+  // コースを変えたときは、そのコースの既定を引き直す
+  const f2 = makeFakes({ current: cur, menu: { category: 'trimming', duration_minutes: 60 } });
+  await createReservationService(f2.fakes).updateDetails(5, { menu: 'シャンプーコース' });
+  assert.equal(upd(f2.queries).params[7], 60);
+});
+
+test('おかしな長さは弾く', async () => {
+  const { fakes, queries } = makeFakes({ current: CURRENT });
+  const service = createReservationService(fakes);
+  for (const bad of [0, -30, 1.5, 'ながめ', 14 * 24 * 60 + 1]) {
+    assert.deepEqual(
+      await service.updateDetails(5, { durationMinutes: bad }),
+      { ok: false, error: 'invalid_duration' }, String(bad)
+    );
+  }
+  assert.equal(upd(queries), undefined);
+});

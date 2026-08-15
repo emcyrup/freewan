@@ -720,7 +720,7 @@ export function createAdminRouter({
 
   router.post('/reservations', async (req, res, next) => {
     try {
-      const { customerId, reservedAt, menu, staffId, petId, source } = req.body ?? {};
+      const { customerId, reservedAt, menu, staffId, petId, source, durationMinutes } = req.body ?? {};
       const result = await reservationService.createManual({
         customerId: Number(customerId),
         reservedAt,
@@ -728,6 +728,7 @@ export function createAdminRouter({
         staffId: staffId ? Number(staffId) : null,
         petId: petId ? Number(petId) : null,
         source,
+        durationMinutes,
       });
       // 時間の重なりは「入力ミス」なので、他の入力エラーと区別して 409 で返す
       if (!result.ok) {
@@ -768,6 +769,7 @@ export function createAdminRouter({
       if (has('note')) patch.note = body.note;
       if (has('staffId')) patch.staffId = body.staffId ? Number(body.staffId) : null;
       if (has('petId')) patch.petId = body.petId ? Number(body.petId) : null;
+      if (has('durationMinutes')) patch.durationMinutes = body.durationMinutes;
       const result = await reservationService.updateDetails(id, patch);
       if (!result.ok) {
         const code = result.error === 'not_found' ? 404

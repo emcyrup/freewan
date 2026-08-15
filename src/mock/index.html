@@ -175,6 +175,10 @@ button.kpi:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
 /* 新規予約はボタンから開く。フォームの id と既存の配線をそのまま使うため、
    ノードを動かさず、モーダルの中に置いたまま表示を切り替える */
 .nrbar{display:flex; gap:8px; align-items:center; margin:0 0 12px; flex-wrap:wrap}
+/* 開始 〜 終了 は続きものなので、間の記号と長さの表示は伸ばさない */
+.nrto{flex:0 0 auto; color:var(--muted); font-size:12.5px}
+#newresv .frow #nr-end{flex:0 1 130px}
+#newresv .frow #nr-len{flex:0 0 auto; white-space:nowrap}
 .mback>#newresv{width:640px; max-width:100%; max-height:92vh; overflow:auto; margin:0;
   box-shadow:0 18px 48px rgba(0,0,0,.3)}
 /* 閉じるボタンを見出しと同じ行の右端に置き、説明文は次の行に送る */
@@ -914,7 +918,12 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
         <select id="nr-cust"><option value="">わんちゃんを選択</option></select>
       </div>
       <div class="frow">
-        <input type="datetime-local" id="nr-at" value="2026-07-28T10:00" aria-label="日時">
+        <input type="datetime-local" id="nr-at" value="2026-07-28T10:00" aria-label="開始日時">
+        <span class="nrto">〜</span>
+        <input type="time" id="nr-end" aria-label="終了時刻" step="900">
+        <span class="hdnote" id="nr-len"></span>
+      </div>
+      <div class="frow">
         <select id="nr-menu"><option value="">コースを選択</option></select>
         <select id="nr-staff" aria-label="担当">
           <option value="">担当（任意）</option>
@@ -4503,6 +4512,7 @@ const RV_EDIT_ERRORS = {
   not_found: 'この予約は見つかりませんでした（他の端末で消された可能性があります）',
   already_done: '来店済・無断キャンセルの予約は履歴のため編集できません',
   invalid_pet: 'このわんちゃんは、この飼い主様の子として登録されていません',
+  invalid_duration: '終了時刻を正しく入力してください（最長14日）',
 };
 function openResvEdit(r){
   closeEdit();
@@ -4526,7 +4536,28 @@ function openResvEdit(r){
   };
   const at = document.createElement('input');
   at.type = 'datetime-local'; at.value = r.atIso || '';
-  field('日時', at);
+  field('開始日時', at);
+
+  // 終了時刻。入っている所要時間から出す。ここを直さなければ長さは変わらない
+  const end = document.createElement('input');
+  end.type = 'time'; end.step = 900;
+  const endOf = (iso, mins) => {
+    if (!iso || !mins) return '';
+    const [h, m] = iso.split('T')[1].split(':').map(Number);
+    const t = (h * 60 + m + mins) % (24 * 60);
+    return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0');
+  };
+  end.value = endOf(r.atIso, r.mins);
+  field('終了時刻', end);
+  // 日をまたぐお預かりもあるので、開始以前なら翌日として数える
+  const edMinutes = () => {
+    if (!at.value || !end.value) return null;
+    const [sh, sm] = at.value.split('T')[1].split(':').map(Number);
+    const [eh, em] = end.value.split(':').map(Number);
+    let mins = (eh * 60 + em) - (sh * 60 + sm);
+    if (mins <= 0) mins += 24 * 60;
+    return mins;
+  };
 
   const menu = document.createElement('select');
   // 今のコースが一覧から外れていても選び直せるよう、値が無いときだけ先頭に足す
@@ -4556,11 +4587,14 @@ function openResvEdit(r){
   acts.append(save, cancel); bd.appendChild(acts);
 
   save.addEventListener('click', async () => {
-    if (!at.value) { showToast('日時を入力してください'); return; }
+    if (!at.value) { showToast('開始日時を入力してください'); return; }
+    const mins = edMinutes();
+    if (end.value && !mins) { showToast('終了時刻を正しく入力してください'); return; }
     const staffLabel = staff.selectedOptions[0]?.textContent || '';
     if (!adminLive) {
       r.atIso = at.value;
       r.at = rvAtLabel(at.value);
+      if (mins) r.mins = mins;
       r.menu = menu.value || '—';
       r.staff = staff.value ? staffLabel : '';
       r.note = note.value.trim();
@@ -4577,6 +4611,7 @@ function openResvEdit(r){
           menu: menu.value || null,
           staffId: staff.value || null,
           note: note.value.trim() || null,
+          durationMinutes: mins,
         }),
       });
       closeEdit();
@@ -4990,6 +5025,43 @@ document.getElementById('ts-search').addEventListener('click', () => fillCustome
 // ---- 新規予約モーダル ----
 // カレンダーの空き時間から開くときは日時（と日表示なら担当）を埋めておく。
 // 埋めるのは「その場から入力を始められるようにする」ためで、値は開いてから直せる
+// ---- 開始 〜 終了 ----
+// コースを選ぶと終了時刻が既定で入り、そのうえで手で直せる。
+// お預かりのように日をまたぐ場合は、終了が開始以前なら翌日として扱う
+const MENU_MIN = (name) => (MENUS.find(m => m.name === name) || {}).min || null;
+function nrDuration(){
+  const at = document.getElementById('nr-at').value;
+  const end = document.getElementById('nr-end').value;
+  if (!at || !end) return null;
+  const [sh, sm] = at.split('T')[1].split(':').map(Number);
+  const [eh, em] = end.split(':').map(Number);
+  let mins = (eh * 60 + em) - (sh * 60 + sm);
+  if (mins <= 0) mins += 24 * 60;          // 日をまたぐお預かり
+  return mins;
+}
+function nrLenText(mins){
+  if (!mins) return '';
+  const h = Math.floor(mins / 60), m = mins % 60;
+  const over = nrDuration() && document.getElementById('nr-end').value
+    <= document.getElementById('nr-at').value.split('T')[1] ? '翌日まで・' : '';
+  return '（' + over + (h ? h + '時間' : '') + (m ? m + '分' : '') + '）';
+}
+/** 終了時刻をコースの所要時間から引き直す。手で入れた値は force のときだけ上書きする */
+function nrSyncEnd(force){
+  const at = document.getElementById('nr-at'), end = document.getElementById('nr-end');
+  if (!at.value) { end.value = ''; document.getElementById('nr-len').textContent = ''; return; }
+  const min = MENU_MIN(document.getElementById('nr-menu').selectedOptions[0]?.textContent);
+  if ((force || !end.value) && min) {
+    const [h, m] = at.value.split('T')[1].split(':').map(Number);
+    const t = (h * 60 + m + min) % (24 * 60);
+    end.value = String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0');
+  }
+  document.getElementById('nr-len').textContent = nrLenText(nrDuration());
+}
+document.getElementById('nr-menu').addEventListener('change', () => nrSyncEnd(true));
+document.getElementById('nr-at').addEventListener('change', () => nrSyncEnd(true));
+document.getElementById('nr-end').addEventListener('change', () => nrSyncEnd(false));
+
 let nrPrevFocus = null;
 function openNewResv(pre){
   const back = document.getElementById('nrback');
@@ -5003,6 +5075,7 @@ function openNewResv(pre){
     : 'お電話・ご来店時のご予約用。承認不要で確定し、「予約管理」の一覧に入ります。';
   nrPrevFocus = document.activeElement;
   back.hidden = false;
+  nrSyncEnd(!!(pre && pre.at));      // 空き時間から開いたときは、その時刻を起点に引き直す
   document.getElementById('nr-q').focus();
 }
 function closeNewResv(){
@@ -5023,6 +5096,8 @@ document.getElementById('nr-submit').addEventListener('click', async () => {
   const menu = document.getElementById('nr-menu').selectedOptions[0]?.textContent;
   const name = opt?.dataset.dog;
   if (!name || !at || !menu || menu === 'コースを選択') { showToast('わんちゃん・日時・コースを指定してください'); return; }
+  const mins = nrDuration();
+  if (document.getElementById('nr-end').value && !mins) { showToast('終了時刻を正しく入力してください'); return; }
   if (adminLive) {
     try {
       await adminApi('/reservations', {
@@ -5033,6 +5108,7 @@ document.getElementById('nr-submit').addEventListener('click', async () => {
           menu,
           staffId: document.getElementById('nr-staff').value || null,
           source: document.getElementById('nr-source').value || null,
+          durationMinutes: mins,     // 終了時刻を決めた場合はコースの既定より優先される
         }),
       });
       closeNewResv();
