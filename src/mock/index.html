@@ -4400,7 +4400,7 @@ const RESV = [
   { id:115, day:-3, time:'13:00', name:'モモ',     menu:'シャンプーコース',         staff:'高橋', status:'no_show',  note:'', cat:'trimming', mins:60, src:'tel' },
   { id:110, day:9,  time:'15:00', name:'きなこ',   menu:'シャンプーコース',         staff:'高橋', status:'cancelled', note:'', cat:'trimming', mins:60, src:'epark' },
 ].map(r => ({ ...r, at: rvAt(r.day, r.time), atIso: rvAtIso(r.day, r.time),
-  owner: ownerOf(r.name) || '' }));
+  pet: r.name, owner: ownerOf(r.name) || '' }));
 // スクールの進み方。体験だけを対象にした配信や追客の絞り込みにも使う
 const SCHOOL_STAGES = [
   { v:'counseling', label:'カウンセリング' },
@@ -4669,7 +4669,9 @@ function jstInputValue(iso){
 }
 function rvMap(r){
   return { id: r.id, at: snsFmtJst(r.reserved_at), atIso: jstInputValue(r.reserved_at),
-    name: r.pet_name || r.customer_name,
+    // name はトーストや確認文で使う表示名なので飼い主様名で補う。
+    // pet は「登録されている子」そのもので、いなければ空（一覧では — と出す）
+    name: r.pet_name || r.customer_name, pet: r.pet_name || '',
     owner: r.customer_name || '', menu: r.menu || '—', staff: r.staff_name || '',
     staffId: r.staff_id || '',
     status: r.status, note: r.note || '', ok: r.confirmed_by_customer,
@@ -4819,7 +4821,7 @@ function renderResv(){
     // 重複の警告は日時の下に置く。横に並べると日時の列がその幅まで広がってしまう
     tr.innerHTML = '<td class="num rvat" data-label="日時">' + esc(r.at)
       + (dup ? '<span class="pill crit" style="display:block;margin-top:3px">時間が重複</span>' : '') + '</td>'
-      + '<td class="rvname" data-label="わんちゃん">' + esc(r.name) + '</td>'
+      + '<td class="rvname" data-label="わんちゃん">' + esc(r.pet || '—') + '</td>'
       + '<td class="rvname" data-label="飼い主様">' + esc(r.owner || '—') + '</td>'
       + '<td data-label="コース">' + esc(r.menu)
       + (r.cat ? ' <span class="pill mut">' + CAT_LABELS[r.cat] + '</span>' : '')
@@ -5150,7 +5152,7 @@ document.getElementById('nr-submit').addEventListener('click', async () => {
   const [, mo, da] = date.split('-');
   const w = '日月火水木金土'[new Date(date + 'T00:00:00+09:00').getDay()];
   RESV.unshift({ id: Date.now(), at: Number(mo) + '/' + Number(da) + '(' + w + ') ' + time,
-    name, menu, staff: document.getElementById('nr-staff').value, status:'confirmed', note:'' });
+    name, pet: name, menu, staff: document.getElementById('nr-staff').value, status:'confirmed', note:'' });
   renderResv();
   closeNewResv();
   showToast(name + 'の予約を登録しました（スタッフ入力のため承認は不要です）');
