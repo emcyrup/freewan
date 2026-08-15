@@ -768,7 +768,8 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
     <button data-s="sns"><span class="ic">&#9633;</span>SNS投稿</button>
     <button data-s="test"><span class="ic">&#9633;</span>テスト送信</button>
   </nav>
-  <div class="foot">FREE WAN 管理システム<br>モック <b>v1.0</b>（更新 2026-08-06）<br>サンプルデータのみ・実データ未接続</div>
+  <div class="foot">FREE WAN 管理システム<br>モック <b>v1.0</b>（更新 2026-08-06）<br>サンプルデータのみ・実データ未接続
+    <br><span id="buildmark"></span></div>
 </aside>
 
 <main class="main">
@@ -2191,6 +2192,16 @@ for (let h = 0; h <= DAY_HOURS; h++) {
 // カレンダーは calState.date を基準に描く。固定日のサンプルを貼るのをやめ、
 // 前へ/次へで実際に日が動くようにする（実データ接続後も同じ枠組みで動かせる）
 const CLOSED_DOW = 4;                                // 木曜定休
+// 端末が読み込んでいる画面の版を出す。「直したはずなのに変わらない」ときに、
+// 手元のキャッシュが古いのか配信側が古いのかを、その場で切り分けられるようにする
+(function showBuildMark(){
+  const el = document.getElementById('buildmark');
+  if (!el || location.protocol === 'file:') return;
+  fetch(location.pathname, { method: 'HEAD', cache: 'no-store' })
+    .then(r => r.headers.get('last-modified'))
+    .then(v => { if (v) el.textContent = '画面の版：' + new Date(v).toLocaleString('ja-JP'); })
+    .catch(() => {});
+})();
 // 空き時間の当たり判定を敷く。div のままだと iOS が click を出さないことがあるため button にする
 function freeHit(label){
   const b = document.createElement('button');
@@ -2454,12 +2465,8 @@ function renderWeek(){
 // 動かす操作（コピー・時間変更）は行が担当を表す日表示だけで受ける
 wtl.addEventListener('click', e => {
   const ev = e.target.closest('.tev');
-  if (ev) { openPop(ev, e.clientX, e.clientY); return; }
-  // 空きをタップしたらその日・その時間で新規予約。週は担当の行が無いので担当は空のまま
-  const hit = e.target.closest('.freehit');
-  if (!hit || hit.parentElement.dataset.di === undefined) return;
-  const bd = hit.parentElement;
-  openNewResvFromSlot(bd, e.clientX, calAddDays(startOfWeek(calState.date), Number(bd.dataset.di)), '');
+  if (ev) openPop(ev, e.clientX, e.clientY);
+  // 空き時間のタップは bindFreeTaps が受ける（週は担当の行が無いので担当は空のまま）
 });
 
 // ================= 月表示 =================
@@ -3615,16 +3622,42 @@ tl.addEventListener('pointerdown', e => {
   press = { ev, x: e.clientX, y: e.clientY, id: e.pointerId, type: e.pointerType,
     timer: setTimeout(() => startDrag(ev, e.clientX, e.clientY), 420) };
 });
-// 空き時間のタップは、行に敷いた .freehit ボタンの click で拾う。カレンダーは横スクロール
-// する枠の中にあり、iOS はスクロールと判断した時点で pointercancel を投げてくるので
-// pointerdown/up の組では取りこぼす。click ならスクロール時はブラウザ側が出さない
-let gestureAt = 0;                             // ドラッグ・時間変更の直後に出る click を無視する目印
-tl.addEventListener('click', e => {
-  const hit = e.target.closest('.freehit');
-  if (!hit || performance.now() - gestureAt < 400) return;
+// 空き時間のタップは、行に敷いた .freehit ボタンで拾う。
+// iPhone（Safari も Chrome も中身は WebKit）は横スクロールする枠の中だと click を
+// 出さないことがあるため、click だけに頼らず touchend でも直接受ける。どちらか先に
+// 効いた方だけが動くよう、処理した時刻を gestureAt に置いて二重で開かないようにする。
+let gestureAt = 0;      // ドラッグ・時間変更・処理済みのタップの直後を示す目印
+let tapStart = null;
+function bindFreeTaps(root, open){
+  const fresh = () => performance.now() - gestureAt >= 400;
+  root.addEventListener('click', e => {
+    const hit = e.target.closest('.freehit');
+    if (!hit || !fresh()) return;
+    gestureAt = performance.now();
+    open(hit, e.clientX);
+  });
+  root.addEventListener('touchstart', e => {
+    const t = e.changedTouches[0];
+    tapStart = { x: t.clientX, y: t.clientY, hit: e.target.closest('.freehit') };
+  }, { passive: true });
+  root.addEventListener('touchend', e => {
+    const s = tapStart; tapStart = null;
+    if (!s || !s.hit || !fresh()) return;
+    const t = e.changedTouches[0];
+    if (Math.abs(t.clientX - s.x) > 10 || Math.abs(t.clientY - s.y) > 10) return;   // スクロールと区別する
+    gestureAt = performance.now();
+    open(s.hit, t.clientX);
+  }, { passive: true });
+}
+bindFreeTaps(tl, (hit, x) => {
   const bd = hit.parentElement;
   const row = CAL_ROWS[bodies.indexOf(bd)];
-  openNewResvFromSlot(bd, e.clientX, calState.date, row && row.st ? row.name : '');
+  openNewResvFromSlot(bd, x, calState.date, row && row.st ? row.name : '');
+});
+bindFreeTaps(wtl, (hit, x) => {
+  const bd = hit.parentElement;
+  if (bd.dataset.di === undefined) return;
+  openNewResvFromSlot(bd, x, calAddDays(startOfWeek(calState.date), Number(bd.dataset.di)), '');
 });
 // 押した x 座標を 30分刻みの時刻に直す。行の右端ぎりぎりでも枠内に収める
 function slotAt(body, clientX){
