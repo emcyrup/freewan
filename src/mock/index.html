@@ -216,10 +216,16 @@ button.trow2:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
     linear-gradient(to right, var(--line) 1px, transparent 1px),
     linear-gradient(to right, color-mix(in srgb, var(--line) 55%, transparent) 1px, transparent 1px);
   background-size:calc(100%/15) 100%, calc(100%/30) 100%;
-  cursor:pointer;   /* 空き時間を押せることを示す。iOS で click が確実に出る条件でもある */
 }
+/* 空き時間の当たり判定。iOS（iPhone の Safari・Chrome とも WebKit）は、ただの div への
+   タップから click を出さないことがあるため、本物の button を敷いて確実に受け取る。
+   帯（.tev）は DOM で後に来るので、この上に乗る */
+.freehit{position:absolute; inset:0; width:100%; padding:0; margin:0; border:0; background:transparent;
+  -webkit-appearance:none; appearance:none; cursor:pointer; font:inherit; color:inherit;
+  touch-action:manipulation}   /* タップを素早く確定させ、ダブルタップ拡大の待ちを挟ませない */
+.freehit:focus-visible{outline:2px solid var(--accent); outline-offset:-2px; border-radius:6px}
 /* 押せる場所だと分かるように、マウスを載せたときだけ薄く色を敷く */
-@media (hover:hover){ .rbody:hover{background-color:color-mix(in srgb, var(--accent-soft) 55%, transparent)} }
+@media (hover:hover){ .freehit:hover{background-color:color-mix(in srgb, var(--accent-soft) 55%, transparent)} }
 .rbody.drop{background-color:var(--accent-soft)}
 .tev{position:absolute; top:8px; height:44px; border-radius:8px; background:var(--accent); color:#fff;
   padding:5px 10px 5px 12px; font-size:11.5px; line-height:1.3; overflow:hidden; white-space:nowrap;
@@ -2185,6 +2191,12 @@ for (let h = 0; h <= DAY_HOURS; h++) {
 // カレンダーは calState.date を基準に描く。固定日のサンプルを貼るのをやめ、
 // 前へ/次へで実際に日が動くようにする（実データ接続後も同じ枠組みで動かせる）
 const CLOSED_DOW = 4;                                // 木曜定休
+// 空き時間の当たり判定を敷く。div のままだと iOS が click を出さないことがあるため button にする
+function freeHit(label){
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = 'freehit'; b.setAttribute('aria-label', label);
+  return b;
+}
 function ymd(d){ return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 function calAddDays(d, n){ const x = new Date(d); x.setDate(x.getDate() + n); return x; }
 function calAddMonths(d, n){ const x = new Date(d); x.setDate(1); x.setMonth(x.getMonth() + n); return x; }
@@ -2331,6 +2343,7 @@ function renderDay(){
       + (r.st ? '<button class="star" data-star="' + r.name + '" aria-label="' + r.name + 'の新人マーク">&#9734;</button>' : '')
       + '</span><span class="role">' + r.role + '</span>';
     const bd = document.createElement('div'); bd.className = 'rbody';
+    bd.appendChild(freeHit(r.st ? r.name + 'の空き時間に新規予約' : 'この時間に新規予約'));
     const off = day.closed ? [DAY_START, DAY_START + DAY_HOURS, '定休日'] : dayOff(date, i);
     if (off) {
       const h = document.createElement('div'); h.className = 'hatch';
@@ -2407,8 +2420,8 @@ function renderWeek(){
     const bd = document.createElement('div'); bd.className = 'rbody';
     // 週は行が日付を表す。空き時間タップで新規予約を開くために、週の何日目かを持たせる
     bd.dataset.di = i;
+    bd.appendChild(freeHit((date.getMonth() + 1) + '/' + date.getDate() + ' の空き時間に新規予約'));
     if (day.closed) {
-      bd.dataset.closed = '1';
       const h = document.createElement('div'); h.className = 'hatch';
       h.style.left = '0'; h.style.width = '100%'; h.textContent = '定休日';
       bd.appendChild(h);
@@ -2443,10 +2456,10 @@ wtl.addEventListener('click', e => {
   const ev = e.target.closest('.tev');
   if (ev) { openPop(ev, e.clientX, e.clientY); return; }
   // 空きをタップしたらその日・その時間で新規予約。週は担当の行が無いので担当は空のまま
-  const bd = e.target.closest('.rbody');
-  if (!bd || bd.dataset.di === undefined) return;
-  const date = calAddDays(startOfWeek(calState.date), Number(bd.dataset.di));
-  openNewResvFromSlot(bd, e.clientX, date, '', bd.dataset.closed === '1');
+  const hit = e.target.closest('.freehit');
+  if (!hit || hit.parentElement.dataset.di === undefined) return;
+  const bd = hit.parentElement;
+  openNewResvFromSlot(bd, e.clientX, calAddDays(startOfWeek(calState.date), Number(bd.dataset.di)), '');
 });
 
 // ================= 月表示 =================
@@ -3602,18 +3615,16 @@ tl.addEventListener('pointerdown', e => {
   press = { ev, x: e.clientX, y: e.clientY, id: e.pointerId, type: e.pointerType,
     timer: setTimeout(() => startDrag(ev, e.clientX, e.clientY), 420) };
 });
-// 空き時間のタップは pointerup ではなく click で拾う。カレンダーは横スクロールする枠の
-// 中にあり、iOS はスクロールと判断した時点で pointercancel を投げてくるため、
+// 空き時間のタップは、行に敷いた .freehit ボタンの click で拾う。カレンダーは横スクロール
+// する枠の中にあり、iOS はスクロールと判断した時点で pointercancel を投げてくるので
 // pointerdown/up の組では取りこぼす。click ならスクロール時はブラウザ側が出さない
 let gestureAt = 0;                             // ドラッグ・時間変更の直後に出る click を無視する目印
 tl.addEventListener('click', e => {
-  if (performance.now() - gestureAt < 400) return;
-  if (e.target.closest('.tev')) return;
-  const bd = e.target.closest('.rbody');
-  if (!bd) return;
+  const hit = e.target.closest('.freehit');
+  if (!hit || performance.now() - gestureAt < 400) return;
+  const bd = hit.parentElement;
   const row = CAL_ROWS[bodies.indexOf(bd)];
-  openNewResvFromSlot(bd, e.clientX, calState.date, row && row.st ? row.name : '',
-    !!e.target.closest('.hatch') || isClosed(calState.date));
+  openNewResvFromSlot(bd, e.clientX, calState.date, row && row.st ? row.name : '');
 });
 // 押した x 座標を 30分刻みの時刻に直す。行の右端ぎりぎりでも枠内に収める
 function slotAt(body, clientX){
@@ -3625,10 +3636,21 @@ function atValue(date, t){
   const h = Math.floor(t), m = Math.round((t - h) * 60);
   return ymd(date) + 'T' + String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
 }
+// その時刻が休みの網掛けに入っているか。網掛けは pointer-events:none で当たり判定を
+// 持たないため、要素ではなく位置で判断する。戻り値は網掛けの見出し（定休日・休憩など）
+function offLabelAt(body, t){
+  for (const h of body.querySelectorAll('.hatch')) {
+    const l = DAY_START + parseFloat(h.style.left) / 100 * DAY_HOURS;
+    const w = parseFloat(h.style.width) / 100 * DAY_HOURS;
+    if (t >= l && t < l + w) return h.textContent || 'お休み';
+  }
+  return null;
+}
 // 空き時間タップから新規予約を開く。休みの網掛けの上では作らせない
-function openNewResvFromSlot(body, clientX, date, staff, closed){
-  if (closed) { showToast('この時間はお休みのため、ご予約を入れられません'); return; }
+function openNewResvFromSlot(body, clientX, date, staff){
   const t = slotAt(body, clientX);
+  const off = offLabelAt(body, t);
+  if (off) { showToast(off + 'のため、この時間にはご予約を入れられません'); return; }
   const label = (date.getMonth() + 1) + '/' + date.getDate() + '（' + DOW_JP[date.getDay()] + '） ' + fmt(t);
   openNewResv({ at: atValue(date, t), staff, hint: 'カレンダーから ' + label + ' を選びました。' });
 }
