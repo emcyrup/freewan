@@ -4486,7 +4486,10 @@ function openResvEdit(r){
   back.appendChild(win);
   document.body.appendChild(back);
   editBack = back;
-  at.focus();
+  // 日時欄そのものにカーソルを入れると、開いた瞬間に日付選択（iOS では下から出る
+  // ドラム）が立ち上がってしまう。入れ物へ移すだけにして、選ぶかどうかは操作する人に任せる
+  win.tabIndex = -1;
+  win.focus();
 }
 
 function rvSetStatus(r, status, msg){
