@@ -159,12 +159,21 @@ button.kpi{font:inherit; color:inherit; text-align:left; width:100%; cursor:poin
 button.kpi:hover{border-color:var(--accent); background:var(--accent-soft)}
 button.kpi:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
 .mback{position:fixed; inset:0; z-index:80; background:rgba(20,18,15,.45); display:flex; align-items:center; justify-content:center; padding:20px}
+/* .mback は display:flex なので、hidden 属性だけでは隠れない */
+.mback[hidden]{display:none}
 .mwin{background:var(--surface); border:1px solid var(--line); border-radius:14px; box-shadow:0 18px 48px rgba(0,0,0,.3);
   width:540px; max-width:100%; max-height:80vh; display:flex; flex-direction:column}
 .mwin .mhd{display:flex; align-items:center; gap:10px; padding:14px 18px; border-bottom:1px solid var(--line)}
 .mwin .mhd h2{margin:0; font-size:15px}
-.mwin .mx{margin-left:auto; background:none; border:0; font-size:16px; color:var(--muted); cursor:pointer; padding:4px}
-.mwin .mx:focus-visible{outline:2px solid var(--accent); border-radius:4px}
+.mwin .mx,.card .mx{margin-left:auto; background:none; border:0; font-size:16px; color:var(--muted); cursor:pointer; padding:4px}
+.mwin .mx:focus-visible,.card .mx:focus-visible{outline:2px solid var(--accent); border-radius:4px}
+/* 新規予約はボタンから開く。フォームの id と既存の配線をそのまま使うため、
+   ノードを動かさず、モーダルの中に置いたまま表示を切り替える */
+.nrbar{display:flex; gap:8px; align-items:center; margin:0 0 12px}
+.nrbar .hdnote{flex:1 1 220px}
+.mback>#newresv{width:640px; max-width:100%; max-height:92vh; overflow:auto; margin:0; box-shadow:0 18px 48px rgba(0,0,0,.3)}
+/* 閉じるボタンを見出しと同じ行の右端に置き、説明文は次の行に送る */
+#newresv .hd .hdnote{order:1; flex:1 0 100%; margin-top:2px}
 .tri-rows{overflow:auto}
 .trow2{display:grid; grid-template-columns:52px 1fr auto; gap:12px; align-items:center;
   width:100%; padding:11px 18px; border:0; border-bottom:1px solid var(--line);
@@ -846,9 +855,16 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
   <h1>予約カレンダー</h1>
   <p class="sub" id="calsub"></p>
 
-  <div class="card tight" id="newresv">
+  <div class="nrbar">
+    <button class="sbtn pri" id="nropen" type="button">＋ 新規予約</button>
+    <span class="hdnote">お電話・ご来店時のご予約用。カレンダーの空いている時間を押しても登録できます。</span>
+  </div>
+
+  <div class="mback" id="nrback" hidden>
+  <div class="card tight" id="newresv" role="dialog" aria-modal="true" aria-label="新規予約">
     <div class="hd"><h2>新規予約</h2><span class="pill mut">スタッフ入力</span>
-      <span class="hdnote">お電話・ご来店時のご予約用。承認不要で確定し、「予約管理」の一覧に入ります。</span></div>
+      <span class="hdnote" id="nrhint">お電話・ご来店時のご予約用。承認不要で確定し、「予約管理」の一覧に入ります。</span>
+      <button class="mx" id="nrclose" type="button" aria-label="閉じる">&#10005;</button></div>
     <div class="bd">
       <div class="frow">
         <input type="text" id="nr-q" placeholder="飼い主名・わんちゃん名 or 電話番号">
@@ -873,6 +889,7 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
         <button class="sbtn pri" id="nr-submit" type="button">予約を登録</button>
       </div>
     </div>
+  </div>
   </div>
 
   <div class="card tight" id="freecard">
@@ -2385,7 +2402,10 @@ function renderWeek(){
     // 日付をタップしたらその日の詳細へ。移動先の日を選んでから切り替える
     lb.addEventListener('click', () => { calState.date = date; setView('day'); });
     const bd = document.createElement('div'); bd.className = 'rbody';
+    // 週は行が日付を表す。空き時間タップで新規予約を開くために、週の何日目かを持たせる
+    bd.dataset.di = i;
     if (day.closed) {
+      bd.dataset.closed = '1';
       const h = document.createElement('div'); h.className = 'hatch';
       h.style.left = '0'; h.style.width = '100%'; h.textContent = '定休日';
       bd.appendChild(h);
@@ -2418,7 +2438,12 @@ function renderWeek(){
 // 動かす操作（コピー・時間変更）は行が担当を表す日表示だけで受ける
 wtl.addEventListener('click', e => {
   const ev = e.target.closest('.tev');
-  if (ev) openPop(ev, e.clientX, e.clientY);
+  if (ev) { openPop(ev, e.clientX, e.clientY); return; }
+  // 空きをタップしたらその日・その時間で新規予約。週は担当の行が無いので担当は空のまま
+  const bd = e.target.closest('.rbody');
+  if (!bd || bd.dataset.di === undefined) return;
+  const date = calAddDays(startOfWeek(calState.date), Number(bd.dataset.di));
+  openNewResvFromSlot(bd, e.clientX, date, '', bd.dataset.closed === '1');
 });
 
 // ================= 月表示 =================
@@ -2484,8 +2509,8 @@ function renderMonth(){
 // ---- 表示切替と日付移動 ----
 const VIEW_SUB = {
   // 毎日使う画面なので説明は1〜2文に収める。色分けや⭐の意味は下の凡例に出ている
-  day:  '横軸が時間・縦が担当。帯をタップで詳細、長押し（PCはドラッグ）でコピー、両端スライドで時間変更（30分単位）。',
-  week: '1週間ぶんの予定。帯をタップで詳細、日付をタップでその日の表示に切り替わります。',
+  day:  '横軸が時間・縦が担当。帯をタップで詳細、長押し（PCはドラッグ）でコピー、両端スライドで時間変更（30分単位）。空いているところをタップすると、その担当・その時間で新規予約を作れます。',
+  week: '1週間ぶんの予定。帯をタップで詳細、日付をタップでその日の表示に切り替わります。空いているところをタップすると、その日時で新規予約を作れます。',
   month:'日ごとの件数。日付をタップするとその日の表示に切り替わります。',
 };
 function calRange(){
@@ -3554,7 +3579,7 @@ function removeEv(ev, msg){
   closePop();
   showUndoToast(msg, () => parent.insertBefore(ev, next));
 }
-window.addEventListener('keydown', e => { if (e.key === 'Escape') closePop(); });
+window.addEventListener('keydown', e => { if (e.key === 'Escape') { closePop(); closeNewResv(); } });
 let press = null, drag = null, rsz = null;
 tl.addEventListener('pointerdown', e => {
   const hz = e.target.closest('.hz');
@@ -3570,10 +3595,32 @@ tl.addEventListener('pointerdown', e => {
     return;
   }
   const ev = e.target.closest('.tev');
-  if (!ev) return;
+  if (!ev) {
+    // 帯が無いところ＝空き時間。押した位置を覚えておき、指が動かなければ新規予約を開く
+    const bd = e.target.closest('.rbody');
+    if (bd) press = { empty: bd, hatch: !!e.target.closest('.hatch'), x: e.clientX, y: e.clientY };
+    return;
+  }
   press = { ev, x: e.clientX, y: e.clientY, id: e.pointerId, type: e.pointerType,
     timer: setTimeout(() => startDrag(ev, e.clientX, e.clientY), 420) };
 });
+// 押した x 座標を 30分刻みの時刻に直す。行の右端ぎりぎりでも枠内に収める
+function slotAt(body, clientX){
+  const r = body.getBoundingClientRect();
+  const t = DAY_START + Math.round((clientX - r.left) / r.width * DAY_HOURS * 2) / 2;
+  return Math.min(DAY_START + DAY_HOURS - 0.5, Math.max(DAY_START, t));
+}
+function atValue(date, t){
+  const h = Math.floor(t), m = Math.round((t - h) * 60);
+  return ymd(date) + 'T' + String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+}
+// 空き時間タップから新規予約を開く。休みの網掛けの上では作らせない
+function openNewResvFromSlot(body, clientX, date, staff, closed){
+  if (closed) { showToast('この時間はお休みのため、ご予約を入れられません'); return; }
+  const t = slotAt(body, clientX);
+  const label = (date.getMonth() + 1) + '/' + date.getDate() + '（' + DOW_JP[date.getDay()] + '） ' + fmt(t);
+  openNewResv({ at: atValue(date, t), staff, hint: 'カレンダーから ' + label + ' を選びました。' });
+}
 function updateBadge(){
   rsz.badge.textContent = fmt(rsz.s) + ' 〜 ' + fmt(rsz.s + rsz.d);
   rsz.badge.style.left = rsz.ev.style.left;
@@ -3616,6 +3663,7 @@ window.addEventListener('pointermove', e => {
     return;
   }
   if (press && !drag) {
+    if (press.empty) return;                 // 空き時間の押下は動かしても何もしない（離した時点で判定する）
     if (Math.abs(e.clientX - press.x) > 10 || Math.abs(e.clientY - press.y) > 10) {
       clearTimeout(press.timer);
       if (press.type === 'mouse') { startDrag(press.ev, e.clientX, e.clientY); }  // PCは長押し不要で即ドラッグ
@@ -3668,6 +3716,15 @@ function endRsz(){
 }
 window.addEventListener('pointerup', e => {
   if (rsz) { endRsz(); return; }
+  if (press && press.empty) {                  // 空き時間をタップ → その時間で新規予約
+    const p = press; press = null;
+    if (Math.abs(e.clientX - p.x) > 10 || Math.abs(e.clientY - p.y) > 10) return;   // 横スクロールと区別する
+    const i = bodies.indexOf(p.empty);
+    const row = CAL_ROWS[i];
+    openNewResvFromSlot(p.empty, e.clientX, calState.date, row && row.st ? row.name : '',
+      p.hatch || isClosed(calState.date));
+    return;
+  }
   if (press && !drag) {                        // 動かさず離した → タップで詳細
     clearTimeout(press.timer);
     openPop(press.ev, e.clientX, e.clientY);
@@ -4578,6 +4635,36 @@ async function fillCustomers(query, selectId){
 document.getElementById('nr-search').addEventListener('click', () => fillCustomers(document.getElementById('nr-q').value, 'nr-cust'));
 document.getElementById('ts-search').addEventListener('click', () => fillCustomers(document.getElementById('ts-q').value, 'ts-cust'));
 
+// ---- 新規予約モーダル ----
+// カレンダーの空き時間から開くときは日時（と日表示なら担当）を埋めておく。
+// 埋めるのは「その場から入力を始められるようにする」ためで、値は開いてから直せる
+let nrPrevFocus = null;
+function openNewResv(pre){
+  const back = document.getElementById('nrback');
+  if (pre && pre.at) document.getElementById('nr-at').value = pre.at;
+  const st = document.getElementById('nr-staff');
+  // 担当は行が担当を表す日表示のときだけ入る。実運用では option の値が id なので名前で引く
+  const so = pre && pre.staff ? [...st.options].find(o => o.textContent === pre.staff) : null;
+  st.value = so ? so.value : '';
+  document.getElementById('nrhint').textContent = pre && pre.hint
+    ? pre.hint + (so ? '　担当：' + so.textContent : '')
+    : 'お電話・ご来店時のご予約用。承認不要で確定し、「予約管理」の一覧に入ります。';
+  nrPrevFocus = document.activeElement;
+  back.hidden = false;
+  document.getElementById('nr-q').focus();
+}
+function closeNewResv(){
+  const back = document.getElementById('nrback');
+  if (back.hidden) return;
+  back.hidden = true;
+  if (nrPrevFocus && document.contains(nrPrevFocus)) nrPrevFocus.focus();
+  nrPrevFocus = null;
+}
+document.getElementById('nropen').addEventListener('click', () => openNewResv(null));
+document.getElementById('nrclose').addEventListener('click', closeNewResv);
+// 背景をタップして閉じる。フォームの中の操作では閉じない
+document.getElementById('nrback').addEventListener('click', e => { if (e.target.id === 'nrback') closeNewResv(); });
+
 document.getElementById('nr-submit').addEventListener('click', async () => {
   const opt = document.getElementById('nr-cust').selectedOptions[0];
   const at = document.getElementById('nr-at').value;
@@ -4596,9 +4683,10 @@ document.getElementById('nr-submit').addEventListener('click', async () => {
           source: document.getElementById('nr-source').value || null,
         }),
       });
+      closeNewResv();
       showToast(name + 'の予約を登録しました（スタッフ入力のため承認は不要です）');
       await rvReload();
-    } catch (err) { showToast('登録に失敗しました: ' + err.message); }
+    } catch (err) { showToast('登録に失敗しました: ' + err.message); }   // 失敗時は開いたままにして直せるようにする
     return;
   }
   const [date, time] = at.split('T');
@@ -4607,6 +4695,7 @@ document.getElementById('nr-submit').addEventListener('click', async () => {
   RESV.unshift({ id: Date.now(), at: Number(mo) + '/' + Number(da) + '(' + w + ') ' + time,
     name, menu, staff: document.getElementById('nr-staff').value, status:'confirmed', note:'' });
   renderResv();
+  closeNewResv();
   showToast(name + 'の予約を登録しました（スタッフ入力のため承認は不要です）');
 });
 
@@ -5072,7 +5161,7 @@ const SYNC_FALLBACK_MS = 30000;
 
 // 入力中に画面を作り直すと、打ちかけの内容が消える。編集中は更新を保留する
 function isEditing(){
-  return !!document.querySelector('.mback, .erow')
+  return !!document.querySelector('.mback:not([hidden]), .erow')
     || ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName);
 }
 async function refreshShared(){
