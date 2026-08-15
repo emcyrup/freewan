@@ -211,3 +211,42 @@ test('summaryLine: 承認待ち（queued）の件数が出る', () => {
   });
   assert.match(line, /承認待ち 5/);
 });
+
+test("notify:'problems' は、知らせる価値がある回だけ通知する", async () => {
+  // 写真を登録した来店が無い日は毎日「対象 0」になる。
+  // グループへの Push は1通ごとに通数を使うため、この回は黙る
+  const quiet = makeSlack();
+  await createJobRunner({ slack: quiet.slack }).runJob('thanks', async () => ({
+    total: 0, sent: 0, dryRun: 0, skipped: 0, failed: 0, errors: [],
+  }), { notify: 'problems' });
+  assert.deepEqual(quiet.notifications, [], '対象0のときは何も送らない');
+
+  // 送れた回も黙る（届いたかは飼い主様側で分かる）
+  const sent = makeSlack();
+  await createJobRunner({ slack: sent.slack }).runJob('thanks', async () => ({
+    total: 3, sent: 3, dryRun: 0, skipped: 0, failed: 0, errors: [],
+  }), { notify: 'problems' });
+  assert.deepEqual(sent.notifications, [], '成功しただけでは送らない');
+
+  // 失敗はスタッフが気付く必要があるので必ず送る
+  const failed = makeSlack();
+  await createJobRunner({ slack: failed.slack }).runJob('thanks', async () => ({
+    total: 2, sent: 1, dryRun: 0, skipped: 0, failed: 1,
+    errors: [{ customerId: 7, message: 'push failed' }],
+  }), { notify: 'problems' });
+  assert.equal(failed.notifications.length, 2, 'サマリと失敗詳細が届く');
+  assert.match(failed.notifications[0], /失敗 1/);
+  assert.match(failed.notifications[1], /customer=7/);
+});
+
+test("notify:'problems' でも異常終了は即時に知らせる", async () => {
+  const { slack, notifications } = makeSlack();
+  const runner = createJobRunner({ slack });
+
+  const result = await runner.runJob('thanks', async () => { throw new Error('DB 切断'); },
+    { notify: 'problems' });
+
+  assert.equal(result, null);
+  assert.equal(notifications.length, 1);
+  assert.match(notifications[0], /ERROR:ジョブ異常終了: thanks:DB 切断/);
+});

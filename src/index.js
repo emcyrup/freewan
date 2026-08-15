@@ -415,7 +415,10 @@ runner.scheduleDaily(
 // 10:00 の日次まとめに入れると「今日の来店」への礼が翌日になるため別枠。
 // 夕方の配信であり、深夜・早朝の送信禁止（CLAUDE.md）には反しない
 const thanksJob = createThanksJob({ pool, lineClient, publicBaseUrl: config.publicBaseUrl });
-cron.schedule('0 19 * * *', () => runner.runJob('thanks', thanksJob), { timezone: 'Asia/Tokyo' });
+// 結果は失敗したときだけ知らせる。写真を登録した来店が無い日は「対象 0」が続き、
+// 毎日その1通のためにスタッフ用グループの通数を使ってしまうため（10:00 のまとめと同じ方針）
+cron.schedule('0 19 * * *', () => runner.runJob('thanks', thanksJob, { notify: 'problems' }),
+  { timezone: 'Asia/Tokyo' });
 
 app.listen(config.port, () => {
   console.log(`[boot] port=${config.port} SEND_MODE=${config.sendMode}`);

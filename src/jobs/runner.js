@@ -35,7 +35,13 @@ export function createJobRunner({ slack, settings = null, reminders = null }) {
   /**
    * ジョブを1つ実行する。
    * ジョブ関数は { total, sent, dryRun, skipped, failed, errors } を返す規約とする。
-   * notify=false のときは通知せずサマリだけ返す（日次のまとめ通知用）。
+   * notify:
+   *   true       毎回サマリを通知する（手動実行など、結果をその場で見たいとき）
+   *   false      通知しない（日次のまとめ通知に含めるとき）
+   *   'problems' 失敗があったときだけ通知する。対象0が続く日の
+   *              「対象 0 / 送信 0 …」を毎日スタッフへ送らないための指定。
+   *              グループへの Push は1通ごとに通数を消費するため、
+   *              知らせる価値がある回だけに絞る（まとめ通知と同じ考え方）
    */
   async function runJob(name, jobFn, { notify = true } = {}) {
     // 管理画面で OFF にされたリマインドはここで止める。手動実行も同じ判定にしておかないと
@@ -53,7 +59,7 @@ export function createJobRunner({ slack, settings = null, reminders = null }) {
         `対象 ${summary.total} / 送信 ${summary.sent} / dry_run ${summary.dryRun}` +
         ` / スキップ ${summary.skipped} / 失敗 ${summary.failed}（${sec}秒）`;
       console.log(`[job:${name}] 完了 ${line}`);
-      if (notify) {
+      if (notify === true || (notify === 'problems' && summary.failed > 0)) {
         await slack.notify(`:package: ジョブ実行結果 *${name}*\n${line}`);
         if (summary.failed > 0 && summary.errors?.length) {
           // 顧客は内部 id でのみ参照する（氏名・LINE userId を通知に含めない）
