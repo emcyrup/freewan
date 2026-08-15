@@ -915,7 +915,8 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
       <div class="frow">
         <input type="text" id="nr-q" placeholder="飼い主名・わんちゃん名 or 電話番号">
         <button class="sbtn" id="nr-search" type="button">検索</button>
-        <select id="nr-cust"><option value="">わんちゃんを選択</option></select>
+        <select id="nr-cust"><option value="">飼い主様を選択</option></select>
+        <select id="nr-pet" aria-label="わんちゃん"><option value="">わんちゃんを選択</option></select>
       </div>
       <div class="frow">
         <input type="datetime-local" id="nr-at" value="2026-07-28T10:00" aria-label="開始日時">
@@ -4400,7 +4401,7 @@ const RESV = [
   { id:115, day:-3, time:'13:00', name:'モモ',     menu:'シャンプーコース',         staff:'高橋', status:'no_show',  note:'', cat:'trimming', mins:60, src:'tel' },
   { id:110, day:9,  time:'15:00', name:'きなこ',   menu:'シャンプーコース',         staff:'高橋', status:'cancelled', note:'', cat:'trimming', mins:60, src:'epark' },
 ].map(r => ({ ...r, at: rvAt(r.day, r.time), atIso: rvAtIso(r.day, r.time),
-  pet: r.name, owner: ownerOf(r.name) || '' }));
+  pet: r.name, petId: r.name, owner: ownerOf(r.name) || '' }));
 // スクールの進み方。体験だけを対象にした配信や追客の絞り込みにも使う
 const SCHOOL_STAGES = [
   { v:'counseling', label:'カウンセリング' },
@@ -4586,6 +4587,11 @@ function openResvEdit(r){
   staff.value = adminLive ? (r.staffId || '') : (r.staff || '');
   field('担当', staff);
 
+  // わんちゃん。同じお宅に複数いる場合に選び直せるようにする
+  const pet = document.createElement('select');
+  field('わんちゃん', pet);
+  fillPetSelect(pet, adminLive ? r.custId : r.owner, r.petId || null);
+
   const note = document.createElement('textarea');
   note.rows = 2; note.value = r.note || '';
   field('ご要望', note);
@@ -4607,6 +4613,7 @@ function openResvEdit(r){
       r.atIso = at.value;
       r.at = rvAtLabel(at.value);
       if (mins) r.mins = mins;
+      r.pet = pet.value ? pet.selectedOptions[0].textContent : '';
       r.menu = menu.value || '—';
       r.staff = staff.value ? staffLabel : '';
       r.note = note.value.trim();
@@ -4622,6 +4629,7 @@ function openResvEdit(r){
           reservedAt: at.value + ':00+09:00',   // datetime-local は JST 前提なのでオフセットを明示する
           menu: menu.value || null,
           staffId: staff.value || null,
+          petId: pet.value || null,
           note: note.value.trim() || null,
           durationMinutes: mins,
         }),
@@ -4671,8 +4679,8 @@ function rvMap(r){
   return { id: r.id, at: snsFmtJst(r.reserved_at), atIso: jstInputValue(r.reserved_at),
     // name はトーストや確認文で使う表示名なので飼い主様名で補う。
     // pet は「登録されている子」そのもので、いなければ空（一覧では — と出す）
-    name: r.pet_name || r.customer_name, pet: r.pet_name || '',
-    owner: r.customer_name || '', menu: r.menu || '—', staff: r.staff_name || '',
+    name: r.pet_name || r.customer_name, pet: r.pet_name || '', petId: r.pet_id || '',
+    custId: r.customer_id, owner: r.customer_name || '', menu: r.menu || '—', staff: r.staff_name || '',
     staffId: r.staff_id || '',
     status: r.status, note: r.note || '', ok: r.confirmed_by_customer,
     cat: r.category, mins: r.duration_minutes, stage: r.school_stage, cons: r.with_counseling === true,
@@ -5021,18 +5029,55 @@ async function fillCustomers(query, selectId){
     return;
   }
   const k = query.trim().toLowerCase();
-  sel.innerHTML = '<option value="">わんちゃんを選択</option>';
+  sel.innerHTML = '<option value="">飼い主様を選択</option>';
   let n = 0;
-  FAMILIES.forEach(o => o.members.forEach(d => {
-    if (k && !(o.name + d.n + o.tel).toLowerCase().includes(k)) return;
+  // 実運用モードと同じく飼い主様の一覧にする。わんちゃんは次の欄で選ぶ
+  FAMILIES.forEach(o => {
+    const dogs = o.members.map(d => d.n).join('・');
+    if (k && !(o.name + dogs + o.tel).toLowerCase().includes(k)) return;
     const opt = document.createElement('option');
     // 表示文字列から名前を切り出すと犬種や電話番号と混ざるため、値は data 属性で持たせる
-    opt.dataset.dog = d.n;
-    opt.textContent = o.name + ' 様｜' + d.n + '（' + d.menu + '｜' + o.tel + (o.line ? '｜LINE連携済' : '｜LINE未連携') + '）';
+    opt.value = o.name;                  // デモは id を持たないので名前を値にする
+    opt.dataset.dog = o.name + ' 様';     // 登録完了トーストの表示名に使う
+    opt.textContent = o.name + ' 様（' + o.tel + (o.line ? '｜LINE連携済' : '｜LINE未連携') + '）'
+      + (dogs ? '｜' + dogs : '');
     sel.appendChild(opt); n++;
-  }));
-  showToast(n ? n + ' 件見つかりました' : '該当するわんちゃんが見つかりません');
+  });
+  showToast(n ? n + ' 件見つかりました' : '該当する飼い主様が見つかりません');
 }
+
+// ---- わんちゃんの選択 ----
+// 飼い主様を選ぶとその世帯の子が並ぶ。予約はわんちゃん単位で記録したいので、
+// 1頭だけの飼い主様は選び忘れが起きないよう最初から選んでおく
+async function petsOfCustomer(value){
+  if (!value) return [];
+  if (adminLive) {
+    const { pets } = await adminApi('/customers/' + value + '/pets');
+    return pets.map(p => ({ id: p.id, name: p.name }));
+  }
+  return (FAMILIES.find(f => f.name === value)?.members || []).map(d => ({ id: d.n, name: d.n }));
+}
+let petFillSeq = 0;
+async function fillPetSelect(sel, customerValue, selectedId){
+  // 続けて飼い主様を切り替えると、前の読み込みが後から届いて別のお宅の子が
+  // 並ぶことがある。最後に始めたものだけを反映する
+  const seq = ++petFillSeq;
+  sel.innerHTML = '<option value="">わんちゃんを選択</option>';
+  let pets = [];
+  try { pets = await petsOfCustomer(customerValue); }
+  catch (err) { showToast('わんちゃんを読み込めませんでした: ' + err.message); return; }
+  if (seq !== petFillSeq) return;
+  pets.forEach(p => {
+    const o = document.createElement('option');
+    o.value = p.id; o.textContent = p.name;
+    sel.appendChild(o);
+  });
+  if (selectedId != null && pets.some(p => String(p.id) === String(selectedId))) sel.value = String(selectedId);
+  else if (pets.length === 1) sel.selectedIndex = 1;
+}
+document.getElementById('nr-cust').addEventListener('change', () => {
+  fillPetSelect(document.getElementById('nr-pet'), document.getElementById('nr-cust').value);
+});
 document.getElementById('nr-search').addEventListener('click', () => fillCustomers(document.getElementById('nr-q').value, 'nr-cust'));
 document.getElementById('ts-search').addEventListener('click', () => fillCustomers(document.getElementById('ts-q').value, 'ts-cust'));
 
@@ -5107,6 +5152,7 @@ function openNewResv(pre){
   back.hidden = false;
   nrEndMins = null;                  // 前に開いたときの長さを引きずらない
   nrSyncEnd();
+  fillPetSelect(document.getElementById('nr-pet'), document.getElementById('nr-cust').value);
   document.getElementById('nr-q').focus();
 }
 function closeNewResv(){
@@ -5123,10 +5169,12 @@ document.getElementById('nrback').addEventListener('click', e => { if (e.target.
 
 document.getElementById('nr-submit').addEventListener('click', async () => {
   const opt = document.getElementById('nr-cust').selectedOptions[0];
+  const petSel = document.getElementById('nr-pet');
   const at = document.getElementById('nr-at').value;
   const menu = document.getElementById('nr-menu').selectedOptions[0]?.textContent;
-  const name = opt?.dataset.dog;
-  if (!name || !at || !menu || menu === 'コースを選択') { showToast('わんちゃん・日時・コースを指定してください'); return; }
+  // どの子のご予約かが分かるよう、選ばれていればその名前で知らせる
+  const name = petSel.value ? petSel.selectedOptions[0].textContent : opt?.dataset.dog;
+  if (!opt?.value || !at || !menu || menu === 'コースを選択') { showToast('飼い主様・日時・コースを指定してください'); return; }
   const mins = nrDuration();
   if (document.getElementById('nr-end').value && !mins) { showToast('終了時刻を正しく入力してください'); return; }
   if (adminLive) {
@@ -5138,6 +5186,7 @@ document.getElementById('nr-submit').addEventListener('click', async () => {
           reservedAt: at + ':00+09:00',   // datetime-local は JST 前提なのでオフセットを明示する
           menu,
           staffId: document.getElementById('nr-staff').value || null,
+          petId: petSel.value || null,
           source: document.getElementById('nr-source').value || null,
           durationMinutes: mins,     // 終了時刻を決めた場合はコースの既定より優先される
         }),
@@ -5152,7 +5201,9 @@ document.getElementById('nr-submit').addEventListener('click', async () => {
   const [, mo, da] = date.split('-');
   const w = '日月火水木金土'[new Date(date + 'T00:00:00+09:00').getDay()];
   RESV.unshift({ id: Date.now(), at: Number(mo) + '/' + Number(da) + '(' + w + ') ' + time,
-    name, pet: name, menu, staff: document.getElementById('nr-staff').value, status:'confirmed', note:'' });
+    name, pet: petSel.value ? petSel.selectedOptions[0].textContent : '', petId: petSel.value,
+    owner: opt?.value || '', menu, staff: document.getElementById('nr-staff').value,
+    status:'confirmed', note:'' });
   renderResv();
   closeNewResv();
   showToast(name + 'の予約を登録しました（スタッフ入力のため承認は不要です）');

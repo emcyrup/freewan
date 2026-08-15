@@ -699,7 +699,7 @@ export function createAdminRouter({
         `SELECT r.id, r.reserved_at, r.menu, r.status, r.confirmed_by_customer, r.note,
                 r.category, r.duration_minutes, r.school_stage, r.with_counseling, r.source,
                 c.id AS customer_id, c.name AS customer_name, s.name AS staff_name,
-                r.staff_id, p.name AS pet_name
+                r.staff_id, r.pet_id, p.name AS pet_name
          FROM reservations r
          JOIN customers c ON c.id = r.customer_id
          LEFT JOIN staff s ON s.id = r.staff_id
