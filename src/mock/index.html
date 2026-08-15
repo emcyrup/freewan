@@ -19,6 +19,8 @@ button{font:inherit; color:inherit}
   --side:#24443B; --side-ink:#D8E5DF; --side-active:#3A7263;
   --early:#3E6FA8; --late:#7B58A8; --hotel:#2E7D6B;
   --shadow:0 1px 3px rgba(43,39,35,.08);
+  /* 日付選択などの OS 標準部品を、この画面の明暗に合わせて描かせる */
+  color-scheme:light;
 }
 @media (prefers-color-scheme: dark){
   :root{
@@ -32,9 +34,11 @@ button{font:inherit; color:inherit}
     --side:#141F1B; --side-ink:#A9BDB4; --side-active:#2A4A40;
     --early:#7FA6D2; --late:#A98BD6; --hotel:#5FB3A1;
     --shadow:0 1px 3px rgba(0,0,0,.4);
+    color-scheme:dark;
   }
 }
 :root[data-theme="light"]{
+  color-scheme:light;
   --bg:#F7F4EE; --surface:#FFFFFF; --surface2:#F1EDE4;
   --ink:#2B2723; --muted:#8A8177; --line:#E5DFD5;
   --accent:#33695B; --accent-ink:#FFFFFF; --accent-soft:#E3EDE8;
@@ -47,6 +51,7 @@ button{font:inherit; color:inherit}
   --shadow:0 1px 3px rgba(43,39,35,.08);
 }
 :root[data-theme="dark"]{
+  color-scheme:dark;
   --bg:#191714; --surface:#221F1B; --surface2:#2A261F;
   --ink:#EDE8E0; --muted:#9A9186; --line:#37322B;
   --accent:#6FA893; --accent-ink:#14231E; --accent-soft:#2A3B34;
@@ -169,11 +174,11 @@ button.kpi:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
 .mwin .mx:focus-visible,.card .mx:focus-visible{outline:2px solid var(--accent); border-radius:4px}
 /* 新規予約はボタンから開く。フォームの id と既存の配線をそのまま使うため、
    ノードを動かさず、モーダルの中に置いたまま表示を切り替える */
-.nrbar{display:flex; gap:8px; align-items:center; margin:0 0 12px}
-.nrbar .hdnote{flex:1 1 220px}
-.mback>#newresv{width:640px; max-width:100%; max-height:92vh; overflow:auto; margin:0; box-shadow:0 18px 48px rgba(0,0,0,.3)}
+.nrbar{display:flex; gap:8px; align-items:center; margin:0 0 12px; flex-wrap:wrap}
+.mback>#newresv,.mback>#freecard{width:640px; max-width:100%; max-height:92vh; overflow:auto; margin:0;
+  box-shadow:0 18px 48px rgba(0,0,0,.3)}
 /* 閉じるボタンを見出しと同じ行の右端に置き、説明文は次の行に送る */
-#newresv .hd .hdnote{order:1; flex:1 0 100%; margin-top:2px}
+#newresv .hd .hdnote,#freecard .hd .hdnote{order:1; flex:1 0 100%; margin-top:2px}
 .tri-rows{overflow:auto}
 .trow2{display:grid; grid-template-columns:52px 1fr auto; gap:12px; align-items:center;
   width:100%; padding:11px 18px; border:0; border-bottom:1px solid var(--line);
@@ -721,6 +726,27 @@ tr.clash td:first-child{box-shadow:inset 3px 0 0 var(--crit)}
   .mback{padding:12px}
   .mwin{width:100%; max-height:92vh}
 
+  /* ---- 予約カレンダー：カレンダー本体を最初の画面に出す ----
+     毎日いちばん見るのは予定そのもので、説明や集計はその次。
+     上に積まれた説明・件数を詰めて、開いた時点で表が見えるようにする */
+  #s-cal .sub .subx{display:none}          /* 長押し・スライドなど、指では使わない操作の説明 */
+  #s-cal .sub{margin-bottom:12px}
+  .nrbar{margin-bottom:10px}
+  .nrbar .sbtn{flex:1 1 0; justify-content:center; text-align:center}
+  .vbar{gap:8px; margin-bottom:10px}
+  /* 件数は小さくし、さらにカレンダーの後ろへ回す。件数は「見終わった後で確かめるもの」で、
+     先に見たいのは予定そのもの。並べ替えは表示順だけで、HTML の順序は変えない */
+  #s-cal.on{display:flex; flex-direction:column}
+  #s-cal>#calsum{order:1; gap:6px; margin:12px 0 0}
+  .calsum span{font-size:11.5px; padding:4px 9px}
+  .calsum span span{font-size:10.5px}    /* 内訳（内 初回 2 など）はさらに一段小さく */
+
+  /* 担当名の列が画面の1/3を占め、時間帯が3時間ぶんしか見えていなかった。
+     列を詰め、1時間あたりの幅も縮めて、一度に見える時間を増やす */
+  .rlab{width:96px; padding:8px 8px; font-size:12px}
+  .rlab .role{font-size:10px}
+  .wk .rlab{width:84px}
+  .tgrid{min-width:880px}
 }
 /* 指で触る端末（スマートフォン・タブレット）では、入力欄の文字を16pxより小さくしない。
    小さいと iOS が入力欄をタップした拍子に画面を勝手に拡大し、毎回手で縮め直すことになる */
@@ -867,7 +893,7 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
 
   <div class="nrbar">
     <button class="sbtn pri" id="nropen" type="button">＋ 新規予約</button>
-    <span class="hdnote">お電話・ご来店時のご予約用。カレンダーの空いている時間を押しても登録できます。</span>
+    <button class="sbtn" id="fcopen" type="button">空き状況をさがす</button>
   </div>
 
   <div class="mback" id="nrback" hidden>
@@ -902,9 +928,11 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
   </div>
   </div>
 
-  <div class="card tight" id="freecard">
+  <div class="mback" id="fcback" hidden>
+  <div class="card tight" id="freecard" role="dialog" aria-modal="true" aria-label="空き状況をさがす">
     <div class="hd"><h2>空き状況をさがす</h2><span class="pill mut">日付を3つまで</span>
-      <span class="hdnote">候補日をまとめて確認できます。日付を押すとその日のカレンダーへ移動します。</span></div>
+      <span class="hdnote">候補日をまとめて確認できます。日付を押すとその日のカレンダーへ移動します。</span>
+      <button class="mx" id="fcclose" type="button" aria-label="閉じる">&#10005;</button></div>
     <div class="bd">
       <div class="frow freerow">
         <!-- 候補日は3つ並べて見比べるものなので、狭い画面でも必ず1行に収める -->
@@ -918,6 +946,7 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
       </div>
       <div id="freeout"></div>
     </div>
+  </div>
   </div>
 
   <div class="vbar">
@@ -2532,8 +2561,11 @@ function renderMonth(){
 // ---- 表示切替と日付移動 ----
 const VIEW_SUB = {
   // 毎日使う画面なので説明は1〜2文に収める。色分けや⭐の意味は下の凡例に出ている
-  day:  '横軸が時間・縦が担当。帯をタップで詳細、長押し（PCはドラッグ）でコピー、両端スライドで時間変更（30分単位）。空いているところをタップすると、その担当・その時間で新規予約を作れます。',
-  week: '1週間ぶんの予定。帯をタップで詳細、日付をタップでその日の表示に切り替わります。空いているところをタップすると、その日時で新規予約を作れます。',
+  // 狭い画面では .subx（PCでしか使わない操作の説明）を畳んで、カレンダー本体を上へ出す
+  day:  '横軸が時間・縦が担当。帯をタップで詳細、空いているところをタップで新規予約。'
+        + '<span class="subx">長押し（PCはドラッグ）でコピー、両端スライドで時間変更（30分単位）。</span>',
+  week: '1週間ぶんの予定。帯をタップで詳細、空いているところをタップで新規予約。'
+        + '<span class="subx">日付をタップするとその日の表示に切り替わります。</span>',
   month:'日ごとの件数。日付をタップするとその日の表示に切り替わります。',
 };
 function calRange(){
@@ -2621,7 +2653,7 @@ function renderFree(){
     const link = document.createElement('button');
     link.type = 'button'; link.className = 'sbtn';
     link.textContent = dateLabel(date);
-    link.addEventListener('click', () => { calState.date = date; setView('day'); window.scrollTo(0, 0); });
+    link.addEventListener('click', () => jumpToDay(date));
     head.appendChild(link);
     if (day.closed) {
       head.insertAdjacentHTML('beforeend', '<span class="pill mut">定休日</span>');
@@ -2662,9 +2694,7 @@ function renderFree(){
           chip.type = 'button'; chip.className = 'fslot';
           chip.textContent = fmt(a) + '〜' + fmt(b);
           // その時間で予約を取りたくなるのが自然な流れなので、日カレンダーへ送る
-          chip.addEventListener('click', () => {
-            calState.date = date; setView('day'); window.scrollTo(0, 0);
-          });
+          chip.addEventListener('click', () => jumpToDay(date));
           box2.appendChild(chip);
         });
       }
@@ -2695,6 +2725,33 @@ function clearFree(){
 }
 document.getElementById('freego').addEventListener('click', renderFree);
 document.getElementById('freeclear').addEventListener('click', clearFree);
+
+// 空き状況をさがすは、電話口で候補日を見比べるときだけ使う道具。常に開いておくと
+// スマートフォンでカレンダー本体が画面の外へ押し出されるので、新規予約と同じく
+// ボタンから開くモーダルにしている
+let fcPrevFocus = null;
+function openFree(){
+  const back = document.getElementById('fcback');
+  if (!back.hidden) return;
+  fcPrevFocus = document.activeElement;
+  back.hidden = false;
+  document.querySelector('.freedate').focus();
+}
+function closeFree(){
+  const back = document.getElementById('fcback');
+  if (back.hidden) return;
+  back.hidden = true;
+  if (fcPrevFocus && document.contains(fcPrevFocus)) fcPrevFocus.focus();
+  fcPrevFocus = null;
+}
+document.getElementById('fcopen').addEventListener('click', openFree);
+document.getElementById('fcclose').addEventListener('click', closeFree);
+document.getElementById('fcback').addEventListener('click', e => { if (e.target.id === 'fcback') closeFree(); });
+// 検索結果から日を選んだら、その日のカレンダーを見せる（モーダルは用済みなので閉じる）
+function jumpToDay(date){
+  closeFree();
+  calState.date = date; setView('day'); window.scrollTo(0, 0);
+}
 
 function renderCalendar(){
   renderDay(); renderWeek(); renderMonth(); renderCalSum();
@@ -3602,7 +3659,7 @@ function removeEv(ev, msg){
   closePop();
   showUndoToast(msg, () => parent.insertBefore(ev, next));
 }
-window.addEventListener('keydown', e => { if (e.key === 'Escape') { closePop(); closeNewResv(); } });
+window.addEventListener('keydown', e => { if (e.key === 'Escape') { closePop(); closeNewResv(); closeFree(); } });
 let press = null, drag = null, rsz = null;
 tl.addEventListener('pointerdown', e => {
   const hz = e.target.closest('.hz');
