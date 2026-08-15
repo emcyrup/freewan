@@ -201,9 +201,12 @@ Settings → Secrets and variables → Actions:
 `DEPLOY_TARGETS` の例（2店舗）:
 
 ```
-someuser@store1.example.com
-iwako105@freewan999999.duckdns.org
+user1@store1.example.com
+user2@store2.example.com
 ```
+
+> 実際のユーザー名・ホスト名は**ここに書かない**（リポジトリは公開設定）。
+> 値は Secrets と Bitwarden にだけ置く。
 
 旧構成の `VM_HOST` / `VM_USER`（1台）も引き続き動く。`DEPLOY_TARGETS` を設定した場合はそちらが優先される。
 1台のデプロイが失敗しても他の店舗への配布は続行し、最後にまとめて失敗として報告される。
