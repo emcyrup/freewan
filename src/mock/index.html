@@ -4558,6 +4558,13 @@ function openResvEdit(r){
     if (mins <= 0) mins += 24 * 60;
     return mins;
   };
+  // 新規登録と同じ決まりにする。手で終了を決めたらその長さを守り、
+  // 決めていなければコースの所要時間に合わせる。開始を動かせば終了も付いていく
+  let edHeld = r.mins || null;
+  end.addEventListener('change', () => { edHeld = edMinutes(); });
+  at.addEventListener('change', () => {
+    if (edHeld && at.value) end.value = endOf(at.value, edHeld);
+  });
 
   const menu = document.createElement('select');
   // 今のコースが一覧から外れていても選び直せるよう、値が無いときだけ先頭に足す
@@ -4567,6 +4574,11 @@ function openResvEdit(r){
     + names.map(n => '<option>' + esc(n) + '</option>').join('');
   menu.value = r.menu === '—' ? '' : r.menu;
   field('コース', menu);
+  menu.addEventListener('change', () => {
+    if (edHeld !== r.mins || !at.value) return;   // 手で決めた長さは動かさない
+    const min = MENU_MIN(menu.value);
+    if (min) { end.value = endOf(at.value, min); edHeld = min; }
+  });
 
   const staff = document.createElement('select');
   const src = document.getElementById('nr-staff');   // 新規予約と同じ名簿を使う
@@ -5046,21 +5058,37 @@ function nrLenText(mins){
     <= document.getElementById('nr-at').value.split('T')[1] ? '翌日まで・' : '';
   return '（' + over + (h ? h + '時間' : '') + (m ? m + '分' : '') + '）';
 }
-/** 終了時刻をコースの所要時間から引き直す。手で入れた値は force のときだけ上書きする */
-function nrSyncEnd(force){
-  const at = document.getElementById('nr-at'), end = document.getElementById('nr-end');
-  if (!at.value) { end.value = ''; document.getElementById('nr-len').textContent = ''; return; }
-  const min = MENU_MIN(document.getElementById('nr-menu').selectedOptions[0]?.textContent);
-  if ((force || !end.value) && min) {
-    const [h, m] = at.value.split('T')[1].split(':').map(Number);
-    const t = (h * 60 + m + min) % (24 * 60);
-    end.value = String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0');
-  }
+// スタッフが自分で終了時刻を入れたかどうか。入れてあるならコースを選び直しても
+// その長さを守る（先に終了を決めてからコースを選ぶと消えてしまうため）
+let nrEndMins = null;
+/** 開始からその長さぶん進めた時刻を "HH:MM" で返す */
+function nrEndFrom(atValue, mins){
+  const [h, m] = atValue.split('T')[1].split(':').map(Number);
+  const t = (h * 60 + m + mins) % (24 * 60);
+  return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0');
+}
+function nrShowLen(){
   document.getElementById('nr-len').textContent = nrLenText(nrDuration());
 }
-document.getElementById('nr-menu').addEventListener('change', () => nrSyncEnd(true));
-document.getElementById('nr-at').addEventListener('change', () => nrSyncEnd(true));
-document.getElementById('nr-end').addEventListener('change', () => nrSyncEnd(false));
+/**
+ * 終了時刻を引き直す。
+ * - 手で決めてある（nrEndMins）なら、その長さを保ったまま開始に合わせてずらす
+ * - 決めていなければ、選んだコースの所要時間で埋める
+ */
+function nrSyncEnd(){
+  const at = document.getElementById('nr-at'), end = document.getElementById('nr-end');
+  if (!at.value) { end.value = ''; nrShowLen(); return; }
+  const mins = nrEndMins ?? MENU_MIN(document.getElementById('nr-menu').selectedOptions[0]?.textContent);
+  if (mins) end.value = nrEndFrom(at.value, mins);
+  nrShowLen();
+}
+document.getElementById('nr-menu').addEventListener('change', nrSyncEnd);
+document.getElementById('nr-at').addEventListener('change', nrSyncEnd);
+// 手で触ったらその長さを覚える。以後はコースを変えても勝手に戻さない
+document.getElementById('nr-end').addEventListener('change', () => {
+  nrEndMins = nrDuration();
+  nrShowLen();
+});
 
 let nrPrevFocus = null;
 function openNewResv(pre){
@@ -5075,7 +5103,8 @@ function openNewResv(pre){
     : 'お電話・ご来店時のご予約用。承認不要で確定し、「予約管理」の一覧に入ります。';
   nrPrevFocus = document.activeElement;
   back.hidden = false;
-  nrSyncEnd(!!(pre && pre.at));      // 空き時間から開いたときは、その時刻を起点に引き直す
+  nrEndMins = null;                  // 前に開いたときの長さを引きずらない
+  nrSyncEnd();
   document.getElementById('nr-q').focus();
 }
 function closeNewResv(){
