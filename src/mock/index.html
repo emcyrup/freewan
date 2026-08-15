@@ -2287,7 +2287,8 @@ function petLabel(petName){
   const o = ownerOf(petName);
   return o ? petName + '（' + o + '）' : petName;
 }
-const CAL_ROWS = [
+// デモの行。実運用モードでは loadStaffLive がスタッフ名簿から作り直す
+let CAL_ROWS = [
   { name:'送迎',   role:'5頭まで' },
   { name:'佐藤',   role:'トリマー', st:true },
   { name:'高橋',   role:'トリマー', st:true },
@@ -2295,8 +2296,105 @@ const CAL_ROWS = [
   { name:'山本',   role:'スクール担当', st:true },
   { name:'ホテル', role:'お預かり' },
 ];
-// スタッフの休みも日付から決める（曜日で固定。デモとして分かりやすい形にしてある）
+
+// ================= 実運用モードのカレンダー =================
+// カレンダーはサンプルではなく、登録されている予約をそのまま描く。
+// 行はスタッフ名簿から作り、担当が決まっていないご予約は最後の「担当未定」へまとめる。
+// 日ごとに持っておき、同じ日を何度も取りに行かない（前へ／次へで行き来するため）
+const calDays = new Map();   // 'YYYY-MM-DD' → { closed, evs }
+const calOff  = new Map();   // 'YYYY-MM-DD|担当名' → [開始, 終了, 見出し]
+const calHave = new Set();   // 読み込み済みの日。予約が無い日も入れて取り直さない
+let calRowsReady = false;    // 行がスタッフ名簿に入れ替わるまで、実データは載せない
+const CAT_CLS = { school:'school', hotel:'hotel', trimming:'' };
+// 公休・有休は終日、半休は午前／午後を塞ぐ。時間休は申請された時間だけ
+const SHIFT_OFF = {
+  koukyu: [DAY_START, DAY_START + DAY_HOURS, '公休'],
+  yukyu:  [DAY_START, DAY_START + DAY_HOURS, '有休'],
+  am:     [DAY_START, 13, 'AM半休'],
+  pm:     [13, DAY_START + DAY_HOURS, 'PM半休'],
+};
+const hhmm = (t) => { const [h, m] = String(t || '').split(':').map(Number); return h + (m || 0) / 60; };
+
+/** 予約1件をカレンダーの帯1本に直す。飼い主様が入れた文字が混ざるので必ず escape する */
+function calEv(r, rowOf){
+  const [h, m] = jstInputValue(r.reserved_at).split('T')[1].split(':').map(Number);
+  const label = r.pet_name && r.customer_name
+    ? r.pet_name + '（' + r.customer_name + '）' : (r.pet_name || r.customer_name || '—');
+  // カウンセリング・体験は入園中の子と区別したいので色を変える
+  const cls = (r.school_stage === 'counseling' || r.school_stage === 'trial')
+    ? 'trial' : (CAT_CLS[r.category] ?? '');
+  return {
+    row: rowOf(r.staff_name), s: h + m / 60,
+    d: Math.max(0.5, (r.duration_minutes || 60) / 60),
+    cls, cat: r.category, pet: r.pet_name || null, stage: r.school_stage || null, nc: 0,
+    html: '<b>' + esc(label) + '</b>' + esc(r.menu || '')
+      + (r.status === 'requested' ? ' <span class="src">承認待ち</span>' : ''),
+  };
+}
+
+/** 指定した範囲の予約とシフトを取り寄せて、日ごとに積み直す */
+async function calFetch(from, to){
+  const [{ reservations }, shift] = await Promise.all([
+    adminApi('/reservations?from=' + from + '&to=' + to),
+    // シフトをまだ入れていない店舗でも、予定そのものは出せるようにする
+    adminApi('/shifts?from=' + from + '&to=' + to).catch(() => null),
+  ]);
+  // 取りに行った範囲は、予約が無い日も読み込み済みにする
+  let d = new Date(from + 'T00:00:00+09:00');
+  for (let i = 0; i < 400 && ymd(d) <= to; i++, d = calAddDays(d, 1)) {
+    calHave.add(ymd(d));
+    calDays.set(ymd(d), { closed: isClosed(d), evs: [] });
+  }
+  const last = CAL_ROWS.length - 1;                   // 「担当未定」の行
+  const rowOf = (staffName) => {
+    const i = CAL_ROWS.findIndex((x) => x.st && x.name === staffName);
+    return i >= 0 ? i : last;
+  };
+  reservations.forEach((r) => {
+    // 取消・無断キャンセルは予定ではないので描かない
+    if (r.status === 'cancelled' || r.status === 'no_show') return;
+    calDays.get(jstInputValue(r.reserved_at).split('T')[0])?.evs.push(calEv(r, rowOf));
+  });
+  (shift?.shifts || []).forEach((s) => {
+    const off = s.kind === 'jikan'
+      ? (s.start_time && s.end_time ? [hhmm(s.start_time), hhmm(s.end_time), '時間休'] : null)
+      : SHIFT_OFF[s.kind];
+    const st = (shift.staff || []).find((x) => x.id === s.staff_id);
+    if (off && st) calOff.set(s.work_date + '|' + st.name, off);
+  });
+}
+
+/** まだ持っていない日があれば、まとめて取り寄せる。取り寄せたら true */
+async function calNeed(dates){
+  if (!adminLive || !calRowsReady) return false;
+  const miss = dates.filter((d) => !calHave.has(d)).sort();
+  if (!miss.length) return false;
+  await calFetch(miss[0], miss[miss.length - 1]);
+  return true;
+}
+
+/** 予約を足した・直したあとに呼ぶ。次の描画で取り直す */
+function calInvalidate(){
+  calDays.clear(); calOff.clear(); calHave.clear();
+  if (adminLive && calRowsReady) renderCalendar();
+}
+
+/** その日の予定。実運用モードは実データ、それ以外はサンプル */
+function dayData(date){
+  if (!adminLive) return demoDay(date);
+  return calDays.get(ymd(date)) || { closed: isClosed(date), evs: [] };
+}
+
+/** 空きを見る担当の行。デモはトリマー2人、実運用は名簿のスタッフ全員 */
+function trimRows(){
+  if (!adminLive) return [1, 2];
+  return CAL_ROWS.map((r, i) => (r.st ? i : -1)).filter((i) => i >= 0);
+}
+
+// スタッフの休み。実運用モードはシフト表、デモは曜日で固定
 function dayOff(date, rowIndex){
+  const row = CAL_ROWS[rowIndex];
+  if (adminLive) return row && row.st ? (calOff.get(ymd(date) + '|' + row.name) || null) : null;
   const dow = date.getDay();
   if (rowIndex === 2 && dow === 3) return [8, 13, 'AM半休'];
   if (rowIndex === 3 && (dow === 0 || dow === 1)) return [8, 21, '公休'];
@@ -2383,7 +2481,7 @@ const tl = document.getElementById('tl');
 const bodies = [];
 function renderDay(){
   const date = calState.date;
-  const day = demoDay(date);
+  const day = dayData(date);
   tl.innerHTML = '';
   bodies.length = 0;
   CAL_ROWS.forEach((r, i) => {
@@ -2456,7 +2554,7 @@ function renderWeek(){
   wtl.innerHTML = '';
   for (let i = 0; i < 7; i++) {
     const date = calAddDays(monday, i);
-    const day = demoDay(date);
+    const day = dayData(date);
     const dow = date.getDay();
     const tr = document.createElement('div'); tr.className = 'trow';
     const lb = document.createElement('button');
@@ -2533,7 +2631,7 @@ function renderMonth(){
   let totals = [0, 0, 0], openDays = 0;
   for (let dnum = 1; dnum <= last.getDate(); dnum++) {
     const date = new Date(base.getFullYear(), base.getMonth(), dnum);
-    const day = demoDay(date);
+    const day = dayData(date);
     const dow = date.getDay();
     const trim = day.evs.filter(e => e.cat === 'trimming').length;
     const school = day.evs.filter(e => e.cls === 'school').reduce((a, e) => a + (e.pets ? e.pets.length : 0), 0);
@@ -2592,7 +2690,7 @@ function calRange(){
 function countRange(dates){
   const t = { trim:0, first:0, school:0, enrolled:0, counseling:0, hotel:0, days:0 };
   dates.forEach(date => {
-    const day = demoDay(date);
+    const day = dayData(date);
     if (day.closed) return;
     t.days++;
     day.evs.forEach(e => {
@@ -2635,7 +2733,7 @@ const SCHOOL_CAPACITY = 8;          // スクールの1日の定員
 const OPEN_FROM = 9, OPEN_TO = 19;  // 空きを探す時間帯
 function freeSlots(date, row){
   if (dayOff(date, row)) return [];
-  const day = demoDay(date);
+  const day = dayData(date);
   const busy = day.evs.filter(e => e.row === row).map(e => [e.s, e.s + e.d + (e.nc ? 0.5 : 0)])
     .sort((a, b) => a[0] - b[0]);
   const slots = [];
@@ -2647,15 +2745,20 @@ function freeSlots(date, row){
   if (OPEN_TO - t >= 1) slots.push([t, OPEN_TO]);
   return slots;
 }
-function renderFree(){
+async function renderFree(){
   const out = document.getElementById('freeout');
   const dates = [...document.querySelectorAll('.freedate')].map(i => i.value).filter(Boolean);
   if (!dates.length) { out.innerHTML = '<p class="hint" style="margin:10px 0 0">日付を選んでから検索してください。</p>'; return; }
+  // 候補日はカレンダーで見ている範囲の外もありうるので、足りない日はここで取り寄せる
+  if (adminLive) {
+    out.innerHTML = '<p class="hint" style="margin:10px 0 0">読み込み中…</p>';
+    await calNeed(dates);
+  }
   out.innerHTML = '';
   dates.sort().forEach(iso => {
     const [y, m, d] = iso.split('-').map(Number);
     const date = new Date(y, m - 1, d);
-    const day = demoDay(date);
+    const day = dayData(date);
     const box = document.createElement('div');
     box.className = 'freeday' + (day.closed ? ' closed' : '');
     const head = document.createElement('div');
@@ -2678,7 +2781,7 @@ function renderFree(){
 
     // 電話口で即答できるよう、担当を問わず「入れられる時間」を先に出す。
     // 時間が3つ4つと並ぶ行なので、見出しの丸バッジではなく折り返せる行にする
-    const open = mergeSlots([1, 2].flatMap(row => freeSlots(date, row)));
+    const open = mergeSlots(trimRows().flatMap(row => freeSlots(date, row)));
     box.insertAdjacentHTML('beforeend',
       '<div class="fsum"><span class="fk">トリミング</span>'
         + '<span class="fv' + (open.length ? '' : ' none') + '">'
@@ -2686,7 +2789,7 @@ function renderFree(){
 
     const lines = document.createElement('div');
     lines.className = 'fl';
-    [1, 2].forEach(row => {
+    trimRows().forEach(row => {
       const off = dayOff(date, row);
       const slots = off ? [] : freeSlots(date, row);
       const line = document.createElement('div');
@@ -2733,7 +2836,9 @@ function clearFree(){
   document.querySelectorAll('.freedate').forEach(i => { i.value = ''; });
   document.getElementById('freeout').innerHTML = '';
 }
-document.getElementById('freego').addEventListener('click', renderFree);
+document.getElementById('freego').addEventListener('click', () => {
+  renderFree().catch((err) => showToast('空き状況を読み込めませんでした: ' + err.message));
+});
 document.getElementById('freeclear').addEventListener('click', clearFree);
 
 // 検索結果から日を選んだら、その日のカレンダーを見せる。
@@ -2746,6 +2851,13 @@ function renderCalendar(){
   renderDay(); renderWeek(); renderMonth(); renderCalSum();
   document.getElementById('vrange').textContent = calRange();
   document.getElementById('calsub').innerHTML = VIEW_SUB[calState.view];
+  // 実運用モードでは、見えている範囲の予約を取り寄せてから描き直す。
+  // 取り寄せる必要がなければ calNeed は false を返すので、ここで止まる
+  if (adminLive) {
+    calNeed(rangeDates().map(ymd))
+      .then((loaded) => { if (loaded) renderCalendar(); })
+      .catch((err) => showToast('カレンダーを読み込めませんでした: ' + err.message));
+  }
 }
 function setView(v){
   calState.view = v;
@@ -4526,6 +4638,8 @@ async function rvReload(){
   RESV.length = 0;
   reservations.forEach(r => RESV.push(rvMap(r)));
   renderResv();
+  // 一覧が変わったということは予定も変わっている。カレンダーも取り直す
+  calInvalidate();
 }
 // ---- 来店写真（R9 来店お礼の添付）----
 // 当日ご来店の予約に写真を付けると、その日の 19:00 にお礼と一緒に飼い主様へ届く。
@@ -5451,11 +5565,18 @@ async function loadStaffLive(){
   const { staff } = await adminApi('/staff');
   const sel = document.getElementById('nr-staff');
   sel.innerHTML = '<option value="">担当（任意）</option>';
-  staff.forEach(s => {
+  const active = staff.filter(s => s.active !== false);
+  active.forEach(s => {
     const o = document.createElement('option');
     o.value = s.id; o.textContent = s.name;
     sel.appendChild(o);
   });
+  // カレンダーの行も名簿から作る。デモの固定名のままでは実データを載せる先が無い。
+  // 担当が決まっていないご予約の置き場として、最後に1行足す
+  CAL_ROWS = active.map(s => ({ name: s.name, role: 'スタッフ', st: true }))
+    .concat([{ name: '担当未定', role: 'これから決めるご予約' }]);
+  calRowsReady = true;
+  calInvalidate();
 }
 async function loadMenusLive(){
   const { menus } = await adminApi('/menus');
