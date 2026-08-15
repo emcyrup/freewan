@@ -575,8 +575,83 @@ export function createReservationService({ pool, slack, lineClient = null, planS
     return { ok: true };
   }
 
+  /**
+   * 入っている予約の中身を直す（日時・コース・担当・わんちゃん・ご要望）。
+   * お客様からの「やっぱり別の日に」「担当を変えたい」に、取り消して入れ直さずに応じるためのもの。
+   *
+   * - 渡された項目だけを変える。触れなかった項目は今の値のまま
+   * - 区分と所要時間はコースからコピーし直す（コース変更で重なり判定が変わるため）
+   * - 重なりの判定は新規登録と同じ。自分自身は相手に数えない
+   * - 済んだ予約（visited / no_show）は履歴なので直させない
+   * - 通知は出さない。新規登録と違い、スタッフはこの画面を見ながら操作しているため
+   */
+  async function updateDetails(reservationId, patch = {}) {
+    if (!Number.isInteger(reservationId)) return { ok: false, error: 'invalid_id' };
+
+    const { rows: current } = await pool.query(
+      `SELECT id, customer_id, staff_id, pet_id, menu, note, reserved_at, status
+       FROM reservations WHERE id = $1`,
+      [reservationId]
+    );
+    const now = current[0];
+    if (!now) return { ok: false, error: 'not_found' };
+    if (now.status === 'visited' || now.status === 'no_show') {
+      return { ok: false, error: 'already_done' };
+    }
+
+    const has = (k) => Object.prototype.hasOwnProperty.call(patch, k);
+    const reservedAt = has('reservedAt') ? patch.reservedAt : now.reserved_at;
+    if (has('reservedAt') && (!reservedAt || Number.isNaN(Date.parse(reservedAt)))) {
+      return { ok: false, error: 'invalid_reserved_at' };
+    }
+    const menu = has('menu') ? (patch.menu || null) : now.menu;
+    const staffId = has('staffId') ? (patch.staffId ?? null) : now.staff_id;
+    const note = has('note') ? (patch.note || null) : now.note;
+
+    let petId = now.pet_id;
+    if (has('petId')) {
+      petId = patch.petId ?? null;
+      // 他人の子に付け替えられないよう、必ず飼い主様との対応を確かめる
+      if (petId != null) {
+        const pet = await findPetOfCustomer(pool, petId, now.customer_id);
+        if (!pet) return { ok: false, error: 'invalid_pet' };
+      }
+    }
+
+    // コースが変われば区分も所要時間も変わる。重なり判定はその新しい値で行う
+    const spec = await menuSpec(pool, menu);
+    const conflict = await findConflict(pool, {
+      staffId: staffId || null,
+      reservedAt,
+      durationMinutes: spec.durationMinutes,
+      category: spec.category,
+      excludeId: reservationId,
+    });
+    if (conflict) {
+      return {
+        ok: false,
+        error: 'time_conflict',
+        conflict: {
+          reservationId: conflict.id,
+          customerName: conflict.customer_name,
+          reservedAt: conflict.reserved_at,
+        },
+      };
+    }
+
+    await pool.query(
+      `UPDATE reservations
+       SET reserved_at = $2, menu = $3, staff_id = $4, pet_id = $5, note = $6,
+           category = $7, duration_minutes = $8, updated_at = now()
+       WHERE id = $1`,
+      [reservationId, reservedAt, menu, staffId || null, petId, note,
+       spec.category, spec.durationMinutes]
+    );
+    return { ok: true, reservationId };
+  }
+
   return {
     upsertExternal, createManual, createRequest, setStatus,
-    setSchoolStage, setCounseling, setSource,
+    setSchoolStage, setCounseling, setSource, updateDetails,
   };
 }

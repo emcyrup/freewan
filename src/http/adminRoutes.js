@@ -753,6 +753,33 @@ export function createAdminRouter({
     }
   });
 
+  // 入っている予約の中身を直す（日時・コース・担当・わんちゃん・ご要望）。
+  // 状態の変更は上の PATCH が受け持つので、ここでは扱わない
+  router.patch('/reservations/:id/details', async (req, res, next) => {
+    try {
+      const id = Number(req.params.id);
+      if (!Number.isInteger(id)) return res.status(400).json({ error: 'invalid_id' });
+      const body = req.body ?? {};
+      const has = (k) => Object.prototype.hasOwnProperty.call(body, k);
+      // 送られてきた項目だけを渡す。未指定と「空にする」を取り違えないため
+      const patch = {};
+      if (has('reservedAt')) patch.reservedAt = body.reservedAt;
+      if (has('menu')) patch.menu = body.menu;
+      if (has('note')) patch.note = body.note;
+      if (has('staffId')) patch.staffId = body.staffId ? Number(body.staffId) : null;
+      if (has('petId')) patch.petId = body.petId ? Number(body.petId) : null;
+      const result = await reservationService.updateDetails(id, patch);
+      if (!result.ok) {
+        const code = result.error === 'not_found' ? 404
+          : result.error === 'time_conflict' ? 409 : 400;
+        return res.status(code).json(result);
+      }
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  });
+
   // スクールの段階（カウンセリング → 体験 → 入園）
   router.patch('/reservations/:id/school-stage', async (req, res, next) => {
     try {

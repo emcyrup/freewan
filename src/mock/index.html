@@ -1432,7 +1432,13 @@ let adminLive = false;
 async function adminApi(path, options = {}) {
   const res = await fetch(ADMIN_API + path, { headers: { 'Content-Type': 'application/json' }, ...options });
   const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(body.error || ('HTTP ' + res.status));
+  if (!res.ok) {
+    // エラーの本文も持たせる。「誰の予約とぶつかったか」など、message だけでは
+    // 伝えられない情報を呼び出し側で出せるようにするため（message は従来どおり）
+    const err = new Error(body.error || ('HTTP ' + res.status));
+    err.body = body;
+    throw err;
+  }
   return body;
 }
 // 配信メッセージのテスト送信。宛先はサーバ側で常にテスト用アカウントに固定される
@@ -4241,6 +4247,17 @@ const rvAt = (day, time) => {
   const d = calAddDays(todayJst(), day);
   return (d.getMonth() + 1) + '/' + d.getDate() + '(' + DOW_JP[d.getDay()] + ') ' + time;
 };
+// 編集画面の日時欄に入れる値。表示用の文字列からは組み直せないので別に持たせる
+const rvAtIso = (day, time) => {
+  const [h, m] = time.split(':');
+  return ymd(calAddDays(todayJst(), day)) + 'T' + h.padStart(2, '0') + ':' + m;
+};
+// 日時欄の値を一覧の表示に戻す（'2026-09-03T14:30' → '9/3(木) 14:30'）
+const rvAtLabel = (v) => {
+  const [date, time] = v.split('T');
+  const d = new Date(date + 'T00:00:00+09:00');
+  return (d.getMonth() + 1) + '/' + d.getDate() + '(' + DOW_JP[d.getDay()] + ') ' + time;
+};
 const RESV = [
   { id:101, day:2,  time:'11:00', name:'クッキー', menu:'シャンプー＆カットコース', staff:'',     status:'requested', note:'はじめてなので、短くしすぎない仕上がりを希望します。', cat:'trimming', mins:120, src:'line' },
   { id:102, day:3,  time:'14:30', name:'ラテ',     menu:'シャンプーコース',         staff:'高橋', status:'requested', note:'', cat:'trimming', mins:60, src:'line' },
@@ -4261,7 +4278,8 @@ const RESV = [
   { id:108, day:-7, time:'9:00',  name:'マロン',   menu:'ペットスクール',           staff:'山本', status:'visited',  note:'', cat:'school', mins:480, stage:'enrolled', src:'line' },
   { id:115, day:-3, time:'13:00', name:'モモ',     menu:'シャンプーコース',         staff:'高橋', status:'no_show',  note:'', cat:'trimming', mins:60, src:'tel' },
   { id:110, day:9,  time:'15:00', name:'きなこ',   menu:'シャンプーコース',         staff:'高橋', status:'cancelled', note:'', cat:'trimming', mins:60, src:'epark' },
-].map(r => ({ ...r, at: rvAt(r.day, r.time), owner: ownerOf(r.name) || '' }));
+].map(r => ({ ...r, at: rvAt(r.day, r.time), atIso: rvAtIso(r.day, r.time),
+  owner: ownerOf(r.name) || '' }));
 // スクールの進み方。体験だけを対象にした配信や追客の絞り込みにも使う
 const SCHOOL_STAGES = [
   { v:'counseling', label:'カウンセリング' },
@@ -4365,6 +4383,112 @@ async function setSource(r, source){
   }
 }
 
+// ---- 予約の編集 ----
+// 「やっぱり別の日に」「担当を変えたい」に、取り消して入れ直さずに応じるためのもの。
+// 状態（承認・来店・取消）は操作の欄のボタンが受け持つので、ここでは扱わない
+const RV_EDIT_ERRORS = {
+  invalid_reserved_at: '日時を正しく入力してください',
+  not_found: 'この予約は見つかりませんでした（他の端末で消された可能性があります）',
+  already_done: '来店済・無断キャンセルの予約は履歴のため編集できません',
+  invalid_pet: 'このわんちゃんは、この飼い主様の子として登録されていません',
+};
+function openResvEdit(r){
+  closeEdit();
+  const back = document.createElement('div'); back.className = 'mback';
+  back.addEventListener('click', e => { if (e.target === back) closeEdit(); });
+  const win = document.createElement('div'); win.className = 'mwin';
+  win.innerHTML = '<div class="mhd"><h2></h2><button class="mx" aria-label="閉じる">&#10005;</button></div>'
+    + '<div class="edbd"></div>'
+    + '<div class="mft"></div>';
+  win.querySelector('h2').textContent = r.name + ' の予約を編集';
+  win.querySelector('.mx').addEventListener('click', closeEdit);
+  win.querySelector('.mft').textContent = '飼い主様：' + (r.owner || '—')
+    + '　※ 状態の変更は一覧の「承認」「来店」「取消」から行います';
+
+  const bd = win.querySelector('.edbd');
+  // 見た目は CSS 側（.ed*）に置く。顧客・ペットの編集と同じ組み立て方に揃える
+  const field = (label, el) => {
+    const w = document.createElement('label'); w.className = 'edlab';
+    el.className = 'edfld';
+    w.append(label, el); bd.appendChild(w); return el;
+  };
+  const at = document.createElement('input');
+  at.type = 'datetime-local'; at.value = r.atIso || '';
+  field('日時', at);
+
+  const menu = document.createElement('select');
+  // 今のコースが一覧から外れていても選び直せるよう、値が無いときだけ先頭に足す
+  const names = MENUS.filter(m => m.active !== false).map(m => m.name);
+  if (r.menu && r.menu !== '—' && !names.includes(r.menu)) names.unshift(r.menu);
+  menu.innerHTML = '<option value="">コースなし</option>'
+    + names.map(n => '<option>' + esc(n) + '</option>').join('');
+  menu.value = r.menu === '—' ? '' : r.menu;
+  field('コース', menu);
+
+  const staff = document.createElement('select');
+  const src = document.getElementById('nr-staff');   // 新規予約と同じ名簿を使う
+  staff.innerHTML = src.innerHTML;
+  staff.value = adminLive ? (r.staffId || '') : (r.staff || '');
+  field('担当', staff);
+
+  const note = document.createElement('textarea');
+  note.rows = 2; note.value = r.note || '';
+  field('ご要望', note);
+
+  const acts = document.createElement('div'); acts.className = 'edacts';
+  const save = document.createElement('button');
+  save.className = 'sbtn pri'; save.type = 'button'; save.textContent = '保存';
+  const cancel = document.createElement('button');
+  cancel.className = 'sbtn'; cancel.type = 'button'; cancel.textContent = 'やめる';
+  cancel.addEventListener('click', closeEdit);
+  acts.append(save, cancel); bd.appendChild(acts);
+
+  save.addEventListener('click', async () => {
+    if (!at.value) { showToast('日時を入力してください'); return; }
+    const staffLabel = staff.selectedOptions[0]?.textContent || '';
+    if (!adminLive) {
+      r.atIso = at.value;
+      r.at = rvAtLabel(at.value);
+      r.menu = menu.value || '—';
+      r.staff = staff.value ? staffLabel : '';
+      r.note = note.value.trim();
+      renderResv(); closeEdit();
+      showToast(r.name + ' の予約を変更しました');
+      return;
+    }
+    save.disabled = true;
+    try {
+      await adminApi('/reservations/' + r.id + '/details', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          reservedAt: at.value + ':00+09:00',   // datetime-local は JST 前提なのでオフセットを明示する
+          menu: menu.value || null,
+          staffId: staff.value || null,
+          note: note.value.trim() || null,
+        }),
+      });
+      closeEdit();
+      await rvReload();
+      showToast(r.name + ' の予約を変更しました');
+    } catch (err) {
+      save.disabled = false;
+      // 重なりは入力ミスなので、誰とぶつかっているかまで出す
+      const c = err.body?.conflict;
+      if (err.body?.error === 'time_conflict') {
+        showToast('この時間は ' + (staffLabel || '担当') + ' に別のご予約があります'
+          + (c ? '（' + c.customerName + '様 ' + snsFmtJst(c.reservedAt) + '）' : ''));
+        return;
+      }
+      showToast(RV_EDIT_ERRORS[err.body?.error] || ('変更できませんでした: ' + err.message));
+    }
+  });
+
+  back.appendChild(win);
+  document.body.appendChild(back);
+  editBack = back;
+  at.focus();
+}
+
 function rvSetStatus(r, status, msg){
   const before = r.status;
   r.status = status;
@@ -4372,9 +4496,20 @@ function rvSetStatus(r, status, msg){
   showUndoToast(msg, () => { r.status = before; renderResv(); });
 }
 // 実運用モードの予約読み込み。日時表示は SNS と同じ JST 整形を使う
+// datetime-local に入れる値（JST の YYYY-MM-DDTHH:MM）。ブラウザのローカル TZ で
+// 組み立てると、日本以外に設定された端末で日付がずれるため JST で取り直す
+function jstInputValue(iso){
+  if (!iso) return '';
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone:'Asia/Tokyo', year:'numeric',
+    month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hour12:false }).formatToParts(new Date(iso));
+  const g = (t) => parts.find(p => p.type === t)?.value ?? '';
+  return `${g('year')}-${g('month')}-${g('day')}T${g('hour')}:${g('minute')}`;
+}
 function rvMap(r){
-  return { id: r.id, at: snsFmtJst(r.reserved_at), name: r.pet_name || r.customer_name,
+  return { id: r.id, at: snsFmtJst(r.reserved_at), atIso: jstInputValue(r.reserved_at),
+    name: r.pet_name || r.customer_name,
     owner: r.customer_name || '', menu: r.menu || '—', staff: r.staff_name || '',
+    staffId: r.staff_id || '',
     status: r.status, note: r.note || '', ok: r.confirmed_by_customer,
     cat: r.category, mins: r.duration_minutes, stage: r.school_stage, cons: r.with_counseling === true,
     src: r.source || '' };
@@ -4585,6 +4720,8 @@ function renderResv(){
       b.addEventListener('click', fn);
       acts.appendChild(b);
     };
+    // 終わった予約（来店済・無断）は履歴なので直せない。それ以外は日時・コース・担当を直せる
+    if (r.status !== 'visited' && r.status !== 'no_show') mk('編集', '', () => openResvEdit(r));
     if (r.status === 'requested') {
       mk('承認', 'pri', () => rvAct(r, 'confirmed',
         r.name + 'の予約を確定し、飼い主様へLINEで確定通知を送りました',
