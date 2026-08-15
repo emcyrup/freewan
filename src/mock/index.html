@@ -175,10 +175,10 @@ button.kpi:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
 /* 新規予約はボタンから開く。フォームの id と既存の配線をそのまま使うため、
    ノードを動かさず、モーダルの中に置いたまま表示を切り替える */
 .nrbar{display:flex; gap:8px; align-items:center; margin:0 0 12px; flex-wrap:wrap}
-.mback>#newresv,.mback>#freecard{width:640px; max-width:100%; max-height:92vh; overflow:auto; margin:0;
+.mback>#newresv{width:640px; max-width:100%; max-height:92vh; overflow:auto; margin:0;
   box-shadow:0 18px 48px rgba(0,0,0,.3)}
 /* 閉じるボタンを見出しと同じ行の右端に置き、説明文は次の行に送る */
-#newresv .hd .hdnote,#freecard .hd .hdnote{order:1; flex:1 0 100%; margin-top:2px}
+#newresv .hd .hdnote{order:1; flex:1 0 100%; margin-top:2px}
 .tri-rows{overflow:auto}
 .trow2{display:grid; grid-template-columns:52px 1fr auto; gap:12px; align-items:center;
   width:100%; padding:11px 18px; border:0; border-bottom:1px solid var(--line);
@@ -732,7 +732,13 @@ tr.clash td:first-child{box-shadow:inset 3px 0 0 var(--crit)}
   #s-cal .sub .subx{display:none}          /* 長押し・スライドなど、指では使わない操作の説明 */
   #s-cal .sub{margin-bottom:12px}
   .nrbar{margin-bottom:10px}
-  .nrbar .sbtn{flex:1 1 0; justify-content:center; text-align:center}
+  .nrbar .hdnote{display:none}             /* 同じ案内が上の説明文に出ている */
+  /* 空き状況をさがすは、空きを見ながら予約を入れるため画面に置いたまま。
+     そのぶん場所を取るので、狭い画面では説明を畳んで最小限の高さにする */
+  #freecard .hd{padding:8px 12px}
+  #freecard .hd .hdnote{display:none}
+  #freecard .bd{padding:8px 12px 10px}
+  #freecard{margin-bottom:10px}
   .vbar{gap:8px; margin-bottom:10px}
   /* 件数は小さくし、さらにカレンダーの後ろへ回す。件数は「見終わった後で確かめるもの」で、
      先に見たいのは予定そのもの。並べ替えは表示順だけで、HTML の順序は変えない */
@@ -893,7 +899,7 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
 
   <div class="nrbar">
     <button class="sbtn pri" id="nropen" type="button">＋ 新規予約</button>
-    <button class="sbtn" id="fcopen" type="button">空き状況をさがす</button>
+    <span class="hdnote">お電話・ご来店時のご予約用。カレンダーの空いている時間を押しても登録できます。</span>
   </div>
 
   <div class="mback" id="nrback" hidden>
@@ -928,11 +934,10 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
   </div>
   </div>
 
-  <div class="mback" id="fcback" hidden>
-  <div class="card tight" id="freecard" role="dialog" aria-modal="true" aria-label="空き状況をさがす">
+  <!-- 空き状況を見ながら予約を入れる流れなので、モーダルにせず画面に置いたままにする -->
+  <div class="card tight" id="freecard">
     <div class="hd"><h2>空き状況をさがす</h2><span class="pill mut">日付を3つまで</span>
-      <span class="hdnote">候補日をまとめて確認できます。日付を押すとその日のカレンダーへ移動します。</span>
-      <button class="mx" id="fcclose" type="button" aria-label="閉じる">&#10005;</button></div>
+      <span class="hdnote">候補日をまとめて確認できます。日付を押すとその日のカレンダーへ移動します。</span></div>
     <div class="bd">
       <div class="frow freerow">
         <!-- 候補日は3つ並べて見比べるものなので、狭い画面でも必ず1行に収める -->
@@ -946,7 +951,6 @@ setTimeout(function () { document.documentElement.classList.remove('booting'); }
       </div>
       <div id="freeout"></div>
     </div>
-  </div>
   </div>
 
   <div class="vbar">
@@ -2726,30 +2730,9 @@ function clearFree(){
 document.getElementById('freego').addEventListener('click', renderFree);
 document.getElementById('freeclear').addEventListener('click', clearFree);
 
-// 空き状況をさがすは、電話口で候補日を見比べるときだけ使う道具。常に開いておくと
-// スマートフォンでカレンダー本体が画面の外へ押し出されるので、新規予約と同じく
-// ボタンから開くモーダルにしている
-let fcPrevFocus = null;
-function openFree(){
-  const back = document.getElementById('fcback');
-  if (!back.hidden) return;
-  fcPrevFocus = document.activeElement;
-  back.hidden = false;
-  document.querySelector('.freedate').focus();
-}
-function closeFree(){
-  const back = document.getElementById('fcback');
-  if (back.hidden) return;
-  back.hidden = true;
-  if (fcPrevFocus && document.contains(fcPrevFocus)) fcPrevFocus.focus();
-  fcPrevFocus = null;
-}
-document.getElementById('fcopen').addEventListener('click', openFree);
-document.getElementById('fcclose').addEventListener('click', closeFree);
-document.getElementById('fcback').addEventListener('click', e => { if (e.target.id === 'fcback') closeFree(); });
-// 検索結果から日を選んだら、その日のカレンダーを見せる（モーダルは用済みなので閉じる）
+// 検索結果から日を選んだら、その日のカレンダーを見せる。
+// 空き状況の一覧は画面に残したままにして、見比べながら予約を入れられるようにする
 function jumpToDay(date){
-  closeFree();
   calState.date = date; setView('day'); window.scrollTo(0, 0);
 }
 
@@ -3659,7 +3642,7 @@ function removeEv(ev, msg){
   closePop();
   showUndoToast(msg, () => parent.insertBefore(ev, next));
 }
-window.addEventListener('keydown', e => { if (e.key === 'Escape') { closePop(); closeNewResv(); closeFree(); } });
+window.addEventListener('keydown', e => { if (e.key === 'Escape') { closePop(); closeNewResv(); } });
 let press = null, drag = null, rsz = null;
 tl.addEventListener('pointerdown', e => {
   const hz = e.target.closest('.hz');
