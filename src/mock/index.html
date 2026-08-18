@@ -2312,6 +2312,9 @@ let CAL_ROWS = [
 // 行はスタッフ名簿から作り、担当が決まっていないご予約は最後の「担当未定」へまとめる。
 // 日ごとに持っておき、同じ日を何度も取りに行かない（前へ／次へで行き来するため）
 const calDays = new Map();   // 'YYYY-MM-DD' → { closed, evs }
+// 予約 id → 一覧と同じ形の予約（帯から編集を開くときに使う）。
+// id は bigint なので API からは文字列で来る。dataset も文字列なのでキーは文字列に揃える
+const calResv = new Map();
 const calOff  = new Map();   // 'YYYY-MM-DD|担当名' → [開始, 終了, 見出し]
 const calHave = new Set();   // 読み込み済みの日。予約が無い日も入れて取り直さない
 let calRowsReady = false;    // 行がスタッフ名簿に入れ替わるまで、実データは載せない
@@ -2334,7 +2337,7 @@ function calEv(r, rowOf){
   const cls = (r.school_stage === 'counseling' || r.school_stage === 'trial')
     ? 'trial' : (CAT_CLS[r.category] ?? '');
   return {
-    row: rowOf(r.staff_name), s: h + m / 60,
+    row: rowOf(r.staff_name), s: h + m / 60, rid: r.id,
     d: Math.max(0.5, (r.duration_minutes || 60) / 60),
     cls, cat: r.category, pet: r.pet_name || null, stage: r.school_stage || null, nc: 0,
     html: '<b>' + esc(label) + '</b>' + esc(r.menu || '')
@@ -2364,6 +2367,7 @@ async function calFetch(from, to){
     // 取消・無断キャンセルは予定ではないので描かない
     if (r.status === 'cancelled' || r.status === 'no_show') return;
     calDays.get(jstInputValue(r.reserved_at).split('T')[0])?.evs.push(calEv(r, rowOf));
+    calResv.set(String(r.id), rvMap(r));
   });
   (shift?.shifts || []).forEach((s) => {
     const off = s.kind === 'jikan'
@@ -2385,7 +2389,7 @@ async function calNeed(dates){
 
 /** 予約を足した・直したあとに呼ぶ。次の描画で取り直す */
 function calInvalidate(){
-  calDays.clear(); calOff.clear(); calHave.clear();
+  calDays.clear(); calOff.clear(); calHave.clear(); calResv.clear();
   if (adminLive && calRowsReady) renderCalendar();
 }
 
@@ -2542,6 +2546,7 @@ function makeEv(e){
     + '<span class="rz">&#8596;</span><span class="hz l"></span><span class="hz r"></span>';
   if (e.nc) d.title = '初めてのわんちゃんのため +30分の枠を自動確保（' + fmt(e.s) + '〜' + fmt(e.s + e.d + 0.5) + '）';
   d.dataset.s = e.s; d.dataset.d = e.d; d.dataset.cls = e.cls; d.dataset.html = e.html; d.dataset.nc = e.nc ? '1' : '0';
+  if (e.rid != null) d.dataset.rid = e.rid;   // どの予約の帯か（タップして編集するのに使う）
   if (e.pet) d.dataset.pet = e.pet;
   if (e.pets) d.dataset.pets = JSON.stringify(e.pets);   // 帯に入っている複数の子（タップで一覧表示）
   d.addEventListener('contextmenu', ev => ev.preventDefault());
@@ -2600,6 +2605,7 @@ function renderWeek(){
       el.dataset.s = e.s; el.dataset.d = e.d; el.dataset.cls = e.cls;
       el.dataset.html = e.html; el.dataset.nc = e.nc ? '1' : '0';
       el.dataset.row = e.row; el.dataset.date = ymd(date);
+      if (e.rid != null) el.dataset.rid = e.rid;
       if (e.pet) el.dataset.pet = e.pet;
       if (e.pets) el.dataset.pets = JSON.stringify(e.pets);
       bd.appendChild(el);
@@ -3752,11 +3758,27 @@ function openPop(ev, x, y){
   }
   const acts = document.createElement('div'); acts.className = 'acts';
   const mk = (cls, label, fn) => { const b = document.createElement('button'); b.className = 'pbtn ' + cls; b.textContent = label; b.addEventListener('click', fn); return b; };
+  // 実データの帯なら、その予約そのものを扱える。日時・コース・担当を直すのは
+  // 予約管理まで行かずにここからできた方が早い
+  const resv = ev.dataset.rid ? calResv.get(ev.dataset.rid) : null;
+  if (resv && resv.status !== 'visited' && resv.status !== 'no_show') {
+    acts.append(mk('pri', '予約を編集', () => { closePop(); openResvEdit(resv); }));
+  }
   if (!petList) acts.append(mk('', 'ペットカルテを開く', () => openCarteOf(ev.dataset.pet)));
-  acts.append(
-    mk('cancel', 'キャンセルとして記録', () => removeEv(ev, 'キャンセルとして記録しました（履歴に残ります）')),
-    mk('del', '完全に削除（入力ミス用）', () => removeEv(ev, '削除しました'))
-  );
+  if (resv) {
+    // 実データでは帯を消すだけでは記録が変わらない。予約管理と同じ手順で状態を変える
+    if (resv.status !== 'cancelled') {
+      acts.append(mk('cancel', 'キャンセルとして記録', () => { closePop();
+        rvAct(resv, 'cancelled', resv.name + 'の予約をキャンセルにしました',
+          '「' + resv.name + '」の予約をキャンセルにしますか？'); }));
+    }
+  } else {
+    // サンプルデータの帯。記録は無いので画面上の操作だけ
+    acts.append(
+      mk('cancel', 'キャンセルとして記録', () => removeEv(ev, 'キャンセルとして記録しました（履歴に残ります）')),
+      mk('del', '完全に削除（入力ミス用）', () => removeEv(ev, '削除しました'))
+    );
+  }
   el.appendChild(acts);
   document.body.append(back, el);
   const r = el.getBoundingClientRect();
