@@ -67,6 +67,9 @@ jobs:
             host="${target#*@}"
             echo "::group::deploy: $host"
             ssh-keyscan -H "$host" >> ~/.ssh/known_hosts 2>/dev/null
+            # 更新の中身は scripts/server-update.sh に置いてある（Docker が使えるサーバーと
+            # 使えない共用サーバーの両方があり、分岐をここに書くと手順書と二重管理になるため）。
+            # 先に pull するのは、スクリプトがまだ届いていないサーバーでも初回を通すため
             if ssh -i ~/.ssh/deploy_key "$target" '
               set -e
               # 配置先はホーム直下の freewan（旧名 cocotte-vert のままのサーバーにも対応）
@@ -74,9 +77,13 @@ jobs:
               git fetch origin main
               git checkout main
               git pull --ff-only origin main
-              docker compose --profile standalone up -d --build
-              sleep 5
-              curl -sf http://127.0.0.1:3000/health
+              if [ -f scripts/server-update.sh ]; then
+                sh scripts/server-update.sh
+              else
+                docker compose --profile standalone up -d --build
+                sleep 5
+                curl -sf http://127.0.0.1:3000/health
+              fi
             '; then
               echo "OK: $host"
             else

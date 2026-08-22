@@ -46,12 +46,9 @@
 
 ### GitHub について
 
-先方は「弊社が管理する GitHub リポジトリで一元管理」としている。一方このアプリは
-`emcyrup/freewan` で開発しており、CI も**このリポジトリの main への push で自動デプロイ**する
-作りになっている。**どちらを正とするか**を決めておくこと。
-
-- `emcyrup/freewan` のままにする → サーバーの `~/.ssh` に鍵を作り、GitHub に登録して clone する
-- 先方のリポジトリへ移す → CI の設定と、いまの開発の流れを作り直すことになる
+**`emcyrup/freewan` を引き続き使う**（決定済み）。先方の「弊社管理リポジトリで一元管理」に
+合わせる必要が出た場合は、そのときに移送を検討する。
+サーバーの `~/.ssh` に鍵を作り、GitHub に登録して clone する（下の手順1）。
 
 ---
 
@@ -109,24 +106,17 @@ TZ=Asia/Tokyo
 > **パーセントエンコード**が必要（`@` は `%40`、`!` はそのままで可、`#` は `%23`、`$` は `%24`）。
 > 配布されたパスワードは記号を含むため、ここでつまずきやすい。
 
-### 3. マイグレーションと起動確認
-
-`.env` を読ませるため、**必ず npm スクリプト経由で動かす**
-（`node src/index.js` と直に叩くと `.env` が読まれず、環境変数が未設定で落ちる）。
+### 3. セットアップ（依存・マイグレーション・起動確認）
 
 ```bash
-npm run migrate                  # [migrate] 完了 と出れば OK
-npm start                        # [boot] port=8016 SEND_MODE=dry_run
+sh scripts/server-setup.sh
 ```
 
-別のターミナルで:
+`.env` の不足・`DATABASE_URL` の書き方の誤りを先に指摘したうえで、依存の導入 →
+マイグレーション → 起動確認までを行い、最後に次にやることを表示する。
 
-```bash
-curl http://127.0.0.1:8016/health
-# {"ok":true,"sendMode":"dry_run","version":"..."}
-```
-
-確認できたら `Ctrl+C` で一旦止める。
+> 手で行う場合は `npm ci --omit=dev` → `npm run migrate` → `npm start`。
+> **`node src/index.js` と直に叩かないこと**（`.env` が読まれず環境変数未設定で落ちる）。
 
 ### 4. 常駐させる
 
@@ -222,18 +212,23 @@ curl https://freewan-manage.ai-labo.cloud/health
 先方の案内どおり、現行サーバーはこのあと `st-` 付きのサブドメインで
 ステージング環境として使う想定。
 
-### 8. 自動デプロイ
+### 8. 更新と自動デプロイ
 
-いまの CI は SSH で `cd ~/freewan && git pull && docker compose up -d --build` を実行する
-作りのため、**この環境ではそのまま動かない**（Docker が無い）。当面は手動更新でよい。
+更新はこれ1本でよい。Docker が使えるかを見て自動で振り分けるので、
+現行サーバーでも新サーバーでも同じコマンドで済む。
 
 ```bash
-cd ~/freewan && git pull && npm ci --omit=dev && npm run migrate && pm2 restart freewan
+cd ~/freewan && sh scripts/server-update.sh
 ```
 
-自動化する場合は、CI のデプロイ処理をこの環境向けに書き換える必要がある。
-その際は `DEPLOY_TARGETS` から現行サーバーの行を外すこと（止めてあるサーバーへの
-配布が毎回失敗として報告されるため）。
+CI もこのスクリプトを呼ぶようにしてあるため、**main への push で新サーバーにも配れる**。
+有効にするには:
+
+1. 既存の deploy_key の**公開鍵**を、新サーバーの `~/.ssh/authorized_keys` に追記する
+2. Secret `DEPLOY_TARGETS` の**現行サーバーの行を、新サーバーの行に置き換える**
+   （残したままだと、止めてあるサーバーへの配布が毎回失敗として報告される）
+
+自動デプロイに載せない場合は、上のコマンドを手で実行する。
 
 ---
 
