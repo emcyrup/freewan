@@ -59,17 +59,25 @@
 ```bash
 ssh -i <配布された .pem> <SSHユーザー名>@<サーバーIP>
 
-# GitHub 用の鍵を作り、公開鍵を GitHub アカウントに登録する
-ssh-keygen -t ed25519 -C "freewan-prod" -f ~/.ssh/id_ed25519
-cat ~/.ssh/id_ed25519.pub        # これを GitHub の SSH keys に貼る
-
-git config --global user.name "..."
-git config --global user.email "..."
-
-git clone git@github.com:emcyrup/freewan.git
+# このリポジトリは公開設定なので、HTTPS なら鍵の登録なしに clone できる。
+# サーバー側で必要なのは pull だけなので、これで足りる
+git clone https://github.com/emcyrup/freewan.git
 cd freewan
-npm ci --omit=dev
 ```
+
+> `git@github.com:` （SSH）で clone すると `Permission denied (publickey)` になる。
+> サーバーの鍵を GitHub に登録していないため。**サーバーから push する予定が無ければ
+> 登録は不要**で、上の HTTPS のままでよい。
+>
+> サーバーから push もしたい場合だけ、鍵を作って GitHub に登録する:
+>
+> ```bash
+> ssh-keygen -t ed25519 -C "freewan-prod" -f ~/.ssh/id_ed25519
+> cat ~/.ssh/id_ed25519.pub        # これを GitHub の SSH keys に貼る
+> git config --global user.name "..."
+> git config --global user.email "..."
+> git remote set-url origin git@github.com:emcyrup/freewan.git
+> ```
 
 ### 2. `.env` を作る
 
@@ -261,3 +269,5 @@ CI もこのスクリプトを呼ぶようにしてあるため、**main への 
 | 写真のアップロードが 413 で失敗 | 先方のプロキシの上限が既定（1MB）のまま。20MB 以上への引き上げを依頼する |
 | サーバー再起動後に落ちたまま | `pm2 startup` が未登録。先方に依頼するか、手で起動し直す |
 | `pm2: command not found` | `~/.npm-global/bin` が PATH に入っていない。上の export を実行する |
+| clone で `Permission denied (publickey)` | SSH で clone している。公開リポジトリなので `https://github.com/...` を使う |
+| `cp: cannot stat '.env.example'` | clone に失敗していて `freewan` ディレクトリが無い。clone からやり直す |
