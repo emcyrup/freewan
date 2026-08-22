@@ -89,7 +89,14 @@ nano .env
 現行サーバーの `.env` から**そのまま写すもの**（同じ LINE チャネルを使うため）:
 `LINE_CHANNEL_ACCESS_TOKEN` / `LINE_CHANNEL_SECRET` / `LIFF_ID` /
 `ADMIN_USER` / `ADMIN_PASSWORD` / `ANTHROPIC_API_KEY` / `STORE_*` 一式 /
-`IG_*` / `THREADS_*` / `INGEST_API_TOKEN`
+`IG_*` / `THREADS_*` / `INGEST_API_TOKEN` / `STAFF_NOTIFY_CHANNEL`
+
+必要な行だけを取り出すには、**現行サーバー**（ディレクトリは旧名 `cocotte-vert`）で:
+
+```bash
+cd ~/cocotte-vert 2>/dev/null || cd ~/freewan
+grep -E '^(LINE_CHANNEL_|LIFF_|ADMIN_|ANTHROPIC_API_KEY|TEST_LINE_USER_ID|SLACK_WEBHOOK_URL|STAFF_NOTIFY_CHANNEL|BIRTHDAY_COUPON_URL|INGEST_API_TOKEN|IG_|THREADS_|STORE_)' .env
+```
 
 **この環境用に変えるもの:**
 
@@ -169,8 +176,11 @@ https://freewan-manage.ai-labo.cloud/mock/     ← 管理画面（Basic 認証�
 
 **現行サーバー（Docker 構成）で:**
 
+> 現行サーバーのディレクトリは**旧名の `cocotte-vert` のまま**。Docker のボリューム名が
+> ディレクトリ名から決まるため rename していない（rename すると空の DB で起動してしまう）。
+
 ```bash
-cd ~/freewan
+cd ~/cocotte-vert 2>/dev/null || cd ~/freewan
 docker compose exec -T db pg_dump -U postgres --no-owner --no-acl cocotte_vert > freewan.sql
 docker compose cp app:/app/data ./appdata && tar czf appdata.tgz appdata
 ```
@@ -208,8 +218,9 @@ Webhook URL は1つしか登録できないため、**2台の並行運用はで�
 **同じメッセージが2通届く**。必ず「止めてから向ける」。
 
 ```bash
-# ① 現行サーバー: 止める
-cd ~/freewan && docker compose stop app
+# ① 現行サーバー: 止める（ディレクトリは旧名 cocotte-vert のまま）
+cd ~/cocotte-vert 2>/dev/null || cd ~/freewan
+docker compose stop app
 
 # ② 止めたあとに増えたぶんが無いか、最終ダンプを取り直して入れ直す
 #    （①〜②が短時間なら省略可）
@@ -271,3 +282,4 @@ CI もこのスクリプトを呼ぶようにしてあるため、**main への 
 | `pm2: command not found` | `~/.npm-global/bin` が PATH に入っていない。上の export を実行する |
 | clone で `Permission denied (publickey)` | SSH で clone している。公開リポジトリなので `https://github.com/...` を使う |
 | `cp: cannot stat '.env.example'` | clone に失敗していて `freewan` ディレクトリが無い。clone からやり直す |
+| 現行サーバーで `cd ~/freewan` が `No such file or directory` | 現行はディレクトリ名が旧名 `cocotte-vert` のまま。`cd ~/cocotte-vert` を使う |
