@@ -149,7 +149,11 @@ sh scripts/server-setup.sh
 PM2 が使える場合:
 
 ```bash
-# sudo が無いので、グローバル導入先をホーム配下に移してから入れる。
+# この環境には PM2 が最初から入っている。まず確認し、出るなら導入は飛ばす
+pm2 -v
+
+# 入っていなかった場合のみ。sudo が無いので、
+# グローバル導入先をホーム配下に移してから入れる（この1行を飛ばすと EACCES で失敗する）。
 # PATH を通さないと、入れた直後に「pm2: command not found」になる
 npm config set prefix ~/.npm-global
 echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> ~/.bashrc
@@ -293,6 +297,7 @@ CI もこのスクリプトを呼ぶようにしてあるため、**main への 
 | 写真のアップロードが 413 で失敗 | 先方のプロキシの上限が既定（1MB）のまま。20MB 以上への引き上げを依頼する |
 | サーバー再起動後に落ちたまま | `pm2 startup` が未登録。先方に依頼するか、手で起動し直す |
 | `pm2: command not found` | `~/.npm-global/bin` が PATH に入っていない。上の export を実行する |
+| `npm install -g` が `EACCES /usr/local/lib/node_modules` | `npm config set prefix ~/.npm-global` を飛ばしている。ただし PM2 は最初から入っているので、そもそも導入は不要 |
 | clone で `Permission denied (publickey)` | SSH で clone している。公開リポジトリなので `https://github.com/...` を使う |
 | `cp: cannot stat '.env.example'` | clone に失敗していて `freewan` ディレクトリが無い。clone からやり直す |
 | 現行サーバーで `cd ~/freewan` が `No such file or directory` | 現行はディレクトリ名が旧名 `cocotte-vert` のまま。`cd ~/cocotte-vert` を使う |
