@@ -29,8 +29,8 @@ Webhook と LIFF には**固定の HTTPS URL** が必要。構成は3通り。
 
 ```bash
 # EC2 に SSH して（Docker 未導入なら sudo apt install docker.io docker-compose-v2）
-git clone https://github.com/emcyrup/cocotte-vert.git
-cd cocotte-vert
+git clone https://github.com/emcyrup/freewan.git
+cd freewan
 cp .env.example .env
 nano .env
 ```
@@ -96,7 +96,7 @@ curl https://line.example.com/health   # {"ok":true,"sendMode":"dry_run"}
 ### 更新時
 
 ```bash
-cd cocotte-vert && git pull
+cd freewan && git pull
 docker compose up -d --build   # マイグレーションも自動適用
 ```
 
@@ -241,7 +241,7 @@ docker compose --profile standalone up -d --build
 デプロイを待たずに反映したい場合は、VM 上で手動実行しても同じ結果になる:
 
 ```bash
-cd cocotte-vert && git pull --ff-only origin main
+cd freewan && git pull --ff-only origin main
 docker compose --profile standalone up -d --build
 ```
 

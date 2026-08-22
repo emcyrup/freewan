@@ -50,7 +50,7 @@ sudo apt install -y docker.io docker-compose-v2 git nano
 sudo usermod -aG docker $USER
 # ここで一度ログアウト → 再ログインしてから docker ps が通ることを確認する
 
-git clone https://github.com/emcyrup/cocotte-vert.git
+git clone https://github.com/emcyrup/freewan.git
 cd cocotte-vert
 cp .env.example .env
 nano .env
