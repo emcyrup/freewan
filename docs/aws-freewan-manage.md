@@ -9,31 +9,26 @@ EC2 に SSH できる人がこのとおりに実行する。
 
 ---
 
-## 先に決めること（2つ）
+## 決まっていること
 
-### 1. 8016 は「内側のポート」か「外から見えるポート」か
+- **8016 は既存 Nginx の内側のポート。** Nginx が 443 で `freewan-manage.ai-labo.cloud` を
+  受け、`127.0.0.1:8016` へ流す。ブラウザからはポート無しの URL で開く
+- **LINE チャネルは北区店と同じものを使う**
 
-| | 想定 | LINE 連携 |
-|---|---|---|
-| **A. 内側**（推奨） | 既存の Nginx が 443 で `freewan-manage.ai-labo.cloud` を受け、`127.0.0.1:8016` へ流す | そのまま使える |
-| **B. 外から** | `https://freewan-manage.ai-labo.cloud:8016` を直接開く | **Webhook が登録できない見込み**（下記） |
+## そのため、これは「新設」ではなく「引っ越し」になる
 
-**LINE の Webhook URL は HTTPS（443）が前提。**B のようにポートを付けた URL は
-登録・検証が通らない可能性が高い（B で進める場合は、先に LINE Developers の
-「検証」ボタンで 200 が返るか確かめること）。届かなければ、予約フォーム・友だち追加・
-スタッフのシフト申請など**公式LINE からの入力がすべて入らない**。
-管理画面を見るだけなら B でも動くが、このシステムは LINE 連携の上に成り立っているため
-**A を強く勧める**。
+LINE チャネルが同じなら、**Webhook URL は1つしか登録できない**。新しいサーバーに向けた
+時点で、いまの北区店のサーバーには届かなくなる。**2台の並行運用はできない。**
 
-この手順書は A（既存 Nginx が 443 を受け、8016 へプロキシ）を前提に書いてある。
+さらに、同じチャネルということは**友だち（LINE userId）も同じ**。新しいサーバーの DB が
+空のままだと、いまのお客様が「知らない人」として扱われる（予約フォームの本人特定が
+できず、リマインドの対象にもならない）。**既存データを移すのが前提**になる。
 
-### 2. LINE チャネルを分けるか
+### 二重配信に注意
 
-- **分ける**（別チャネルを新規作成）→ 検証環境として安全。友だち・LINE userId は引き継がれない
-- **同じにする**（北区店と同じチャネル）→ **Webhook URL は1つしか登録できない**ため、
-  切り替えた時点で**北区店側に届かなくなる**。並行運用はできない
-
-検証用に立てるなら**必ず分ける**こと。
+移行の途中で**2台とも動いている時間帯**があると、両方の毎朝10:00のジョブが同じ
+お客様に同じ内容を送り、**飼い主様に同じメッセージが2通届く**。これは取り返しがつかない。
+下の「切り替え手順」の順序を必ず守ること。
 
 ---
 
@@ -70,14 +65,15 @@ HOST_PORT=8016
 # DB のパスワード。記号を入れないこと（接続 URL に埋め込まれるため）
 POSTGRES_PASSWORD=（openssl rand -hex 24 の出力）
 
-# LINE（検証用に新しく作ったチャネルの値）
+# LINE・管理画面・店舗プロフィール・Claude API は、
+# 現行サーバーの .env から「そのまま」写す（同じチャネルを使うため）
 LINE_CHANNEL_ACCESS_TOKEN=...
 LINE_CHANNEL_SECRET=...
 LIFF_ID=...
-
-# 管理画面の Basic 認証
 ADMIN_USER=...
 ADMIN_PASSWORD=...
+ANTHROPIC_API_KEY=...
+STORE_NAME=... など STORE_* 一式
 
 # 写真の公開 URL。ポート無しのドメインを書く（8016 は外から見えないため）
 PUBLIC_BASE_URL=https://freewan-manage.ai-labo.cloud
@@ -93,8 +89,8 @@ TZ=Asia/Tokyo
 `DATABASE_URL` は compose が内部 DB を指すよう自動設定するので**空のまま**にする。
 `DOMAIN` も空でよい（Caddy を使わないため）。
 
-`STORE_*`（店名・営業時間・定休日など）は未設定だと1号店の値が出る。
-北区店と同じ表示にしたい場合は、北区店の `.env` から `STORE_*` をそのまま写す。
+`STORE_*`（店名・営業時間・定休日など）は未設定だと1号店の値が出るため、写し忘れないこと。
+`POSTGRES_PASSWORD` だけは新しく作ってよい（DB ごと入れ替えるため）。
 
 ### 4. 起動
 
@@ -135,48 +131,91 @@ sudo certbot --nginx -d freewan-manage.ai-labo.cloud
 curl https://freewan-manage.ai-labo.cloud/health
 ```
 
-### 6. LINE 側の URL
+### 6. 動作だけ先に確かめる（LINE はまだ切り替えない）
 
-作成した検証用チャネルに登録する。**いずれもポート番号は付けない。**
+この時点では Webhook は**まだ現行サーバーに向いたまま**にしておく。
+管理画面が開くこと、`/health` が返ることだけ確認する。
 
-| 設定先 | URL |
-|---|---|
-| Webhook URL | `https://freewan-manage.ai-labo.cloud/webhook` |
-| LIFF（顧客情報登録） | `https://freewan-manage.ai-labo.cloud/liff/` |
-| 管理画面 | `https://freewan-manage.ai-labo.cloud/mock/` |
-
-Webhook を登録したら LINE Developers の「検証」で 200 が返ることを確認する。
-
-### 7. 初期データ
-
-```bash
-# メニューとスクール会員コース（北区店と同じ内容）
-docker compose exec app node scripts/seed-menus.js --file=scripts/store-data/freewan.menus.json
-docker compose exec app node scripts/seed-plans.js --file=scripts/store-data/freewan.plans.json
-
-# 画面を触るためのデモ顧客・予約（任意。--remove で消せる）
-docker compose exec app node scripts/seed-customers.js
-docker compose exec app node scripts/seed-reservations.js
+```
+https://freewan-manage.ai-labo.cloud/mock/
 ```
 
-スタッフは管理画面から登録する。デモ投入は予約サービスを通さない直接 INSERT で、
-LINE 連携済みの顧客にはぶら下げないため、配信は発生しない。
+メニューやスタッフはこのあとデータごと移すので、`seed-*.js` は**実行しない**
+（実行すると移行後に重複する）。
 
-### 8. 自動デプロイに載せる（任意）
+### 7. 既存データを移す
 
-既存の CI は `DEPLOY_TARGETS`（`user@host` の改行区切り）に書いた全台へ配る。
-このサーバーも main への push で自動更新したいなら:
+**現行サーバーで:**
+
+```bash
+cd ~/freewan
+docker compose exec -T db pg_dump -U postgres --clean --if-exists cocotte_vert > freewan.sql
+# 写真（来店お礼・SNS）も持っていく
+docker compose cp app:/app/data ./appdata
+tar czf appdata.tgz appdata
+```
+
+`freewan.sql` と `appdata.tgz` を新サーバーへ送る（`scp` など）。
+
+**新サーバーで:**
+
+```bash
+cd ~/freewan
+docker compose exec -T db psql -U postgres -d cocotte_vert < freewan.sql
+tar xzf appdata.tgz
+docker compose cp ./appdata/. app:/app/data
+docker compose restart app       # マイグレーションが必要なら起動時に適用される
+```
+
+移せたことを確認する。
+
+```bash
+docker compose exec -T db psql -U postgres -d cocotte_vert -c \
+  "SELECT (SELECT count(*) FROM customers) AS 顧客, (SELECT count(*) FROM pets) AS わんちゃん,
+          (SELECT count(*) FROM reservations) AS 予約, (SELECT count(*) FROM staff) AS スタッフ"
+```
+
+現行サーバーで同じ SQL を流し、**数が一致すること**を確かめる。
+
+### 8. 切り替え（この順序を守る）
+
+二重配信を避けるため、**必ず「止めてから向ける」**。
+
+```bash
+# ① 現行サーバー: 止める（ここから予約フォーム等は一時的に受け付けられない）
+cd ~/freewan && docker compose stop app
+
+# ② 現行サーバー: 止めたあとに増えたぶんが無いか、念のため最終ダンプを取り直して
+#    新サーバーへ入れ直す（①〜②が短時間なら省略可）
+
+# ③ LINE Developers で Webhook URL を差し替える
+#    https://freewan-manage.ai-labo.cloud/webhook
+#    LIFF のエンドポイントも同様に差し替える
+#    → 「検証」ボタンで 200 が返ることを確認
+
+# ④ 新サーバー: 動いていることを確認
+curl https://freewan-manage.ai-labo.cloud/health
+```
+
+**現行サーバーは消さずに止めたまま残す。** 問題があれば ③ を戻すだけで復旧できる。
+数日〜1週間ほど様子を見てから片付ける。
+
+> 現行サーバーの `.env` の中身（LINE トークン・`ADMIN_*`・`STORE_*`・`ANTHROPIC_API_KEY`）は
+> **そのまま新サーバーへ写す**。`HOST_PORT=8016` と `PUBLIC_BASE_URL` だけ新しい値にする。
+
+### 9. 自動デプロイの向き先を変える
+
+既存の CI は Secret `DEPLOY_TARGETS`（`user@host` の改行区切り）に書いた全台へ配る。
 
 1. 既存の deploy_key の**公開鍵**を、この EC2 の `~/.ssh/authorized_keys` に追記する
-2. リポジトリの Secret `DEPLOY_TARGETS` に、この EC2 の `user@freewan-manage.ai-labo.cloud` を1行足す
+2. `DEPLOY_TARGETS` の**現行サーバーの行を、この EC2 の行に置き換える**
+   （残したままだと、止めてあるサーバーへの配布が毎回失敗として報告される）
+3. main に何かをマージし、Actions のログで届いていることを確認する
 
 配置先はホーム直下の `freewan` を見るので、上の手順どおりなら追加の設定は要らない。
 
-> **注意**: 自動デプロイに載せると、**北区店の本番と同時に更新される**。
-> 検証用として本番と切り離しておきたいなら、載せずに手動更新にする。
-
 ```bash
-# 手動更新
+# 手動で更新する場合
 cd ~/freewan && git pull && docker compose up -d --build
 ```
 
