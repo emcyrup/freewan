@@ -8,6 +8,8 @@
 //
 // --dry-run は API に送らず、変換結果の JSON を表示するだけ（マッピング調整用）
 import { readFile } from 'node:fs/promises';
+// このスクリプトは DB を触らない（config.js を経由しない）ため、.env はここで直接読む
+import '../src/env.js';
 
 function getArg(name, fallback = null) {
   const hit = process.argv.find((a) => a.startsWith(`--${name}=`));

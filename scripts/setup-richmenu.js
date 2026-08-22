@@ -1,5 +1,5 @@
 // リッチメニューを作成し、全ユーザーのデフォルトに設定する。
-// 使い方: node --env-file-if-missing=.env scripts/setup-richmenu.js --image=path/to/menu.png
+// 使い方: node scripts/setup-richmenu.js --image=path/to/menu.png
 // 画像は 2500x843 px（PNG/JPEG、1MB 以下）を用意すること。
 // 左右2分割で「ご予約」「お客様情報」の導線を置く（画像もこの割付に合わせる）。
 import { readFile } from 'node:fs/promises';

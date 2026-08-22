@@ -131,7 +131,8 @@ sh scripts/server-setup.sh
 マイグレーション → 起動確認までを行い、最後に次にやることを表示する。
 
 > 手で行う場合は `npm ci --omit=dev` → `npm run migrate` → `npm start`。
-> **`node src/index.js` と直に叩かないこと**（`.env` が読まれず環境変数未設定で落ちる）。
+> `.env` はアプリ自身が読む（`src/env.js`）ので `node src/index.js` と直に叩いても構わない。
+> ただし `SEND_MODE=live` は `.env` に書かず、実行時に前置きして渡すこと。
 
 ### 4. 常駐させる
 
@@ -264,7 +265,7 @@ CI もこのスクリプトを呼ぶようにしてあるため、**main への 
 - **バックアップは先方が自動取得する。** 自前で cron を組まないこと（多重実行の負荷とディスク圧迫を避けるため）
 - 過去のダンプが必要になったら先方担当へ依頼する
 - 送信モードを上げるときも `.env` は書き換えず、実行時に渡す
-  `SEND_MODE=test node --env-file-if-missing=.env scripts/run-job.js --job=preReminder`
+  `SEND_MODE=test node scripts/run-job.js --job=preReminder`
 - CPU はバースト方式（t3.small）。長時間の高負荷をかける検証は事前に先方へ連絡する
 
 ## つまずきやすいところ
@@ -272,7 +273,8 @@ CI もこのスクリプトを呼ぶようにしてあるため、**main への 
 | 症状 | 原因 |
 |---|---|
 | 起動時に `Invalid URL` | `DATABASE_URL` のパスワードの記号が未エンコード。`@` → `%40` など |
-| 起動時に「環境変数が未設定です」 | `node src/index.js` と直に叩いている。`npm start` を使う（`.env` を読む） |
+| 起動時に「環境変数が未設定です」 | `.env` がリポジトリ直下に無い。`cp .env.example .env` から作る |
+| `node: bad option: --env-file-...` | 古い node が PATH の先にいる。`command -v -a node` で確認する（v20 以上が必要） |
 | `[boot]` は出るが外から開けない | 先方のプロキシ設定がまだ。8016 への転送を依頼する |
 | Webhook の検証が通らない | URL にポートが付いている／`LINE_CHANNEL_SECRET` が別チャネルの値 |
 | 切り替え直後にリマインドが再送された | `message_logs` を移していない。`dedupe_key` が二重送信を防いでいる |

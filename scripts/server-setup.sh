@@ -9,6 +9,17 @@ set -e
 
 cd "$(dirname "$0")/.."
 
+# サーバーによっては古い node が PATH の先に来ていることがある。
+# その場合の失敗は npm ci やマイグレーションの途中で分かりにくい形で出るため、先に見る
+echo "[setup] node $(node -v) / npm $(npm -v)  ($(command -v node))"
+NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]')"
+if [ "$NODE_MAJOR" -lt 20 ]; then
+  echo "[setup] node が古すぎます（v20 以上が必要）。" >&2
+  echo "        新しい node が別の場所に入っていないか確認してください:" >&2
+  echo "          ls ~/.nvm/versions/node ; command -v -a node" >&2
+  exit 1
+fi
+
 if [ ! -f .env ]; then
   echo "[setup] .env がありません。まず作ってください:" >&2
   echo "        cp .env.example .env && nano .env" >&2

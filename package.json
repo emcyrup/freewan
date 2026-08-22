@@ -8,8 +8,8 @@
     "node": ">=20"
   },
   "scripts": {
-    "start": "node --env-file-if-missing=.env src/index.js",
-    "migrate": "node --env-file-if-missing=.env scripts/migrate.js",
+    "start": "node src/index.js",
+    "migrate": "node scripts/migrate.js",
     "test": "node --test \"test/**/*.test.js\""
   },
   "dependencies": {
