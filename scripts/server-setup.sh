@@ -27,12 +27,30 @@ fi
 
 PORT_TO_CHECK="$(sed -n 's/^PORT=//p' .env | tail -1)"
 
+# .env.example の既定は slack。そのまま使うと SLACK_WEBHOOK_URL が要る。
+# 起動時にしか分からないと原因が見えにくいので、ここで先に知らせる
+CHANNEL="$(sed -n 's/^STAFF_NOTIFY_CHANNEL=//p' .env | tail -1)"
+case "$CHANNEL" in
+  slack|both)
+    if ! grep -q '^SLACK_WEBHOOK_URL=.' .env; then
+      echo "[setup] STAFF_NOTIFY_CHANNEL=$CHANNEL ですが SLACK_WEBHOOK_URL が空です。" >&2
+      echo "        Slack を使わないなら STAFF_NOTIFY_CHANNEL=line にしてください" >&2
+      exit 1
+    fi ;;
+esac
+
 # パスワードの記号は URL の中では書き換えが要る。起動時の Invalid URL でつまずきやすいので先に見る
 if grep -q '^DATABASE_URL=.*#' .env; then
   echo "[setup] DATABASE_URL に # がそのまま入っています。%23 に書き換えてください" >&2
   echo "        （# より後ろが切り捨てられ、接続できません）" >&2
   exit 1
 fi
+
+# 止める理由ではないが、気付かないと「管理画面が開けない」と後で悩むことになる
+grep -q '^ADMIN_USER=.' .env && grep -q '^ADMIN_PASSWORD=.' .env \
+  || echo "[setup] 注意: ADMIN_USER / ADMIN_PASSWORD が空です。このままだと管理画面は無効になります"
+grep -q '^LIFF_ID=.' .env \
+  || echo "[setup] 注意: LIFF_ID が空です。このままだと予約フォーム・顧客情報登録が使えません"
 
 echo "[setup] 依存を入れます"
 npm ci --omit=dev
