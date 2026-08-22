@@ -273,6 +273,7 @@ CI もこのスクリプトを呼ぶようにしてあるため、**main への 
 | 症状 | 原因 |
 |---|---|
 | 起動時に `Invalid URL` | `DATABASE_URL` のパスワードの記号が未エンコード。`@` → `%40` など |
+| `password authentication failed for user "user"` | `DATABASE_URL` が `.env.example` の雛形のまま。実際の DB ユーザー・パスワード・DB 名に書き換える |
 | 起動時に「環境変数が未設定です」 | `.env` がリポジトリ直下に無い。`cp .env.example .env` から作る |
 | `node: bad option: --env-file-...` | 古い node が PATH の先にいる。`command -v -a node` で確認する（v20 以上が必要） |
 | `[boot]` は出るが外から開けない | 先方のプロキシ設定がまだ。8016 への転送を依頼する |

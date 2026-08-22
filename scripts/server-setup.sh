@@ -50,6 +50,14 @@ case "$CHANNEL" in
     fi ;;
 esac
 
+# .env.example の DATABASE_URL は雛形のまま。書き換え忘れると
+# 「password authentication failed for user "user"」という分かりにくい形で出る
+if grep -q '^DATABASE_URL=postgres://user:pass@' .env; then
+  echo '[setup] DATABASE_URL が .env.example の雛形のままです。' >&2
+  echo '        サーバーの DB ユーザー・パスワード・DB 名に書き換えてください' >&2
+  exit 1
+fi
+
 # パスワードの記号は URL の中では書き換えが要る。起動時の Invalid URL でつまずきやすいので先に見る
 if grep -q '^DATABASE_URL=.*#' .env; then
   echo "[setup] DATABASE_URL に # がそのまま入っています。%23 に書き換えてください" >&2
