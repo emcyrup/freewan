@@ -123,8 +123,15 @@ sh scripts/server-setup.sh
 PM2 が使える場合:
 
 ```bash
-npm install -g pm2 --prefix ~/.npm-global   # sudo 無しで入れる場合
+# sudo が無いので、グローバル導入先をホーム配下に移してから入れる。
+# PATH を通さないと、入れた直後に「pm2: command not found」になる
+npm config set prefix ~/.npm-global
+echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> ~/.bashrc
+export PATH="$HOME/.npm-global/bin:$PATH"
+npm install -g pm2
+
 # npm start を起動する形にする（.env を読ませるため。src/index.js を直接指定しない）
+cd ~/freewan
 pm2 start npm --name freewan --time -- start
 pm2 save
 pm2 logs freewan
@@ -253,3 +260,4 @@ CI もこのスクリプトを呼ぶようにしてあるため、**main への 
 | 来店お礼の写真が届かない | `PUBLIC_BASE_URL` 未設定。未設定だと対象を数えず何も送らない |
 | 写真のアップロードが 413 で失敗 | 先方のプロキシの上限が既定（1MB）のまま。20MB 以上への引き上げを依頼する |
 | サーバー再起動後に落ちたまま | `pm2 startup` が未登録。先方に依頼するか、手で起動し直す |
+| `pm2: command not found` | `~/.npm-global/bin` が PATH に入っていない。上の export を実行する |
