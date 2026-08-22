@@ -137,9 +137,13 @@ ci.yml は複数台対応済み。`DEPLOY_TARGETS`（`user@host` の改行区切
 
 ### 進行中
 
-- **AWS（`freewan-manage.ai-labo.cloud` / ホスト側 8016）への移行**。手順は
-  [aws-freewan-manage.md](aws-freewan-manage.md)。LINE チャネルは現行と同じものを使うため、
-  並行運用はできず**引っ越し**になる。既存データの移送と、二重配信を避ける切り替え順序に注意。
+- **本番環境（AWS・`freewan-manage.ai-labo.cloud` / ポート 8016）への移行**。手順は
+  [aws-freewan-manage.md](aws-freewan-manage.md)。
+  先方が管理する共用サーバーの隔離区画で、**sudo が無く Docker も使えない**ため、
+  Node を直接動かし、共用の PostgreSQL 18.4 に繋ぐ構成になる（Docker Compose 構成は使わない）。
+  Nginx・SSL・バックアップは先方管理。LINE チャネルは現行と同じものを使うため並行運用はできず
+  **引っ越し**になる。現行サーバーは `st-` 付きサブドメインでステージングとして残す想定。
+  接続情報は先方配布の資料にあり、**このリポジトリには書かない**。
   サーバー内の作業は SSH できる担当が行う
 
 ### 次に着手すべきもの
